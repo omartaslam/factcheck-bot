@@ -142,7 +142,7 @@ def meter_visual(r):
         return labels.get(r, r)
     red, green = patterns[r]
     bar = "🟥" * red + "🟩" * green
-    return f"{bar}\n{labels[r]}"
+    return f"\n{bar}\n{labels[r]}\n"
 
 
 def html_text(html,lim=2000):
