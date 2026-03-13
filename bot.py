@@ -117,7 +117,13 @@ def build_meter(r):
     return verdict_block(r)
 
 def meter_visual(r):
-    return verdict_block(r)
+    filled = {"TRUE":10,"MOSTLY TRUE":8,"HALF TRUE":5,"MOSTLY FALSE":3,"FALSE":1,"PANTS ON FIRE":0}
+    label = {"TRUE":"TRUE","MOSTLY TRUE":"MOSTLY TRUE","HALF TRUE":"HALF TRUE","MOSTLY FALSE":"MOSTLY FALSE","FALSE":"FALSE","PANTS ON FIRE":"PANTS ON FIRE","UNVERIFIABLE":"UNVERIFIABLE","MISLEADING":"MISLEADING","NEEDS CONTEXT":"NEEDS CONTEXT"}
+    if r in {"UNVERIFIABLE","MISLEADING","NEEDS CONTEXT"}:
+        return label.get(r,r)
+    n = filled.get(r,0)
+    bar = "█"*n + "░"*(10-n)
+    return f"|{bar}|\n{label.get(r,r)}"
 
 
 def html_text(html,lim=2000):
@@ -185,38 +191,36 @@ def claude_analyse(claim,google,scraped,st):
     return {"rating":"UNVERIFIABLE","verdict":"Analysis failed.","key_facts":[],"context":"","red_flags":[],"media_bias":"","sources":["Google FC — https://toolbox.google.com/factcheck/explorer","Snopes — https://www.snopes.com","FullFact — https://fullfact.org"],"confidence":"LOW","confidence_reason":"Unavailable"}
 def fmt_report(claim,a,st,cost):
     rating=a.get("rating","UNVERIFIABLE").upper()
-    src={"text":"Text message","image":"Image / Screenshot","audio":"Voice note","video":"Video","url":"Article / Link","document":"Document"}
-    HDR="*━━━━━━━━━━━━━━━━━━━━*"
+    src_word={"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
+    badge_map={"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
+    badge=badge_map.get(rating,f"VERDICT: {rating}")
     lines=[
-        HDR,"*FACTCHECK PRO*",
-        f"_{src.get(st,st)}_",HDR,"",
-        "*TRUTH-O-METER*","",
-        verdict_block(rating),"",HDR,"",
-        "*CLAIM REVIEWED*",f"_{claim[:240]}_","",
-        "*ANALYSIS*",a.get("verdict",""),"",
+        f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}",
+        "",
+        f"*{badge}*",
+        f"*{meter_visual(rating)}*",
+        "",
+        "*CLAIM*",
+        f"_{claim[:280]}_",
+        "",
+        "*ANALYSIS*",
+        a.get("verdict",""),
+        "",
     ]
     if a.get("key_facts"):
-        lines+=["*KEY FACTS*"]
-        for i,f in enumerate(a["key_facts"][:4],1): lines.append(f"{i}. {f}")
-        lines.append("")
+        lines+=["*KEY FACTS*"]+[f"{i}. {f}" for i,f in enumerate(a["key_facts"][:4],1)]+[""]
     if a.get("context"):
-        lines+=["*CONTEXT*",a["context"][:320],""]
+        lines+=["*BACKGROUND*",a["context"][:400],""]
     if a.get("red_flags"):
-        lines+=["*RED FLAGS*"]
-        for f in a["red_flags"][:3]: lines.append(f"- {f}")
-        lines.append("")
+        lines+=["*RED FLAGS*"]+[f"• {f}" for f in a["red_flags"][:3]]+[""]
     if a.get("media_bias"):
-        lines+=["*BIAS NOTE*",a["media_bias"][:180],""]
+        lines+=["*BIAS NOTE*",a["media_bias"][:200],""]
     conf=a.get("confidence","LOW")
-    lines+=[
-        "*CONFIDENCE*",f"*{conf}*",
-        f"_{a.get('confidence_reason','')[:120]}_","",
-    ]
+    conf_icon={"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
+    lines+=[f"*CONFIDENCE*  {conf_icon} {conf}",f"_{a.get('confidence_reason','')[:200]}_",""]
     if a.get("sources"):
-        lines+=["*SOURCES*"]
-        for s in a["sources"][:4]: lines.append(f"> {s}")
-        lines.append("")
-    lines+=[HDR,f"_Cost: ${cost:.4f} · FactCheck Pro v3_","_Snopes · FullFact · PolitiFact · AFP_"]
+        lines+=["*SOURCES*"]+[f"• {s}" for s in a["sources"][:5]]+[""]
+    lines+=["─────────────────────────────",f"_Cost: ${cost:.4f}  •  FactCheck Pro v3_","_Snopes • FullFact • PolitiFact • AFP_"]
     return "\n".join(lines)
 
 
