@@ -117,13 +117,32 @@ def build_meter(r):
     return verdict_block(r)
 
 def meter_visual(r):
-    filled = {"TRUE":10,"MOSTLY TRUE":8,"HALF TRUE":5,"MOSTLY FALSE":3,"FALSE":1,"PANTS ON FIRE":0}
-    label = {"TRUE":"TRUE","MOSTLY TRUE":"MOSTLY TRUE","HALF TRUE":"HALF TRUE","MOSTLY FALSE":"MOSTLY FALSE","FALSE":"FALSE","PANTS ON FIRE":"PANTS ON FIRE","UNVERIFIABLE":"UNVERIFIABLE","MISLEADING":"MISLEADING","NEEDS CONTEXT":"NEEDS CONTEXT"}
-    if r in {"UNVERIFIABLE","MISLEADING","NEEDS CONTEXT"}:
-        return label.get(r,r)
-    n = filled.get(r,0)
-    bar = "█"*n + "░"*(10-n)
-    return f"|{bar}|\n{label.get(r,r)}"
+    # Red squares fill from left, green from right
+    # More red = more false, more green = more true
+    patterns = {
+        "TRUE":          (0, 10),   # 0 red, 10 green
+        "MOSTLY TRUE":   (2, 8),
+        "HALF TRUE":     (5, 5),
+        "MOSTLY FALSE":  (7, 3),
+        "FALSE":         (9, 1),
+        "PANTS ON FIRE": (10, 0),
+    }
+    labels = {
+        "TRUE":          "✅ VERIFIED TRUE",
+        "MOSTLY TRUE":   "🟢 MOSTLY TRUE",
+        "HALF TRUE":     "🟡 HALF TRUE",
+        "MOSTLY FALSE":  "🟠 MOSTLY FALSE",
+        "FALSE":         "❌ FALSE",
+        "PANTS ON FIRE": "🔥 PANTS ON FIRE",
+        "UNVERIFIABLE":  "❓ UNVERIFIABLE",
+        "MISLEADING":    "⚠️ MISLEADING",
+        "NEEDS CONTEXT": "📌 NEEDS CONTEXT",
+    }
+    if r not in patterns:
+        return labels.get(r, r)
+    red, green = patterns[r]
+    bar = "🟥" * red + "🟩" * green
+    return f"{bar}\n{labels[r]}"
 
 
 def html_text(html,lim=2000):
@@ -198,7 +217,7 @@ def fmt_report(claim,a,st,cost):
         f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}",
         "",
         f"*{badge}*",
-        f"*{meter_visual(rating)}*",
+        meter_visual(rating),
         "",
         "*CLAIM*",
         f"_{claim[:280]}_",
