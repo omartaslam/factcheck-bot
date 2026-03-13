@@ -172,12 +172,27 @@ def ocr_image(b):
         r.raise_for_status(); return r.json()["content"][0]["text"].strip()
     except Exception as e: log.error("OCR: %s",e); return ""
 def transcribe(b,mime):
+    # Try OpenAI Whisper first
+    if OPENAI_API_KEY:
+        try:
+            ext={"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(mime,"ogg")
+            with tempfile.NamedTemporaryFile(suffix=f".{ext}",delete=False) as f: f.write(b); path=f.name
+            with open(path,"rb") as f: r=requests.post("https://api.openai.com/v1/audio/transcriptions",headers={"Authorization":f"Bearer {OPENAI_API_KEY}"},files={"file":(f"a.{ext}",f,mime)},data={"model":"whisper-1"},timeout=60)
+            os.unlink(path); r.raise_for_status(); return r.json().get("text","").strip()
+        except Exception as e: log.error("Whisper: %s",e)
+    # Fallback: send audio to Claude as base64
     try:
-        ext={"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(mime,"ogg")
-        with tempfile.NamedTemporaryFile(suffix=f".{ext}",delete=False) as f: f.write(b); path=f.name
-        with open(path,"rb") as f: r=requests.post("https://api.openai.com/v1/audio/transcriptions",headers={"Authorization":f"Bearer {OPENAI_API_KEY}"},files={"file":(f"a.{ext}",f,mime)},data={"model":"whisper-1"},timeout=60)
-        os.unlink(path); r.raise_for_status(); return r.json().get("text","").strip()
-    except Exception as e: log.error("Transcribe: %s",e); return ""
+        b64=base64.b64encode(b).decode()
+        media={"audio/ogg":"audio/ogg","audio/mpeg":"audio/mpeg","video/mp4":"video/mp4"}.get(mime,"audio/ogg")
+        r=requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
+            json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,
+                  "messages":[{"role":"user","content":[
+                      {"type":"text","text":"Please transcribe all spoken words in this audio/video file. Return only the transcript, no commentary."},
+                      {"type":"document","source":{"type":"base64","media_type":media,"data":b64}}
+                  ]}]},timeout=60)
+        r.raise_for_status(); return r.json()["content"][0]["text"].strip()
+    except Exception as e: log.error("Claude transcribe: %s",e); return ""
 def google_fc(query):
     try:
         r=requests.get(GOOGLE_FC_URL,params={"key":GOOGLE_API_KEY,"query":query[:200],"pageSize":8},timeout=10); r.raise_for_status()
@@ -265,7 +280,17 @@ def run_check(from_num,query,st,img_bytes,cost):
     a=claude_analyse(query,g,sc,st)
     send(from_num,fmt_report(query,a,st,cost))
 def clean_query(q):
-    lines=[l for l in q.split("\n") if not l.startswith("#") and not l.startswith("**") and l.strip()]
+    lines=[]
+    for l in q.split("\n"):
+        s=l.strip()
+        if not s: continue
+        if s.startswith("#"): continue
+        if s.startswith("**"): continue
+        if s.lower().startswith("text extraction"): continue
+        if s.lower().startswith("image description"): continue
+        if s.lower().startswith("manipulation"): continue
+        if s.lower().startswith("signs of"): continue
+        lines.append(s)
     return "\n".join(lines).strip()
 def process(from_num,message):
     msg_id=message.get("id",""); msg_time=int(message.get("timestamp",0))
@@ -314,7 +339,7 @@ def process(from_num,message):
             query,source_type=body,"text"
     elif msg_type=="image":
         send(from_num,"🖼 Analysing image..."); image_bytes=download_media(message["image"]["id"])
-        if image_bytes: query=ocr_image(image_bytes)
+        if image_bytes: query=clean_query(ocr_image(image_bytes))
         source_type="image"
         if not query: send(from_num,"⚠️ Could not analyse image."); return
     elif msg_type=="audio":
