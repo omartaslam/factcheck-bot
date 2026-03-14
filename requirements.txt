@@ -1,6 +1,8 @@
 flask
 requests
 python-dotenv
-yt-dlp
+pillow
 opencv-python-headless
-Pillow
+yt-dlp
+gunicorn
+numpy
