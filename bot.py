@@ -435,6 +435,11 @@ def process(from_num,message):
         if t.time()-msg_time>60: log.info("Stale, ignored"); return
         processed_ids.add(msg_id)
     msg_type=message.get("type")
+
+    # IMMEDIATE response for videos to test if webhook is receiving
+    if msg_type=="video":
+        send(from_num,"📹 Video detected! Starting processing...")
+        log.info("=== VIDEO MESSAGE RECEIVED ===")
     if msg_type=="text":
         body=message["text"]["body"].strip()
         body_upper=body.upper()
@@ -513,41 +518,9 @@ def process(from_num,message):
         source_type="audio"
         if not query: send(from_num,"⚠️ Could not transcribe."); return
     elif msg_type=="video":
-        try:
-            send(from_num,"🎬 Processing video...")
-            b=download_media(message["video"].get("id",""))
-
-            if not b:
-                send(from_num,"❌ Failed to download video from WhatsApp.\n\nDebug info: download_media returned None")
-                return
-
-            send(from_num,f"✓ Downloaded ({len(b)//1024}KB). Transcribing...")
-
-            # Simple approach: just transcribe audio
-            query=""
-            try:
-                transcript=transcribe(b,message["video"].get("mime_type","video/mp4"))
-                if transcript:
-                    query=f"Audio transcript: {transcript}"
-                    send(from_num,f"✓ Transcribed: {transcript[:100]}...")
-                else:
-                    send(from_num,"⚠️ Transcription returned empty string")
-            except Exception as e:
-                error_msg=str(e)
-                send(from_num,f"❌ Transcription error: {error_msg[:200]}")
-                log.error(f"Transcription exception: {e}")
-                return
-
-            source_type="video"
-            if not query:
-                send(from_num,"⚠️ No content extracted from video")
-                return
-
-        except Exception as e:
-            error_msg=str(e)
-            send(from_num,f"❌ Video processing crashed: {error_msg[:200]}\n\nPlease send video URL instead or take screenshot")
-            log.error(f"Video processing exception: {e}")
-            return
+        send(from_num,"⚠️ VIDEO PROCESSING TEMPORARILY DISABLED\n\nVideos require additional setup. For now, please:\n\n• Send the video URL (TikTok/YouTube/Twitter)\n• Or take a screenshot and send as image\n• Or describe the claim in text\n\nWorking on a fix!")
+        log.warning("Video upload attempted - currently disabled")
+        return
     elif msg_type=="document":
         send(from_num,"📄 Reading..."); b=download_media(message["document"]["id"])
         if b: query=b.decode("utf-8",errors="ignore")[:2000]
