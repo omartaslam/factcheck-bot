@@ -480,6 +480,18 @@ def process(from_num, message):
             video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com","t.me"]
             is_video_link = any(d in url for d in video_domains)
             if is_video_link:
+                # Detect Facebook private/login-gated links upfront
+                fb_private = ("facebook.com/share" in url or "fb.watch" in url) and "watch" not in url
+                if fb_private:
+                    send(from_num, "⚠️ *Facebook private links require login to access.*
+
+For Facebook videos please:
+• Use a public Facebook video URL (facebook.com/watch/...)
+• Or download the video and send it as a file
+• Or copy and paste the post text/caption instead
+
+All other platforms (YouTube, TikTok, Instagram, Twitter/X) work fine! 👍")
+                    return
                 try:
                     send(from_num, "🎬 Downloading video from URL...")
                     video_bytes, metadata = download_video_url(url)
