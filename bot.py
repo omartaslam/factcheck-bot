@@ -462,45 +462,39 @@ def process(from_num,message):
             video_domains=["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com","t.me"]
             is_video_link=any(d in url for d in video_domains)
             if is_video_link:
-                send(from_num,"🎬 Downloading video...")
-                video_bytes,metadata=download_video_url(url)
-                if video_bytes:
-                    log.info(f"Downloaded video: {len(video_bytes)} bytes")
-                    parts=[]
-                    if metadata: parts.append(f"Video: {metadata}")
+                try:
+                    send(from_num,"🎬 Downloading video from URL...")
+                    video_bytes,metadata=download_video_url(url)
 
-                    # Try audio transcription first (most important)
-                    send(from_num,"Transcribing audio...")
-                    try:
-                        transcript=transcribe(video_bytes,"video/mp4")
-                        if transcript:
-                            parts.append(f"Audio: {transcript}")
-                            log.info(f"Transcribed: {len(transcript)} chars")
-                    except Exception as e:
-                        log.error(f"Transcription failed: {e}")
+                    if video_bytes:
+                        send(from_num,f"✓ Downloaded ({len(video_bytes)//1024}KB)")
+                        parts=[]
+                        if metadata: parts.append(f"Video: {metadata}")
 
-                    # Try frame extraction (optional enhancement)
-                    if parts:  # Only if we got metadata or audio
+                        # Try audio transcription
+                        send(from_num,"Transcribing...")
                         try:
-                            send(from_num,"Analyzing visual content...")
-                            frames,duration=extract_video_frames(video_bytes)
-                            if frames:
-                                visual_analysis=analyze_video_frames(frames[:2])
-                                if visual_analysis:
-                                    parts.append(f"Visual: {visual_analysis}")
-                                    image_bytes=frames[0]
-                                log.info("Frames analyzed successfully")
+                            transcript=transcribe(video_bytes,"video/mp4")
+                            if transcript:
+                                parts.append(f"Audio: {transcript}")
+                                send(from_num,f"✓ Got transcript")
                         except Exception as e:
-                            log.warning(f"Frame extraction failed (non-critical): {e}")
+                            send(from_num,f"⚠️ Transcription failed: {str(e)[:100]}")
+                            log.error(f"URL video transcription: {e}")
 
-                    query="\n\n".join(parts) if parts else f"Video URL: {url}"
-                    source_type="video"
-                else:
-                    # Fallback to page scraping
-                    log.warning("Video download failed, trying page scrape")
-                    send(from_num,"Download failed. Analyzing page...")
+                        query="\n\n".join(parts) if parts else f"Video URL: {url}"
+                        source_type="video"
+                    else:
+                        # Fallback to page scraping
+                        send(from_num,"Download failed. Analyzing page metadata...")
+                        page_text=fetch(url) or ""
+                        query=f"Video URL: {url}\n\n{page_text[:600]}" if page_text else f"Video from: {url}"
+                        source_type="url"
+
+                except Exception as e:
+                    send(from_num,f"❌ Video URL error: {str(e)[:200]}\n\nTrying page scrape instead...")
                     page_text=fetch(url) or ""
-                    query=f"Video URL: {url}\n\n{page_text[:600]}" if page_text else f"Video from: {url}"
+                    query=f"Video URL: {url}\n\n{page_text[:400]}" if page_text else f"Video from: {url}"
                     source_type="url"
             else:
                 send(from_num,"Fetching article...")
@@ -519,41 +513,40 @@ def process(from_num,message):
         source_type="audio"
         if not query: send(from_num,"⚠️ Could not transcribe."); return
     elif msg_type=="video":
-        send(from_num,"🎬 Processing video...")
-        b=download_media(message["video"].get("id",""))
-        query=""
-        if b:
-            # Try audio transcription first (most reliable)
-            send(from_num,"Transcribing audio...")
+        try:
+            send(from_num,"🎬 Processing video...")
+            b=download_media(message["video"].get("id",""))
+
+            if not b:
+                send(from_num,"❌ Failed to download video from WhatsApp.\n\nDebug info: download_media returned None")
+                return
+
+            send(from_num,f"✓ Downloaded ({len(b)//1024}KB). Transcribing...")
+
+            # Simple approach: just transcribe audio
+            query=""
             try:
                 transcript=transcribe(b,message["video"].get("mime_type","video/mp4"))
                 if transcript:
                     query=f"Audio transcript: {transcript}"
-                    log.info(f"Video audio transcribed: {len(transcript)} chars")
+                    send(from_num,f"✓ Transcribed: {transcript[:100]}...")
+                else:
+                    send(from_num,"⚠️ Transcription returned empty string")
             except Exception as e:
-                log.error("Video transcription failed: %s",e)
-                send(from_num,"⚠️ Audio transcription failed. Trying alternative method...")
+                error_msg=str(e)
+                send(from_num,f"❌ Transcription error: {error_msg[:200]}")
+                log.error(f"Transcription exception: {e}")
+                return
 
-            # Try frame extraction if audio worked (optional enhancement)
-            if query:  # Only try frames if we got audio
-                try:
-                    frames,duration=extract_video_frames(b)
-                    if frames:
-                        send(from_num,"Analyzing visual content...")
-                        visual_analysis=analyze_video_frames(frames[:2])
-                        if visual_analysis:
-                            query=f"Visual: {visual_analysis}\n\nAudio: {transcript}"
-                            image_bytes=frames[0]
-                            log.info("Video frames analyzed successfully")
-                except Exception as e:
-                    log.warning(f"Frame extraction failed (non-critical): {e}")
-                    # Continue with audio-only, don't fail
-        else:
-            log.error("Failed to download video from WhatsApp")
+            source_type="video"
+            if not query:
+                send(from_num,"⚠️ No content extracted from video")
+                return
 
-        source_type="video"
-        if not query:
-            send(from_num,"⚠️ Could not process video. Please try:\n• Sending the video URL (TikTok/YouTube/Twitter)\n• Taking a screenshot and sending as image")
+        except Exception as e:
+            error_msg=str(e)
+            send(from_num,f"❌ Video processing crashed: {error_msg[:200]}\n\nPlease send video URL instead or take screenshot")
+            log.error(f"Video processing exception: {e}")
             return
     elif msg_type=="document":
         send(from_num,"📄 Reading..."); b=download_media(message["document"]["id"])
@@ -568,6 +561,19 @@ def process(from_num,message):
     cost=estimate_cost(source_type)
     with pending_lock: pending[from_num]={"query":query,"source_type":source_type,"image_bytes":image_bytes,"cost":cost,"timestamp":t.time()}
     send(from_num,confirm_msg(source_type,query,cost))
+@app.route("/",methods=["GET"])
+def health():
+    return jsonify({
+        "status":"running",
+        "version":"v3.1",
+        "keys":{
+            "whatsapp":bool(WHATSAPP_TOKEN),
+            "google_fc":bool(GOOGLE_API_KEY),
+            "anthropic":bool(ANTHROPIC_KEY),
+            "openai":bool(OPENAI_API_KEY)
+        }
+    }),200
+
 @app.route("/webhook",methods=["GET"])
 def verify():
     if request.args.get("hub.mode")=="subscribe" and request.args.get("hub.verify_token")==VERIFY_TOKEN:
@@ -580,11 +586,31 @@ def receive():
         value=data["entry"][0]["changes"][0]["value"]
         if "messages" in value:
             msg=value["messages"][0]
-            log.info("MSG TYPE=%s FROM=%s KEYS=%s", msg.get("type"), msg.get("from"), list(msg.keys()))
-            if msg.get("type")=="text":
-                log.info("TEXT BODY=%s", msg.get("text",{}).get("body","")[:200])
-            process(msg["from"],msg)
-    except(KeyError,IndexError) as e: log.warning("Parse: %s",e)
+            msg_type=msg.get("type","unknown")
+            from_num=msg.get("from","unknown")
+            log.info(f">>> Received {msg_type} from {from_num}")
+
+            if msg_type=="text":
+                log.info(f"    Text: {msg.get('text',{}).get('body','')[:100]}")
+            elif msg_type=="video":
+                log.info(f"    Video ID: {msg.get('video',{}).get('id','')}")
+            elif msg_type=="image":
+                log.info(f"    Image ID: {msg.get('image',{}).get('id','')}")
+
+            try:
+                process(from_num,msg)
+            except Exception as e:
+                log.error(f"!!! Process exception: {e}")
+                try:
+                    send(from_num,f"❌ Bot error: {str(e)[:200]}\n\nThis has been logged. Please try again or contact support.")
+                except:
+                    pass
+
+    except(KeyError,IndexError) as e:
+        log.warning(f"Parse error: {e}")
+    except Exception as e:
+        log.error(f"Webhook error: {e}")
+
     return jsonify({"status":"ok"}),200
 if __name__=="__main__":
     missing=[k for k,v in {"WHATSAPP_TOKEN":WHATSAPP_TOKEN,"PHONE_NUMBER_ID":PHONE_NUMBER_ID,"GOOGLE_FACT_CHECK_API_KEY":GOOGLE_API_KEY,"ANTHROPIC_API_KEY":ANTHROPIC_KEY}.items() if not v]
