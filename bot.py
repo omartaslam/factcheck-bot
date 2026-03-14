@@ -59,6 +59,11 @@ SRC_GALLOWAY_SITE    = os.getenv("SRC_GALLOWAY_SITE",     "true").lower() == "tr
 SRC_PSC              = os.getenv("SRC_PSC",               "true").lower() == "true"
 SRC_SUBSTACK         = os.getenv("SRC_SUBSTACK",          "true").lower() == "true"
 SRC_DDN_YT           = os.getenv("SRC_DDN_YT",            "true").lower() == "true"
+SRC_BBC          = os.getenv("SRC_BBC",          "true").lower() == "true"
+SRC_REUTERS      = os.getenv("SRC_REUTERS",      "true").lower() == "true"
+SRC_AP           = os.getenv("SRC_AP",           "true").lower() == "true"
+SRC_GUARDIAN     = os.getenv("SRC_GUARDIAN",     "true").lower() == "true"
+SRC_CNN          = os.getenv("SRC_CNN",          "true").lower() == "true"
 # Custom sources — add any source without code changes
 # Format in Railway: "Name|https://site.com/search?q={q},Name2|https://site2.com/?s={q}"
 # Use {q} for URL-encoded query, {qt} for URL-encoded short query
@@ -500,6 +505,11 @@ def enabled_sources():
     if SRC_GALLOWAY_SITE:   sources.append("George Galloway (Site)")
     if SRC_DDN_YT:          sources.append("Double Down News (YouTube)")
     if SRC_SUBSTACK:        sources.append("Substack")
+    if SRC_BBC:             sources.append("BBC News")
+    if SRC_REUTERS:         sources.append("Reuters")
+    if SRC_AP:              sources.append("AP News")
+    if SRC_GUARDIAN:        sources.append("The Guardian")
+    if SRC_CNN:             sources.append("CNN")
     for name, _ in parse_custom_sources():
         sources.append(f"{name} (custom)")
     return sources
@@ -541,6 +551,12 @@ def scrape_sites(query):
     if SRC_GRAYZONE:      fast.append(("The Grayzone",        f"https://thegrayzone.com/?s={q}"))
     if SRC_MINTPRESS:     fast.append(("MintPress News",      f"https://www.mintpressnews.com/?s={q}"))
     if SRC_PSC:           fast.append(("Palestine Solidarity", f"https://palestinecampaign.org/?s={q}"))
+    # Mainstream news
+    if SRC_BBC:      fast.append(("BBC News",  f"https://www.bbc.co.uk/search?q={qt}&d=NEWS_PS"))
+    if SRC_REUTERS:  fast.append(("Reuters",    f"https://www.reuters.com/search/news?blob={qt}"))
+    if SRC_AP:       fast.append(("AP News",    f"https://apnews.com/search?q={qt}"))
+    if SRC_GUARDIAN: fast.append(("Guardian",   f"https://www.theguardian.com/search?q={qt}"))
+    if SRC_CNN:      fast.append(("CNN",        f"https://edition.cnn.com/search?q={qt}"))
 
     # SLOW TIER — personalities, substacks, nitter, YouTube (parallel, 5s timeout)
     slow = []
