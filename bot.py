@@ -22,9 +22,11 @@ logging.basicConfig(level=logging.INFO,format="%(asctime)s %(levelname)s %(messa
 log=logging.getLogger(__name__)
 app=Flask(__name__)
 processed_ids=set()
+MAX_PROCESSED_IDS=10_000
 processed_lock=threading.Lock()
 pending={}
 pending_lock=threading.Lock()
+PENDING_TTL=600
 SYSTEM="""You are FactCheck Pro — world-class fact-checker for journalists and activists. Deep expertise in Gaza conflict, Iran-US-Israel tensions, West Bank, Hamas, Hezbollah, regional players. Rigorously balanced — call out falsehoods from ALL sides equally. Flag propaganda techniques and media bias."""
 TRUTH_METER={"TRUE":("✅","TRUE",5),"MOSTLY TRUE":("🟢","MOSTLY TRUE",4),"HALF TRUE":("🟡","HALF TRUE",3),"MOSTLY FALSE":("🟠","MOSTLY FALSE",2),"FALSE":("❌","FALSE",1),"PANTS ON FIRE":("🔥","PANTS ON FIRE",0),"UNVERIFIABLE":("❓","UNVERIFIABLE",-1),"MISLEADING":("⚠️","MISLEADING",-1),"NEEDS CONTEXT":("📌","NEEDS CONTEXT",-1)}
 def verdict_header(rating):
@@ -49,47 +51,11 @@ def truth_gauge(rating):
     return f"`{' '.join(segs)}`\n_FALSE          TRUE_"
 
 RATINGS_MAP = {
-    "TRUE":          ("[ ✓ VERIFIED TRUE ]", "▓▓▓▓▓▓", "Claim is accurate"),
-    "MOSTLY TRUE":   ("[ ✓ MOSTLY TRUE   ]", "▓▓▓▓▓░", "Minor inaccuracies"),
-    "HALF TRUE":     ("[ ◑ HALF TRUE     ]", "▓▓▓░░░", "Mixed evidence"),
-    "MOSTLY FALSE":  ("[ ✗ MOSTLY FALSE  ]", "▓▓░░░░", "Mainly inaccurate"),
-    "FALSE":         ("[ ✗ FALSE         ]", "▓░░░░░", "Not supported by evidence"),
-    "PANTS ON FIRE": ("[ ✗ PANTS ON FIRE ]", "░░░░░░", "Dangerous disinformation"),
-    "UNVERIFIABLE":  ("[ ? UNVERIFIABLE  ]", None,     "Cannot be confirmed"),
-    "MISLEADING":    ("[ ! MISLEADING    ]", None,     "Framed to deceive"),
-    "NEEDS CONTEXT": ("[ i NEEDS CONTEXT ]", None,     "Missing crucial context"),
-}
-
-RATINGS_MAP = {
-    "TRUE":          ("✓", "VERIFIED TRUE",  "▓▓▓▓▓▓", "Claim is accurate"),
-    "MOSTLY TRUE":   ("✓", "MOSTLY TRUE",    "▓▓▓▓▓░", "Minor inaccuracies"),
-    "HALF TRUE":     ("~", "HALF TRUE",      "▓▓▓░░░", "Mixed evidence"),
-    "MOSTLY FALSE":  ("✗", "MOSTLY FALSE",   "▓▓░░░░", "Mainly inaccurate"),
-    "FALSE":         ("✗", "FALSE",          "▓░░░░░", "Not supported by evidence"),
-    "PANTS ON FIRE": ("✗", "PANTS ON FIRE",  "░░░░░░", "Dangerous disinformation"),
-    "UNVERIFIABLE":  ("?", "UNVERIFIABLE",   None,     "Cannot be confirmed"),
-    "MISLEADING":    ("!", "MISLEADING",     None,     "Framed to deceive"),
-    "NEEDS CONTEXT": ("i", "NEEDS CONTEXT",  None,     "Missing crucial context"),
-}
-
-RATINGS_MAP = {
-    "TRUE":          ("VERIFIED TRUE",  "[++++++++++]", "Claim checks out"),
-    "MOSTLY TRUE":   ("MOSTLY TRUE",    "[++++++++--]", "Minor inaccuracies"),
-    "HALF TRUE":     ("HALF TRUE",      "[+++++-----]", "Mixed evidence"),
-    "MOSTLY FALSE":  ("MOSTLY FALSE",   "[+++-------]", "Mainly inaccurate"),
-    "FALSE":         ("FALSE",          "[++---------]","Not supported by evidence"),
-    "PANTS ON FIRE": ("PANTS ON FIRE",  "[----------]", "Dangerous disinformation"),
-    "UNVERIFIABLE":  ("UNVERIFIABLE",   None,           "Cannot be confirmed"),
-    "MISLEADING":    ("MISLEADING",     None,           "Framed to deceive"),
-    "NEEDS CONTEXT": ("NEEDS CONTEXT",  None,           "Missing crucial context"),
-}
-
-RATINGS_MAP = {
     "TRUE":          ("VERIFIED TRUE",   "[++++++]", "Claim checks out"),
     "MOSTLY TRUE":   ("MOSTLY TRUE",     "[+++++.]", "Minor inaccuracies"),
     "HALF TRUE":     ("HALF TRUE",       "[++++..]", "Mixed evidence"),
     "MOSTLY FALSE":  ("MOSTLY FALSE",    "[++....]", "Mainly inaccurate"),
-    "FALSE":         ("FALSE",           "[+.....]", "Not supported by evidence"),
+    "FALSE":         ("FALSE",           "[++....]", "Not supported by evidence"),
     "PANTS ON FIRE": ("PANTS ON FIRE",   "[......]", "Dangerous disinformation"),
     "UNVERIFIABLE":  ("UNVERIFIABLE",    None,       "Cannot be confirmed"),
     "MISLEADING":    ("MISLEADING",      None,       "Framed to deceive"),
@@ -219,7 +185,7 @@ def transcribe(b,mime):
             json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,
                   "messages":[{"role":"user","content":[
                       {"type":"text","text":"Transcribe all spoken words. Return only the transcript."},
-                      {"type":"document","source":{"type":"base64","media_type":media,"data":b64}}
+                      {"type":"image","source":{"type":"base64","media_type":media,"data":b64}}
                   ]}]},timeout=60)
         r.raise_for_status()
         transcript=r.json()["content"][0]["text"].strip()
@@ -428,12 +394,26 @@ def clean_query(q):
         if s.lower().startswith("signs of"): continue
         lines.append(s)
     return "\n".join(lines).strip()
+
+def expire_pending():
+    now = t.time()
+    with pending_lock:
+        stale = [k for k,v in pending.items() if now - v.get("timestamp",0) > PENDING_TTL]
+        for k in stale:
+            log.info(f"Expiring stale pending for {k}")
+            del pending[k]
+
 def process(from_num,message):
     msg_id=message.get("id",""); msg_time=int(message.get("timestamp",0))
     with processed_lock:
         if msg_id in processed_ids: return
-        if t.time()-msg_time>60: log.info("Stale, ignored"); return
+        if t.time()-msg_time>300: log.info("Stale, ignored"); return
         processed_ids.add(msg_id)
+        if len(processed_ids)>MAX_PROCESSED_IDS:
+            to_keep=set(list(processed_ids)[MAX_PROCESSED_IDS//2:])
+            processed_ids.clear()
+            processed_ids.update(to_keep)
+    expire_pending()
     msg_type=message.get("type")
 
     # IMMEDIATE response for videos to test if webhook is receiving
@@ -449,7 +429,9 @@ def process(from_num,message):
         if has_p and is_yn:
             if body_upper in ("YES","Y"):
                 with pending_lock: data=pending.pop(from_num)
-                send(from_num,"Starting fact-check..."); run_check(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]); return
+                send(from_num,"Starting fact-check...")
+                threading.Thread(target=run_check,args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),daemon=True).start()
+                return
             elif body_upper in ("NO","N"):
                 with pending_lock: pending.pop(from_num,None)
                 send(from_num,"Cancelled."); return
