@@ -20,6 +20,45 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 WHATSAPP_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 GOOGLE_FC_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
+
+# Source toggles — set any to "false" in Railway to disable
+SRC_SNOPES           = os.getenv("SRC_SNOPES",           "true").lower() == "true"
+SRC_FULLFACT         = os.getenv("SRC_FULLFACT",          "true").lower() == "true"
+SRC_FACTCHECKORG     = os.getenv("SRC_FACTCHECKORG",      "true").lower() == "true"
+SRC_POLITIFACT       = os.getenv("SRC_POLITIFACT",        "true").lower() == "true"
+SRC_AFP              = os.getenv("SRC_AFP",               "true").lower() == "true"
+SRC_ALJAZEERA        = os.getenv("SRC_ALJAZEERA",         "true").lower() == "true"
+SRC_MEE              = os.getenv("SRC_MEE",               "true").lower() == "true"
+SRC_NOVARA           = os.getenv("SRC_NOVARA",            "true").lower() == "true"
+SRC_CANARY           = os.getenv("SRC_CANARY",            "true").lower() == "true"
+SRC_ZETEO            = os.getenv("SRC_ZETEO",             "true").lower() == "true"
+SRC_YENISAFAK        = os.getenv("SRC_YENISAFAK",         "true").lower() == "true"
+SRC_972MAG           = os.getenv("SRC_972MAG",            "true").lower() == "true"
+SRC_MONDOWEISS       = os.getenv("SRC_MONDOWEISS",        "true").lower() == "true"
+SRC_EINTIFADA        = os.getenv("SRC_EINTIFADA",         "true").lower() == "true"
+SRC_INTERCEPT        = os.getenv("SRC_INTERCEPT",         "true").lower() == "true"
+SRC_HAARETZ          = os.getenv("SRC_HAARETZ",           "true").lower() == "true"
+SRC_DDN              = os.getenv("SRC_DDN",               "true").lower() == "true"
+SRC_DEMOCRACYNOW     = os.getenv("SRC_DEMOCRACYNOW",      "true").lower() == "true"
+SRC_GRAYZONE         = os.getenv("SRC_GRAYZONE",          "true").lower() == "true"
+SRC_MINTPRESS        = os.getenv("SRC_MINTPRESS",         "true").lower() == "true"
+SRC_OWENJONES        = os.getenv("SRC_OWENJONES",         "true").lower() == "true"
+SRC_OWENJONES_SUB    = os.getenv("SRC_OWENJONES_SUB",     "true").lower() == "true"
+SRC_CORBYN           = os.getenv("SRC_CORBYN",            "true").lower() == "true"
+SRC_CORBYN_SITE      = os.getenv("SRC_CORBYN_SITE",       "true").lower() == "true"
+SRC_ZARASULTANA      = os.getenv("SRC_ZARASULTANA",       "true").lower() == "true"
+SRC_SULTANA_SITE     = os.getenv("SRC_SULTANA_SITE",      "true").lower() == "true"
+SRC_FINKELSTEIN      = os.getenv("SRC_FINKELSTEIN",       "true").lower() == "true"
+SRC_FINKELSTEIN_SUB  = os.getenv("SRC_FINKELSTEIN_SUB",   "true").lower() == "true"
+SRC_CODEPINK         = os.getenv("SRC_CODEPINK",          "true").lower() == "true"
+SRC_CODEPINK_SITE    = os.getenv("SRC_CODEPINK_SITE",     "true").lower() == "true"
+SRC_MOATS            = os.getenv("SRC_MOATS",             "true").lower() == "true"
+SRC_MOATS_YT         = os.getenv("SRC_MOATS_YT",          "true").lower() == "true"
+SRC_GALLOWAY_SITE    = os.getenv("SRC_GALLOWAY_SITE",     "true").lower() == "true"
+SRC_PSC              = os.getenv("SRC_PSC",               "true").lower() == "true"
+SRC_SUBSTACK         = os.getenv("SRC_SUBSTACK",          "true").lower() == "true"
+SRC_DDN_YT           = os.getenv("SRC_DDN_YT",            "true").lower() == "true"
+
 COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
@@ -359,14 +398,89 @@ def google_fc(query):
         return out
     except Exception as e: log.error("GFC: %s", e); return []
 
+def _fetch_source(name, url):
+    """Fetch a single source — returns (name, text) or None."""
+    try:
+        txt = fetch(url, timeout=7)
+        if txt and len(txt) > 150:
+            return (name, txt[:400])
+    except Exception as e:
+        log.warning(f"Scrape failed {name}: {e}")
+    return None
+
 def scrape_sites(query):
     q = quote_plus(query[:100])
-    sites = [("Snopes",f"https://www.snopes.com/?s={q}"),("FullFact",f"https://fullfact.org/search/?q={q}"),("FactCheck.org",f"https://www.factcheck.org/?s={q}"),("PolitiFact",f"https://www.politifact.com/search/?q={q}"),("AFP",f"https://factcheck.afp.com/?q={q}")]
-    out = []
-    for name, url in sites:
-        txt = fetch(url, timeout=8)
-        if txt and len(txt) > 150: out.append(f"[{name}]: {txt[:400]}")
-    return "\n\n".join(out)
+    qt = quote_plus(query[:80])
+
+    # FAST TIER — fact-check DBs and major news outlets (run first, block until done)
+    fast = []
+    if SRC_SNOPES:        fast.append(("Snopes",              f"https://www.snopes.com/?s={q}"))
+    if SRC_FULLFACT:      fast.append(("FullFact",            f"https://fullfact.org/search/?q={q}"))
+    if SRC_FACTCHECKORG:  fast.append(("FactCheck.org",       f"https://www.factcheck.org/?s={q}"))
+    if SRC_POLITIFACT:    fast.append(("PolitiFact",          f"https://www.politifact.com/search/?q={q}"))
+    if SRC_AFP:           fast.append(("AFP Fact Check",      f"https://factcheck.afp.com/?q={q}"))
+    if SRC_ALJAZEERA:     fast.append(("Al Jazeera",          f"https://www.aljazeera.com/search/{qt}"))
+    if SRC_MEE:           fast.append(("Middle East Eye",     f"https://www.middleeasteye.net/search?search_api_fulltext={qt}"))
+    if SRC_NOVARA:        fast.append(("Novara Media",        f"https://novaramedia.com/?s={q}"))
+    if SRC_CANARY:        fast.append(("The Canary",          f"https://thecanary.co/?s={q}"))
+    if SRC_ZETEO:         fast.append(("Zeteo",               f"https://zeteo.com/?s={q}"))
+    if SRC_YENISAFAK:     fast.append(("Yeni Safak",          f"https://www.yenisafak.com/en/search?q={qt}"))
+    if SRC_972MAG:        fast.append(("972 Magazine",        f"https://www.972mag.com/?s={q}"))
+    if SRC_MONDOWEISS:    fast.append(("Mondoweiss",          f"https://mondoweiss.net/?s={q}"))
+    if SRC_EINTIFADA:     fast.append(("Electronic Intifada", f"https://electronicintifada.net/search/site/{qt}"))
+    if SRC_INTERCEPT:     fast.append(("The Intercept",       f"https://theintercept.com/search/?s={q}"))
+    if SRC_HAARETZ:       fast.append(("Haaretz",             f"https://www.haaretz.com/search/#q={qt}"))
+    if SRC_DDN:           fast.append(("Double Down News",    f"https://doubledownnews.com/?s={q}"))
+    if SRC_DEMOCRACYNOW:  fast.append(("Democracy Now",       f"https://www.democracynow.org/search?q={qt}"))
+    if SRC_GRAYZONE:      fast.append(("The Grayzone",        f"https://thegrayzone.com/?s={q}"))
+    if SRC_MINTPRESS:     fast.append(("MintPress News",      f"https://www.mintpressnews.com/?s={q}"))
+    if SRC_PSC:           fast.append(("Palestine Solidarity", f"https://palestinecampaign.org/?s={q}"))
+
+    # SLOW TIER — personalities, substacks, nitter, YouTube (parallel, 5s timeout)
+    slow = []
+    if SRC_OWENJONES:       slow.append(("Owen Jones Twitter",    f"https://nitter.poast.org/OwenJones84/search?q={qt}"))
+    if SRC_OWENJONES_SUB:   slow.append(("Owen Jones Substack",   f"https://owenjones.substack.com/search?query={qt}"))
+    if SRC_CORBYN:          slow.append(("Corbyn Twitter",        f"https://nitter.poast.org/jeremycorbyn/search?q={qt}"))
+    if SRC_CORBYN_SITE:     slow.append(("Corbyn Site",           f"https://jeremycorbyn.org.uk/?s={q}"))
+    if SRC_ZARASULTANA:     slow.append(("Zara Sultana Twitter",  f"https://nitter.poast.org/zarasultana/search?q={qt}"))
+    if SRC_SULTANA_SITE:    slow.append(("Zara Sultana Site",     f"https://zarasultana.co.uk/?s={q}"))
+    if SRC_FINKELSTEIN:     slow.append(("Finkelstein Twitter",   f"https://nitter.poast.org/normfinkelstein/search?q={qt}"))
+    if SRC_FINKELSTEIN_SUB: slow.append(("Finkelstein Substack",  f"https://normfinkelstein.substack.com/search?query={qt}"))
+    if SRC_CODEPINK:        slow.append(("CodePink Twitter",      f"https://nitter.poast.org/codepink/search?q={qt}"))
+    if SRC_CODEPINK_SITE:   slow.append(("CodePink Site",         f"https://www.codepink.org/search?q={qt}"))
+    if SRC_MOATS:           slow.append(("Moats Twitter",         f"https://nitter.poast.org/georgegalloway/search?q={qt}"))
+    if SRC_MOATS_YT:        slow.append(("Moats YouTube",         f"https://www.youtube.com/@MoatsTV/search?query={qt}"))
+    if SRC_GALLOWAY_SITE:   slow.append(("Galloway Site",         f"https://www.georgegalloway.com/?s={q}"))
+    if SRC_DDN_YT:          slow.append(("DDN YouTube",           f"https://www.youtube.com/@DoubleDownNews/search?query={qt}"))
+    if SRC_SUBSTACK:        slow.append(("Substack",              f"https://substack.com/search?q={qt}"))
+
+    results = []
+
+    # Run fast tier in parallel threads
+    with threading.ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_fetch_source, name, url): name for name, url in fast}
+        for future in futures:
+            try:
+                r = future.result(timeout=9)
+                if r:
+                    results.append(f"[{r[0]}]: {r[1]}")
+            except Exception:
+                pass
+
+    # Run slow tier in parallel threads with shorter timeout
+    with threading.ThreadPoolExecutor(max_workers=8) as ex:
+        futures = {ex.submit(_fetch_source, name, url): name for name, url in slow}
+        for future in futures:
+            try:
+                r = future.result(timeout=6)
+                if r:
+                    results.append(f"[{r[0]}]: {r[1]}")
+            except Exception:
+                pass
+
+    log.info(f"Scraped {len(results)} sources")
+    return "\n\n".join(results)
+
 
 def estimate_cost(st):
     base = {"text":0.0085,"url":0.0095,"image":0.0110,"audio":0.0120,"video":0.0180,"document":0.0095}
