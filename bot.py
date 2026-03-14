@@ -1,10 +1,14 @@
-"""FactCheck Pro v3"""
+"""FactCheck Pro v3.1 - Enhanced Video Analysis"""
 import os,base64,json,logging,tempfile,threading,requests
 from flask import Flask,request,jsonify
 from dotenv import load_dotenv
 from html.parser import HTMLParser
 from urllib.parse import quote_plus
 import time as t
+import cv2
+import yt_dlp
+from PIL import Image
+import io
 load_dotenv()
 WHATSAPP_TOKEN=os.getenv("WHATSAPP_TOKEN")
 PHONE_NUMBER_ID=os.getenv("PHONE_NUMBER_ID")
@@ -193,6 +197,94 @@ def transcribe(b,mime):
                   ]}]},timeout=60)
         r.raise_for_status(); return r.json()["content"][0]["text"].strip()
     except Exception as e: log.error("Claude transcribe: %s",e); return ""
+
+def extract_video_frames(video_bytes, num_frames=4):
+    """Extract key frames from video for visual analysis"""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4",delete=False) as f:
+            f.write(video_bytes)
+            video_path=f.name
+        cap=cv2.VideoCapture(video_path)
+        total_frames=int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        fps=cap.get(cv2.CAP_PROP_FPS)
+        duration=total_frames/fps if fps>0 else 0
+
+        # Extract frames evenly distributed throughout video
+        frame_indices=[int(total_frames*i/num_frames) for i in range(num_frames)]
+        frames=[]
+
+        for idx in frame_indices:
+            cap.set(cv2.CAP_PROP_POS_FRAMES,idx)
+            ret,frame=cap.read()
+            if ret:
+                # Convert BGR to RGB
+                frame_rgb=cv2.cvtColor(frame,cv2.COLOR_BGR2RGB)
+                img=Image.fromarray(frame_rgb)
+                # Compress to reduce API costs
+                buffer=io.BytesIO()
+                img.save(buffer,format="JPEG",quality=70)
+                frames.append(buffer.getvalue())
+
+        cap.release()
+        os.unlink(video_path)
+        log.info(f"Extracted {len(frames)} frames from video (duration: {duration:.1f}s)")
+        return frames,duration
+    except Exception as e:
+        log.error("Frame extraction: %s",e)
+        return [],0
+
+def analyze_video_frames(frames,transcript=""):
+    """Analyze video frames using Claude vision"""
+    try:
+        # Build content with all frames
+        content=[{"type":"text","text":"Analyze this video for fact-checking. Extract ALL visible text, describe key visual claims, identify people/locations/events, note any signs of manipulation or deepfakes."}]
+
+        for i,frame_bytes in enumerate(frames[:4]):  # Max 4 frames to control costs
+            b64=base64.b64encode(frame_bytes).decode()
+            content.append({
+                "type":"image",
+                "source":{"type":"base64","media_type":"image/jpeg","data":b64}
+            })
+            content.append({"type":"text","text":f"Frame {i+1}/{len(frames)}"})
+
+        if transcript:
+            content.append({"type":"text","text":f"\n\nAudio transcript:\n{transcript[:500]}"})
+
+        r=requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
+            json={"model":"claude-haiku-4-5-20251001","max_tokens":2000,"messages":[{"role":"user","content":content}]},
+            timeout=60)
+        r.raise_for_status()
+        return r.json()["content"][0]["text"].strip()
+    except Exception as e:
+        log.error("Video frame analysis: %s",e)
+        return ""
+
+def download_video_url(url):
+    """Download video from TikTok/YouTube/Instagram etc using yt-dlp"""
+    try:
+        ydl_opts={
+            'format':'worst[ext=mp4]',  # Use lowest quality to save bandwidth
+            'outtmpl':tempfile.mktemp(suffix='.mp4'),
+            'quiet':True,
+            'no_warnings':True,
+            'extract_flat':False,
+            'max_filesize':50*1024*1024,  # 50MB limit
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info=ydl.extract_info(url,download=True)
+            video_path=ydl.prepare_filename(info)
+            with open(video_path,'rb') as f:
+                video_bytes=f.read()
+            os.unlink(video_path)
+            title=info.get('title','')
+            description=info.get('description','')
+            log.info(f"Downloaded video: {title[:50]}")
+            return video_bytes,f"{title}\n{description[:300]}"
+    except Exception as e:
+        log.error("Video download: %s",e)
+        return None,""
+
 def google_fc(query):
     try:
         r=requests.get(GOOGLE_FC_URL,params={"key":GOOGLE_API_KEY,"query":query[:200],"pageSize":8},timeout=10); r.raise_for_status()
@@ -211,7 +303,7 @@ def scrape_sites(query):
         if txt and len(txt)>150: out.append(f"[{name}]: {txt[:400]}")
     return "\n\n".join(out)
 def estimate_cost(st):
-    base={"text":0.0085,"url":0.0095,"image":0.0110,"audio":0.0120,"video":0.0150,"document":0.0095}
+    base={"text":0.0085,"url":0.0095,"image":0.0110,"audio":0.0120,"video":0.0220,"document":0.0095}
     return base.get(st,0.0085)
 def claude_analyse(claim,google,scraped,st):
     g="\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
@@ -254,7 +346,7 @@ def fmt_report(claim,a,st,cost):
     lines+=[f"*CONFIDENCE*  {conf_icon} {conf}",f"_{a.get('confidence_reason','')[:200]}_",""]
     if a.get("sources"):
         lines+=["*SOURCES*"]+[f"• {s}" for s in a["sources"][:5]]+[""]
-    lines+=["─────────────────────────────",f"_Cost: ${cost:.4f}  •  FactCheck Pro v3_","_Snopes • FullFact • PolitiFact • AFP_"]
+    lines+=["─────────────────────────────",f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.1_","_Snopes • FullFact • PolitiFact • AFP_"]
     return "\n".join(lines)
 
 
@@ -322,15 +414,33 @@ def process(from_num,message):
         urls=[w for w in body.split() if w.startswith("http")]
         if urls:
             url=urls[0]
-            # Detect video platforms — fetch page text for claim context
+            # Detect video platforms
             video_domains=["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com","t.me"]
             is_video_link=any(d in url for d in video_domains)
             if is_video_link:
-                send(from_num,"Video link detected. Fetching page content...")
-                page_text=fetch(url) or ""
-                # Use URL + any page text we can get as the claim
-                query=f"Video URL: {url}\n\nPage content: {page_text[:600]}" if page_text else f"Video URL: {url}\n\nClaim visible in thumbnail/title: {body}"
-                source_type="url"
+                send(from_num,"🎬 Downloading video for analysis...")
+                video_bytes,metadata=download_video_url(url)
+                if video_bytes:
+                    send(from_num,"Extracting frames and transcribing audio...")
+                    frames,duration=extract_video_frames(video_bytes)
+                    transcript=transcribe(video_bytes,"video/mp4") if video_bytes else ""
+                    visual_analysis=analyze_video_frames(frames,transcript) if frames else ""
+
+                    # Combine all information
+                    parts=[]
+                    if metadata: parts.append(f"Video metadata: {metadata}")
+                    if visual_analysis: parts.append(f"Visual content: {visual_analysis}")
+                    if transcript: parts.append(f"Audio transcript: {transcript}")
+
+                    query="\n\n".join(parts) if parts else f"Video URL: {url}"
+                    source_type="video"
+                    image_bytes=frames[0] if frames else None  # Store first frame
+                else:
+                    # Fallback to page scraping
+                    send(from_num,"Could not download video. Analyzing page metadata...")
+                    page_text=fetch(url) or ""
+                    query=f"Video URL: {url}\n\nPage content: {page_text[:600]}" if page_text else f"Video URL: {url}"
+                    source_type="url"
             else:
                 send(from_num,"Fetching article...")
                 query=fetch(url) or body
@@ -348,13 +458,27 @@ def process(from_num,message):
         source_type="audio"
         if not query: send(from_num,"⚠️ Could not transcribe."); return
     elif msg_type=="video":
-        send(from_num,"Processing video...")
+        send(from_num,"🎬 Processing video (extracting frames + audio)...")
         b=download_media(message["video"].get("id",""))
         if b:
-            query=transcribe(b,message["video"].get("mime_type","video/mp4"))
+            # Extract frames for visual analysis
+            frames,duration=extract_video_frames(b)
+            # Transcribe audio
+            transcript=transcribe(b,message["video"].get("mime_type","video/mp4"))
+            # Analyze frames
+            visual_analysis=analyze_video_frames(frames,transcript) if frames else ""
+
+            # Combine visual and audio
+            parts=[]
+            if visual_analysis: parts.append(f"Visual content: {visual_analysis}")
+            if transcript: parts.append(f"Audio transcript: {transcript}")
+
+            query="\n\n".join(parts) if parts else ""
+            image_bytes=frames[0] if frames else None  # Store first frame
+
         source_type="video"
         if not query:
-            send(from_num,"Could not transcribe video audio. If this is a TikTok/YouTube link, please send the URL as a text message instead.")
+            send(from_num,"⚠️ Could not extract content from video. Try sending the video URL if available.")
             return
     elif msg_type=="document":
         send(from_num,"📄 Reading..."); b=download_media(message["document"]["id"])
@@ -390,5 +514,5 @@ def receive():
 if __name__=="__main__":
     missing=[k for k,v in {"WHATSAPP_TOKEN":WHATSAPP_TOKEN,"PHONE_NUMBER_ID":PHONE_NUMBER_ID,"GOOGLE_FACT_CHECK_API_KEY":GOOGLE_API_KEY,"ANTHROPIC_API_KEY":ANTHROPIC_KEY}.items() if not v]
     if missing: raise ValueError(f"Missing: {', '.join(missing)}")
-    log.info("FactCheck Pro v3 starting...")
+    log.info("FactCheck Pro v3.1 starting (Enhanced Video Analysis)...")
     app.run(host="0.0.0.0",port=5000,debug=False)
