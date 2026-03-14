@@ -213,7 +213,41 @@ def analyze_video_frames(frames):
     except Exception as e: log.error("Video frame analysis: %s", e); return ""
 
 def _cobalt_download(url):
-    """Cobalt public API is bot-protected — skip it."""
+    """Try multiple free video downloader APIs."""
+    # Try savefrom / y2mate style APIs
+    apis = [
+        {
+            "url": "https://co.wuk.sh/api/json",
+            "method": "POST",
+            "headers": {"Accept": "application/json", "Content-Type": "application/json"},
+            "json": {"url": url, "vQuality": "360"},
+        },
+    ]
+    for api in apis:
+        try:
+            log.info(f"Trying downloader API: {api['url']}")
+            r = requests.post(api["url"], headers=api["headers"], json=api["json"], timeout=20)
+            r.raise_for_status()
+            data = r.json()
+            status = data.get("status")
+            log.info(f"API status: {status}")
+            if status in ("stream", "redirect", "tunnel", "success"):
+                video_url = data.get("url")
+                if video_url:
+                    vr = requests.get(video_url, timeout=60, stream=True)
+                    vr.raise_for_status()
+                    if len(vr.content) > 10000:
+                        log.info(f"Downloader API success: {len(vr.content)} bytes")
+                        return vr.content, data.get("filename", "")
+            if status == "picker":
+                for item in data.get("picker", []):
+                    if item.get("type") == "video":
+                        vr = requests.get(item["url"], timeout=60)
+                        vr.raise_for_status()
+                        return vr.content, ""
+        except Exception as e:
+            log.error(f"Downloader API failed: {e}")
+            continue
     return None, ""
 
 def _ytdlp_download(url):
@@ -356,11 +390,19 @@ def confirm_msg(st, preview, cost):
     return (f"{HDR}\n*FACTCHECK PRO*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\n_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel")
 
 def send(to, text):
+    # Sanitize: remove null bytes and non-BMP unicode that WhatsApp rejects
+    text = text.replace("\x00", "").encode("utf-16", "surrogatepass").decode("utf-16")
     for chunk in [text[i:i+4000] for i in range(0,len(text),4000)]:
         try:
-            requests.post(WHATSAPP_URL, json={"messaging_product":"whatsapp","to":to,"type":"text","text":{"body":chunk}},
-                headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}","Content-Type":"application/json"}, timeout=10).raise_for_status()
-        except Exception as e: log.error("Send: %s", e)
+            r = requests.post(WHATSAPP_URL,
+                json={"messaging_product":"whatsapp","to":to,"type":"text","text":{"body":chunk}},
+                headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}","Content-Type":"application/json"},
+                timeout=10)
+            if not r.ok:
+                log.error(f"Send failed {r.status_code}: {r.text[:200]}")
+            r.raise_for_status()
+        except Exception as e:
+            log.error("Send: %s", e)
 
 def run_check(from_num, query, st, img_bytes, cost):
     send(from_num, "⚙️ Cross-referencing Snopes, FullFact, PolitiFact, AFP, FactCheck.org, Google FC...")
@@ -448,13 +490,17 @@ def process(from_num, message):
                         query = "\n\n".join(parts) if parts else f"Video URL: {url}"
                         source_type = "video"
                     elif metadata:
-                        send(from_num, "⚠️ Could not download video directly — analysing post metadata instead...")
+                        send(from_num, "⚠️ Video download not available for this platform — analysing post text instead...")
                         query = f"Social media post: {metadata}\n\nURL: {url}"
                         source_type = "url"
                     else:
-                        send(from_num, "⚠️ Could not access video. Analysing page content...")
+                        # Last resort: just use the URL itself as context
+                        send(from_num, "⚠️ Could not access video content. Fact-checking based on URL context...")
                         page_text = fetch(url) or ""
                         query = f"Video URL: {url}\n\n{page_text[:600]}" if page_text else f"Video from: {url}"
+                        if not query.strip() or query.strip() == f"Video from: {url}":
+                            send(from_num, "❌ Could not extract any content from this URL. Please paste the claim as text or send a screenshot.")
+                            return
                         source_type = "url"
                 except Exception as e:
                     send(from_num, f"❌ Video error: {str(e)[:200]}\n\nTrying page scrape instead...")
