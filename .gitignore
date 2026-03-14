@@ -1,1 +1,8 @@
 .env
+__pycache__/
+*.pyc
+bot.py-v*
+v1/
+v2/
+*.zip
+update.sh
