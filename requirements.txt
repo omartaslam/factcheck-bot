@@ -5,3 +5,4 @@ pillow
 opencv-python-headless
 yt-dlp>=2024.12.13gunicorn
 numpy
+apscheduler>=3.10.0

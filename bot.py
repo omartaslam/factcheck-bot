@@ -73,11 +73,56 @@ COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 FB_COOKIES_B64 = os.getenv("FB_COOKIES_B64", "")
+FB_APP_ID = os.getenv("FB_APP_ID", "913551238207108")
+FB_APP_SECRET = os.getenv("FB_APP_SECRET", "")
 IG_COOKIES_B64 = os.getenv("IG_COOKIES_B64", "")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 app = Flask(__name__)
+
+
+import atexit
+from apscheduler.schedulers.background import BackgroundScheduler
+
+def refresh_whatsapp_token():
+    """Auto-refresh WhatsApp token every 50 days using app credentials."""
+    global WHATSAPP_TOKEN
+    app_id = os.getenv("FB_APP_ID", "")
+    app_secret = os.getenv("FB_APP_SECRET", "")
+    if not app_id or not app_secret or not WHATSAPP_TOKEN:
+        log.warning("Token refresh skipped — FB_APP_ID or FB_APP_SECRET not set")
+        return
+    try:
+        r = requests.get(
+            "https://graph.facebook.com/v19.0/oauth/access_token",
+            params={
+                "grant_type": "fb_exchange_token",
+                "client_id": app_id,
+                "client_secret": app_secret,
+                "fb_exchange_token": WHATSAPP_TOKEN
+            },
+            timeout=15
+        )
+        data = r.json()
+        new_token = data.get("access_token")
+        expires_in = data.get("expires_in", 0)
+        if new_token:
+            WHATSAPP_TOKEN = new_token
+            # Update WhatsApp URL with new token
+            global WHATSAPP_URL
+            log.info(f"WhatsApp token refreshed successfully. Expires in {expires_in//86400} days")
+        else:
+            log.error(f"Token refresh failed: {data}")
+    except Exception as e:
+        log.error(f"Token refresh error: {e}")
+
+# Schedule token refresh every 50 days
+_scheduler = BackgroundScheduler()
+_scheduler.add_job(refresh_whatsapp_token, "interval", days=50, id="token_refresh")
+_scheduler.start()
+atexit.register(lambda: _scheduler.shutdown())
+log.info("Token auto-refresh scheduler started (every 50 days)")
 
 processed_ids = set()
 processed_lock = threading.Lock()
