@@ -213,51 +213,53 @@ def analyze_video_frames(frames):
     except Exception as e: log.error("Video frame analysis: %s", e); return ""
 
 def _cobalt_download(url):
-    """Cobalt API — handles FB, Instagram, TikTok, YouTube, Twitter/X without cookies."""
-    try:
-        log.info(f"Trying Cobalt for: {url}")
-        r = requests.post(COBALT_API, headers=COBALT_HEADERS,
-            json={"url": url, "vQuality": "360", "isAudioOnly": False}, timeout=20)
-        r.raise_for_status()
-        data = r.json()
-        status = data.get("status")
-        log.info(f"Cobalt status: {status}")
-        if status in ("stream", "redirect", "tunnel"):
-            video_url = data.get("url")
-            if video_url:
-                vr = requests.get(video_url, timeout=60, stream=True)
-                vr.raise_for_status()
-                log.info(f"Cobalt download success: {len(vr.content)} bytes")
-                return vr.content, data.get("filename", "")
-        if status == "picker":
-            for item in data.get("picker", []):
-                if item.get("type") == "video":
-                    vr = requests.get(item["url"], timeout=60)
-                    vr.raise_for_status()
-                    return vr.content, ""
-        log.warning(f"Cobalt could not handle URL: {status} — {data.get('text','')}")
-        return None, ""
-    except Exception as e: log.error(f"Cobalt failed: {e}"); return None, ""
+    """Cobalt public API is bot-protected — skip it."""
+    return None, ""
 
 def _ytdlp_download(url):
-    """Fallback: yt-dlp for YouTube, Twitter/X, TikTok, Rumble etc."""
+    """yt-dlp with spoofed headers — works for YouTube, Twitter/X, TikTok, FB (public posts), Instagram (public)."""
     try:
         temp_path = tempfile.mktemp(suffix=".mp4")
-        ydl_opts = {"format":"worst[ext=mp4]/worst","outtmpl":temp_path,"quiet":True,"no_warnings":True,"max_filesize":30*1024*1024,"socket_timeout":20}
+        ydl_opts = {
+            "format": "worst[ext=mp4]/worst/worst",
+            "outtmpl": temp_path,
+            "quiet": True,
+            "no_warnings": True,
+            "max_filesize": 30 * 1024 * 1024,
+            "socket_timeout": 30,
+            "retries": 3,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            },
+            "extractor_args": {
+                "facebook": {"extract_from_video_page": ["1"]},
+            },
+            "ignoreerrors": False,
+        }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            if not info:
+                return None, ""
             video_path = ydl.prepare_filename(info)
             if not os.path.exists(video_path):
                 video_path = temp_path if os.path.exists(temp_path) else None
-            if not video_path: return None, ""
-            with open(video_path, "rb") as f: video_bytes = f.read()
-            try: os.unlink(video_path)
-            except Exception: pass
+            if not video_path:
+                return None, ""
+            with open(video_path, "rb") as f:
+                video_bytes = f.read()
+            try:
+                os.unlink(video_path)
+            except Exception:
+                pass
             title = info.get("title", "")
             description = info.get("description", "")[:200] if info.get("description") else ""
             log.info(f"yt-dlp downloaded: {title[:50]}")
             return video_bytes, f"{title}\n{description}".strip()
-    except Exception as e: log.error(f"yt-dlp failed: {e}"); return None, ""
+    except Exception as e:
+        log.error(f"yt-dlp failed: {e}")
+        return None, ""
 
 def _og_metadata(url):
     """Last resort: extract Open Graph tags (title, description) from the page."""

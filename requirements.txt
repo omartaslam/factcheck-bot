@@ -3,6 +3,5 @@ requests
 python-dotenv
 pillow
 opencv-python-headless
-yt-dlp
-gunicorn
+yt-dlp>=2024.12.13gunicorn
 numpy
