@@ -621,15 +621,35 @@ def send(to, text):
         except Exception as e:
             log.error("Send: %s", e)
 
-def run_check(from_num, query, st, img_bytes, cost):
+def run_check(from_num, query, st, img_bytes, cost, video_bytes=None):
+    # Show all enabled sources in cross-ref message
     all_src = enabled_sources()
     src_preview = ", ".join(all_src[:8])
     if len(all_src) > 8:
         src_preview += f" +{len(all_src)-8} more"
     send(from_num, f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
-    g = google_fc(query); sc = scrape_sites(query)
+
+    # For video content, extract frames and analyse visuals before fact-checking
+    if st == "video" and video_bytes:
+        try:
+            send(from_num, "🎞️ Analysing video frames...")
+            frames, duration = extract_video_frames(video_bytes, num_frames=4)
+            if frames:
+                visual_analysis = analyze_video_frames(frames)
+                if visual_analysis:
+                    query = f"{query}\n\nVISUAL ANALYSIS:\n{visual_analysis}"
+                    log.info(f"Visual analysis added: {len(visual_analysis)} chars")
+        except Exception as e:
+            log.error(f"Frame analysis failed: {e}")
+
+    g = google_fc(query)
+    sc, used_sources = scrape_sites(query)
     a = claude_analyse(query, g, sc, st)
-    send(from_num, fmt_report(query, a, st, cost))
+
+    # Merge Google FC sources with scraped sources that returned results
+    gfc_sources = [x["source"] for x in g if x.get("source")]
+    all_used = list(dict.fromkeys(gfc_sources + used_sources))
+    send(from_num, fmt_report(query, a, st, cost, all_used))
 
 def clean_query(q):
     lines = []
