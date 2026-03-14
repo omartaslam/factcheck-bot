@@ -198,7 +198,7 @@ def transcribe(b,mime):
         r.raise_for_status(); return r.json()["content"][0]["text"].strip()
     except Exception as e: log.error("Claude transcribe: %s",e); return ""
 
-def extract_video_frames(video_bytes, num_frames=4):
+def extract_video_frames(video_bytes, num_frames=2):
     """Extract key frames from video for visual analysis"""
     try:
         with tempfile.NamedTemporaryFile(suffix=".mp4",delete=False) as f:
@@ -233,27 +233,25 @@ def extract_video_frames(video_bytes, num_frames=4):
         log.error("Frame extraction: %s",e)
         return [],0
 
-def analyze_video_frames(frames,transcript=""):
+def analyze_video_frames(frames):
     """Analyze video frames using Claude vision"""
     try:
-        # Build content with all frames
-        content=[{"type":"text","text":"Analyze this video for fact-checking. Extract ALL visible text, describe key visual claims, identify people/locations/events, note any signs of manipulation or deepfakes."}]
+        if not frames:
+            return ""
+        # Build content with frames
+        content=[{"type":"text","text":"Extract ALL visible text, describe what's shown, identify people/locations/events mentioned, note any manipulation signs."}]
 
-        for i,frame_bytes in enumerate(frames[:4]):  # Max 4 frames to control costs
+        for i,frame_bytes in enumerate(frames[:2]):  # Max 2 frames to control costs
             b64=base64.b64encode(frame_bytes).decode()
             content.append({
                 "type":"image",
                 "source":{"type":"base64","media_type":"image/jpeg","data":b64}
             })
-            content.append({"type":"text","text":f"Frame {i+1}/{len(frames)}"})
-
-        if transcript:
-            content.append({"type":"text","text":f"\n\nAudio transcript:\n{transcript[:500]}"})
 
         r=requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
-            json={"model":"claude-haiku-4-5-20251001","max_tokens":2000,"messages":[{"role":"user","content":content}]},
-            timeout=60)
+            json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,"messages":[{"role":"user","content":content}]},
+            timeout=45)
         r.raise_for_status()
         return r.json()["content"][0]["text"].strip()
     except Exception as e:
@@ -263,26 +261,41 @@ def analyze_video_frames(frames,transcript=""):
 def download_video_url(url):
     """Download video from TikTok/YouTube/Instagram etc using yt-dlp"""
     try:
+        temp_path=tempfile.mktemp(suffix='.mp4')
         ydl_opts={
-            'format':'worst[ext=mp4]',  # Use lowest quality to save bandwidth
-            'outtmpl':tempfile.mktemp(suffix='.mp4'),
+            'format':'worst[ext=mp4]/worst',  # Lowest quality to save bandwidth
+            'outtmpl':temp_path,
             'quiet':True,
             'no_warnings':True,
-            'extract_flat':False,
-            'max_filesize':50*1024*1024,  # 50MB limit
+            'max_filesize':30*1024*1024,  # 30MB limit
+            'socket_timeout':20,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info=ydl.extract_info(url,download=True)
             video_path=ydl.prepare_filename(info)
+
+            # Check if file exists
+            if not os.path.exists(video_path):
+                if os.path.exists(temp_path):
+                    video_path=temp_path
+                else:
+                    log.error("Video file not found after download")
+                    return None,""
+
             with open(video_path,'rb') as f:
                 video_bytes=f.read()
-            os.unlink(video_path)
+
+            try:
+                os.unlink(video_path)
+            except:
+                pass
+
             title=info.get('title','')
-            description=info.get('description','')
-            log.info(f"Downloaded video: {title[:50]}")
-            return video_bytes,f"{title}\n{description[:300]}"
+            description=info.get('description','')[:200] if info.get('description') else ''
+            log.info(f"Downloaded: {title[:50]}")
+            return video_bytes,f"{title}\n{description}"
     except Exception as e:
-        log.error("Video download: %s",e)
+        log.error("Video download failed: %s",e)
         return None,""
 
 def google_fc(query):
@@ -303,7 +316,7 @@ def scrape_sites(query):
         if txt and len(txt)>150: out.append(f"[{name}]: {txt[:400]}")
     return "\n\n".join(out)
 def estimate_cost(st):
-    base={"text":0.0085,"url":0.0095,"image":0.0110,"audio":0.0120,"video":0.0220,"document":0.0095}
+    base={"text":0.0085,"url":0.0095,"image":0.0110,"audio":0.0120,"video":0.0180,"document":0.0095}
     return base.get(st,0.0085)
 def claude_analyse(claim,google,scraped,st):
     g="\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
@@ -418,28 +431,37 @@ def process(from_num,message):
             video_domains=["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com","t.me"]
             is_video_link=any(d in url for d in video_domains)
             if is_video_link:
-                send(from_num,"🎬 Downloading video for analysis...")
+                send(from_num,"🎬 Downloading video...")
                 video_bytes,metadata=download_video_url(url)
                 if video_bytes:
-                    send(from_num,"Extracting frames and transcribing audio...")
-                    frames,duration=extract_video_frames(video_bytes)
-                    transcript=transcribe(video_bytes,"video/mp4") if video_bytes else ""
-                    visual_analysis=analyze_video_frames(frames,transcript) if frames else ""
-
-                    # Combine all information
                     parts=[]
-                    if metadata: parts.append(f"Video metadata: {metadata}")
-                    if visual_analysis: parts.append(f"Visual content: {visual_analysis}")
-                    if transcript: parts.append(f"Audio transcript: {transcript}")
+                    if metadata: parts.append(f"Video: {metadata}")
+
+                    # Try frame extraction
+                    try:
+                        frames,duration=extract_video_frames(video_bytes)
+                        if frames:
+                            send(from_num,"Analyzing video content...")
+                            visual_analysis=analyze_video_frames(frames[:2])
+                            if visual_analysis: parts.append(f"Visual: {visual_analysis}")
+                            image_bytes=frames[0]
+                    except Exception as e:
+                        log.warning("Frame extraction failed: %s",e)
+
+                    # Try audio transcription
+                    try:
+                        transcript=transcribe(video_bytes,"video/mp4")
+                        if transcript: parts.append(f"Audio: {transcript}")
+                    except Exception as e:
+                        log.warning("Transcription failed: %s",e)
 
                     query="\n\n".join(parts) if parts else f"Video URL: {url}"
                     source_type="video"
-                    image_bytes=frames[0] if frames else None  # Store first frame
                 else:
                     # Fallback to page scraping
-                    send(from_num,"Could not download video. Analyzing page metadata...")
+                    send(from_num,"Download failed. Analyzing page...")
                     page_text=fetch(url) or ""
-                    query=f"Video URL: {url}\n\nPage content: {page_text[:600]}" if page_text else f"Video URL: {url}"
+                    query=f"Video URL: {url}\n\n{page_text[:600]}" if page_text else f"Video from: {url}"
                     source_type="url"
             else:
                 send(from_num,"Fetching article...")
@@ -458,27 +480,33 @@ def process(from_num,message):
         source_type="audio"
         if not query: send(from_num,"⚠️ Could not transcribe."); return
     elif msg_type=="video":
-        send(from_num,"🎬 Processing video (extracting frames + audio)...")
+        send(from_num,"🎬 Processing video...")
         b=download_media(message["video"].get("id",""))
+        query=""
         if b:
-            # Extract frames for visual analysis
-            frames,duration=extract_video_frames(b)
-            # Transcribe audio
-            transcript=transcribe(b,message["video"].get("mime_type","video/mp4"))
-            # Analyze frames
-            visual_analysis=analyze_video_frames(frames,transcript) if frames else ""
+            # Try frame extraction (may fail if ffmpeg not available)
+            try:
+                frames,duration=extract_video_frames(b)
+                if frames:
+                    send(from_num,"Analyzing video frames...")
+                    visual_analysis=analyze_video_frames(frames[:2])  # Use 2 frames to reduce cost
+                    if visual_analysis:
+                        query=f"Visual content: {visual_analysis}\n\n"
+                    image_bytes=frames[0]
+            except Exception as e:
+                log.warning("Frame extraction failed: %s. Falling back to audio-only.",e)
 
-            # Combine visual and audio
-            parts=[]
-            if visual_analysis: parts.append(f"Visual content: {visual_analysis}")
-            if transcript: parts.append(f"Audio transcript: {transcript}")
-
-            query="\n\n".join(parts) if parts else ""
-            image_bytes=frames[0] if frames else None  # Store first frame
+            # Always try audio transcription
+            try:
+                transcript=transcribe(b,message["video"].get("mime_type","video/mp4"))
+                if transcript:
+                    query+=f"Audio transcript: {transcript}"
+            except Exception as e:
+                log.error("Video transcription failed: %s",e)
 
         source_type="video"
         if not query:
-            send(from_num,"⚠️ Could not extract content from video. Try sending the video URL if available.")
+            send(from_num,"⚠️ Could not extract content from video. Try:\n• Sending the video URL (TikTok/YouTube/Twitter)\n• Sending a screenshot of the video")
             return
     elif msg_type=="document":
         send(from_num,"📄 Reading..."); b=download_media(message["document"]["id"])
