@@ -166,9 +166,19 @@ def fetch(url,timeout=12):
     except Exception as e: log.warning("fetch %s: %s",url,e); return ""
 def download_media(mid):
     try:
-        r=requests.get(f"https://graph.facebook.com/v19.0/{mid}",headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}"},timeout=10); r.raise_for_status()
-        r2=requests.get(r.json()["url"],headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}"},timeout=30); r2.raise_for_status(); return r2.content
-    except Exception as e: log.error("DL: %s",e); return None
+        log.info(f"Downloading media ID: {mid}")
+        r=requests.get(f"https://graph.facebook.com/v19.0/{mid}",headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}"},timeout=10)
+        r.raise_for_status()
+        media_url=r.json()["url"]
+        log.info(f"Got media URL, downloading content...")
+        r2=requests.get(media_url,headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}"},timeout=30)
+        r2.raise_for_status()
+        content_length=len(r2.content)
+        log.info(f"Downloaded {content_length} bytes")
+        return r2.content
+    except Exception as e:
+        log.error(f"Media download failed: {e}")
+        return None
 def ocr_image(b):
     try:
         b64=base64.b64encode(b).decode()
@@ -176,15 +186,31 @@ def ocr_image(b):
         r.raise_for_status(); return r.json()["content"][0]["text"].strip()
     except Exception as e: log.error("OCR: %s",e); return ""
 def transcribe(b,mime):
+    log.info(f"Transcribing {len(b)} bytes, mime: {mime}")
     # Try OpenAI Whisper first
     if OPENAI_API_KEY:
         try:
+            log.info("Attempting Whisper transcription...")
             ext={"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(mime,"ogg")
-            with tempfile.NamedTemporaryFile(suffix=f".{ext}",delete=False) as f: f.write(b); path=f.name
-            with open(path,"rb") as f: r=requests.post("https://api.openai.com/v1/audio/transcriptions",headers={"Authorization":f"Bearer {OPENAI_API_KEY}"},files={"file":(f"a.{ext}",f,mime)},data={"model":"whisper-1"},timeout=60)
-            os.unlink(path); r.raise_for_status(); return r.json().get("text","").strip()
-        except Exception as e: log.error("Whisper: %s",e)
-    # Fallback: send audio to Claude as base64
+            with tempfile.NamedTemporaryFile(suffix=f".{ext}",delete=False) as f:
+                f.write(b)
+                path=f.name
+            with open(path,"rb") as f:
+                r=requests.post("https://api.openai.com/v1/audio/transcriptions",
+                    headers={"Authorization":f"Bearer {OPENAI_API_KEY}"},
+                    files={"file":(f"a.{ext}",f,mime)},
+                    data={"model":"whisper-1"},
+                    timeout=60)
+            os.unlink(path)
+            r.raise_for_status()
+            transcript=r.json().get("text","").strip()
+            log.info(f"Whisper success: {len(transcript)} chars")
+            return transcript
+        except Exception as e:
+            log.error(f"Whisper failed: {e}")
+
+    # Fallback: send audio to Claude
+    log.info("Trying Claude audio fallback...")
     try:
         b64=base64.b64encode(b).decode()
         media={"audio/ogg":"audio/ogg","audio/mpeg":"audio/mpeg","video/mp4":"video/mp4"}.get(mime,"audio/ogg")
@@ -192,11 +218,16 @@ def transcribe(b,mime):
             headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
             json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,
                   "messages":[{"role":"user","content":[
-                      {"type":"text","text":"Please transcribe all spoken words in this audio/video file. Return only the transcript, no commentary."},
+                      {"type":"text","text":"Transcribe all spoken words. Return only the transcript."},
                       {"type":"document","source":{"type":"base64","media_type":media,"data":b64}}
                   ]}]},timeout=60)
-        r.raise_for_status(); return r.json()["content"][0]["text"].strip()
-    except Exception as e: log.error("Claude transcribe: %s",e); return ""
+        r.raise_for_status()
+        transcript=r.json()["content"][0]["text"].strip()
+        log.info(f"Claude transcription success: {len(transcript)} chars")
+        return transcript
+    except Exception as e:
+        log.error(f"Claude transcribe failed: {e}")
+        return ""
 
 def extract_video_frames(video_bytes, num_frames=2):
     """Extract key frames from video for visual analysis"""
@@ -434,31 +465,39 @@ def process(from_num,message):
                 send(from_num,"🎬 Downloading video...")
                 video_bytes,metadata=download_video_url(url)
                 if video_bytes:
+                    log.info(f"Downloaded video: {len(video_bytes)} bytes")
                     parts=[]
                     if metadata: parts.append(f"Video: {metadata}")
 
-                    # Try frame extraction
-                    try:
-                        frames,duration=extract_video_frames(video_bytes)
-                        if frames:
-                            send(from_num,"Analyzing video content...")
-                            visual_analysis=analyze_video_frames(frames[:2])
-                            if visual_analysis: parts.append(f"Visual: {visual_analysis}")
-                            image_bytes=frames[0]
-                    except Exception as e:
-                        log.warning("Frame extraction failed: %s",e)
-
-                    # Try audio transcription
+                    # Try audio transcription first (most important)
+                    send(from_num,"Transcribing audio...")
                     try:
                         transcript=transcribe(video_bytes,"video/mp4")
-                        if transcript: parts.append(f"Audio: {transcript}")
+                        if transcript:
+                            parts.append(f"Audio: {transcript}")
+                            log.info(f"Transcribed: {len(transcript)} chars")
                     except Exception as e:
-                        log.warning("Transcription failed: %s",e)
+                        log.error(f"Transcription failed: {e}")
+
+                    # Try frame extraction (optional enhancement)
+                    if parts:  # Only if we got metadata or audio
+                        try:
+                            send(from_num,"Analyzing visual content...")
+                            frames,duration=extract_video_frames(video_bytes)
+                            if frames:
+                                visual_analysis=analyze_video_frames(frames[:2])
+                                if visual_analysis:
+                                    parts.append(f"Visual: {visual_analysis}")
+                                    image_bytes=frames[0]
+                                log.info("Frames analyzed successfully")
+                        except Exception as e:
+                            log.warning(f"Frame extraction failed (non-critical): {e}")
 
                     query="\n\n".join(parts) if parts else f"Video URL: {url}"
                     source_type="video"
                 else:
                     # Fallback to page scraping
+                    log.warning("Video download failed, trying page scrape")
                     send(from_num,"Download failed. Analyzing page...")
                     page_text=fetch(url) or ""
                     query=f"Video URL: {url}\n\n{page_text[:600]}" if page_text else f"Video from: {url}"
@@ -484,29 +523,37 @@ def process(from_num,message):
         b=download_media(message["video"].get("id",""))
         query=""
         if b:
-            # Try frame extraction (may fail if ffmpeg not available)
-            try:
-                frames,duration=extract_video_frames(b)
-                if frames:
-                    send(from_num,"Analyzing video frames...")
-                    visual_analysis=analyze_video_frames(frames[:2])  # Use 2 frames to reduce cost
-                    if visual_analysis:
-                        query=f"Visual content: {visual_analysis}\n\n"
-                    image_bytes=frames[0]
-            except Exception as e:
-                log.warning("Frame extraction failed: %s. Falling back to audio-only.",e)
-
-            # Always try audio transcription
+            # Try audio transcription first (most reliable)
+            send(from_num,"Transcribing audio...")
             try:
                 transcript=transcribe(b,message["video"].get("mime_type","video/mp4"))
                 if transcript:
-                    query+=f"Audio transcript: {transcript}"
+                    query=f"Audio transcript: {transcript}"
+                    log.info(f"Video audio transcribed: {len(transcript)} chars")
             except Exception as e:
                 log.error("Video transcription failed: %s",e)
+                send(from_num,"⚠️ Audio transcription failed. Trying alternative method...")
+
+            # Try frame extraction if audio worked (optional enhancement)
+            if query:  # Only try frames if we got audio
+                try:
+                    frames,duration=extract_video_frames(b)
+                    if frames:
+                        send(from_num,"Analyzing visual content...")
+                        visual_analysis=analyze_video_frames(frames[:2])
+                        if visual_analysis:
+                            query=f"Visual: {visual_analysis}\n\nAudio: {transcript}"
+                            image_bytes=frames[0]
+                            log.info("Video frames analyzed successfully")
+                except Exception as e:
+                    log.warning(f"Frame extraction failed (non-critical): {e}")
+                    # Continue with audio-only, don't fail
+        else:
+            log.error("Failed to download video from WhatsApp")
 
         source_type="video"
         if not query:
-            send(from_num,"⚠️ Could not extract content from video. Try:\n• Sending the video URL (TikTok/YouTube/Twitter)\n• Sending a screenshot of the video")
+            send(from_num,"⚠️ Could not process video. Please try:\n• Sending the video URL (TikTok/YouTube/Twitter)\n• Taking a screenshot and sending as image")
             return
     elif msg_type=="document":
         send(from_num,"📄 Reading..."); b=download_media(message["document"]["id"])
