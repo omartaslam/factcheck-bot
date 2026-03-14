@@ -213,42 +213,50 @@ def analyze_video_frames(frames):
     except Exception as e: log.error("Video frame analysis: %s", e); return ""
 
 def _cobalt_download(url):
-    """Try multiple free video downloader APIs."""
-    # Try savefrom / y2mate style APIs
+    """Chain RapidAPI video downloader services — FB, IG, TikTok, YT, Twitter etc."""
+    if not RAPIDAPI_KEY:
+        log.warning("RAPIDAPI_KEY not set — skipping RapidAPI downloaders")
+        return None, ""
+
     apis = [
         {
-            "url": "https://co.wuk.sh/api/json",
-            "method": "POST",
-            "headers": {"Accept": "application/json", "Content-Type": "application/json"},
-            "json": {"url": url, "vQuality": "360"},
+            "host": "instagram-tiktok-youtube-downloader.p.rapidapi.com",
+            "url": "https://instagram-tiktok-youtube-downloader.p.rapidapi.com/get-info",
+            "params": {"url": url},
+        },
+        {
+            "host": "social-media-video-downloader.p.rapidapi.com",
+            "url": "https://social-media-video-downloader.p.rapidapi.com/smvd/get/all",
+            "params": {"url": url},
         },
     ]
+
     for api in apis:
         try:
-            log.info(f"Trying downloader API: {api['url']}")
-            r = requests.post(api["url"], headers=api["headers"], json=api["json"], timeout=20)
-            r.raise_for_status()
+            headers = {
+                "x-rapidapi-key": RAPIDAPI_KEY,
+                "x-rapidapi-host": api["host"],
+            }
+            log.info(f"Trying RapidAPI: {api['host']}")
+            r = requests.get(api["url"], headers=headers, params=api["params"], timeout=25)
+            log.info(f"RapidAPI {api['host']} status: {r.status_code}")
+            if not r.ok:
+                log.warning(f"RapidAPI {api['host']} returned {r.status_code}: {r.text[:200]}")
+                continue
             data = r.json()
-            status = data.get("status")
-            log.info(f"API status: {status}")
-            if status in ("stream", "redirect", "tunnel", "success"):
-                video_url = data.get("url")
-                if video_url:
-                    vr = requests.get(video_url, timeout=60, stream=True)
-                    vr.raise_for_status()
-                    if len(vr.content) > 10000:
-                        log.info(f"Downloader API success: {len(vr.content)} bytes")
-                        return vr.content, data.get("filename", "")
-            if status == "picker":
-                for item in data.get("picker", []):
-                    if item.get("type") == "video":
-                        vr = requests.get(item["url"], timeout=60)
-                        vr.raise_for_status()
-                        return vr.content, ""
+            log.info(f"RapidAPI {api['host']} response: {str(data)[:300]}")
+            video_url, title = _extract_video_url(data)
+            if video_url:
+                content = _try_download_url(video_url, api["host"])
+                if content:
+                    return content, title
+            log.warning(f"RapidAPI {api['host']}: no usable video URL found")
         except Exception as e:
-            log.error(f"Downloader API failed: {e}")
+            log.error(f"RapidAPI {api['host']} failed: {e}")
             continue
+
     return None, ""
+
 
 def _ytdlp_download(url):
     """yt-dlp with spoofed headers — works for YouTube, Twitter/X, TikTok, FB (public posts), Instagram (public)."""
