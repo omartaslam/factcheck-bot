@@ -58,6 +58,10 @@ SRC_GALLOWAY_SITE    = os.getenv("SRC_GALLOWAY_SITE",     "true").lower() == "tr
 SRC_PSC              = os.getenv("SRC_PSC",               "true").lower() == "true"
 SRC_SUBSTACK         = os.getenv("SRC_SUBSTACK",          "true").lower() == "true"
 SRC_DDN_YT           = os.getenv("SRC_DDN_YT",            "true").lower() == "true"
+# Custom sources — add any source without code changes
+# Format in Railway: "Name|https://site.com/search?q={q},Name2|https://site2.com/?s={q}"
+# Use {q} for URL-encoded query, {qt} for URL-encoded short query
+CUSTOM_SOURCES_RAW = os.getenv("CUSTOM_SOURCES", "")
 
 COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
@@ -399,6 +403,22 @@ def google_fc(query):
     except Exception as e: log.error("GFC: %s", e); return []
 
 
+def parse_custom_sources():
+    """Parse CUSTOM_SOURCES env var into list of (name, url_template) tuples."""
+    if not CUSTOM_SOURCES_RAW.strip():
+        return []
+    sources = []
+    for entry in CUSTOM_SOURCES_RAW.split(","):
+        entry = entry.strip()
+        if "|" not in entry:
+            continue
+        parts = entry.split("|", 1)
+        if len(parts) == 2:
+            name, url_tpl = parts[0].strip(), parts[1].strip()
+            if name and url_tpl.startswith("http"):
+                sources.append((name, url_tpl))
+    return sources
+
 def enabled_sources():
     """Return list of all currently enabled source names."""
     sources = []
@@ -438,6 +458,8 @@ def enabled_sources():
     if SRC_GALLOWAY_SITE:   sources.append("George Galloway (Site)")
     if SRC_DDN_YT:          sources.append("Double Down News (YouTube)")
     if SRC_SUBSTACK:        sources.append("Substack")
+    for name, _ in parse_custom_sources():
+        sources.append(f"{name} (custom)")
     return sources
 
 def _fetch_source(name, url):
@@ -495,6 +517,14 @@ def scrape_sites(query):
     if SRC_GALLOWAY_SITE:   slow.append(("Galloway Site",         f"https://www.georgegalloway.com/?s={q}"))
     if SRC_DDN_YT:          slow.append(("DDN YouTube",           f"https://www.youtube.com/@DoubleDownNews/search?query={qt}"))
     if SRC_SUBSTACK:        slow.append(("Substack",              f"https://substack.com/search?q={qt}"))
+
+    # Custom sources from CUSTOM_SOURCES Railway variable
+    for name, url_tpl in parse_custom_sources():
+        try:
+            custom_url = url_tpl.replace("{q}", q).replace("{qt}", qt)
+            slow.append((name, custom_url))
+        except Exception as e:
+            log.warning(f"Custom source {name} URL error: {e}")
 
     results = []
 
