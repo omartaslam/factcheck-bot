@@ -1,5 +1,6 @@
 """FactCheck Pro v3.2 - Enhanced Video Analysis"""
 import os, base64, json, logging, tempfile, threading, requests, re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv
 from html.parser import HTMLParser
@@ -529,7 +530,7 @@ def scrape_sites(query):
     results = []
 
     # Run fast tier in parallel threads
-    with threading.ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=8) as ex:
         futures = {ex.submit(_fetch_source, name, url): name for name, url in fast}
         for future in futures:
             try:
@@ -540,7 +541,7 @@ def scrape_sites(query):
                 pass
 
     # Run slow tier in parallel threads with shorter timeout
-    with threading.ThreadPoolExecutor(max_workers=8) as ex:
+    with ThreadPoolExecutor(max_workers=8) as ex:
         futures = {ex.submit(_fetch_source, name, url): name for name, url in slow}
         for future in futures:
             try:
