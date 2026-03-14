@@ -398,6 +398,48 @@ def google_fc(query):
         return out
     except Exception as e: log.error("GFC: %s", e); return []
 
+
+def enabled_sources():
+    """Return list of all currently enabled source names."""
+    sources = []
+    if SRC_SNOPES:          sources.append("Snopes")
+    if SRC_FULLFACT:        sources.append("FullFact")
+    if SRC_FACTCHECKORG:    sources.append("FactCheck.org")
+    if SRC_POLITIFACT:      sources.append("PolitiFact")
+    if SRC_AFP:             sources.append("AFP")
+    if SRC_ALJAZEERA:       sources.append("Al Jazeera")
+    if SRC_MEE:             sources.append("Middle East Eye")
+    if SRC_NOVARA:          sources.append("Novara Media")
+    if SRC_CANARY:          sources.append("The Canary")
+    if SRC_ZETEO:           sources.append("Zeteo")
+    if SRC_YENISAFAK:       sources.append("Yeni Safak")
+    if SRC_972MAG:          sources.append("972 Magazine")
+    if SRC_MONDOWEISS:      sources.append("Mondoweiss")
+    if SRC_EINTIFADA:       sources.append("Electronic Intifada")
+    if SRC_INTERCEPT:       sources.append("The Intercept")
+    if SRC_HAARETZ:         sources.append("Haaretz")
+    if SRC_DDN:             sources.append("Double Down News")
+    if SRC_DEMOCRACYNOW:    sources.append("Democracy Now")
+    if SRC_GRAYZONE:        sources.append("The Grayzone")
+    if SRC_MINTPRESS:       sources.append("MintPress News")
+    if SRC_PSC:             sources.append("Palestine Solidarity Campaign")
+    if SRC_OWENJONES:       sources.append("Owen Jones (Twitter)")
+    if SRC_OWENJONES_SUB:   sources.append("Owen Jones (Substack)")
+    if SRC_CORBYN:          sources.append("Jeremy Corbyn (Twitter)")
+    if SRC_CORBYN_SITE:     sources.append("Jeremy Corbyn (Site)")
+    if SRC_ZARASULTANA:     sources.append("Zara Sultana (Twitter)")
+    if SRC_SULTANA_SITE:    sources.append("Zara Sultana (Site)")
+    if SRC_FINKELSTEIN:     sources.append("Norman Finkelstein (Twitter)")
+    if SRC_FINKELSTEIN_SUB: sources.append("Norman Finkelstein (Substack)")
+    if SRC_CODEPINK:        sources.append("CodePink (Twitter)")
+    if SRC_CODEPINK_SITE:   sources.append("CodePink (Site)")
+    if SRC_MOATS:           sources.append("Moats/Galloway (Twitter)")
+    if SRC_MOATS_YT:        sources.append("Moats (YouTube)")
+    if SRC_GALLOWAY_SITE:   sources.append("George Galloway (Site)")
+    if SRC_DDN_YT:          sources.append("Double Down News (YouTube)")
+    if SRC_SUBSTACK:        sources.append("Substack")
+    return sources
+
 def _fetch_source(name, url):
     """Fetch a single source — returns (name, text) or None."""
     try:
@@ -479,7 +521,7 @@ def scrape_sites(query):
                 pass
 
     log.info(f"Scraped {len(results)} sources")
-    return "\n\n".join(results)
+    return "\n\n".join(results), [r.split("]")[0].replace("[","").strip() for r in results]
 
 
 def estimate_cost(st):
@@ -508,7 +550,7 @@ def claude_analyse(claim, google, scraped, st):
     except Exception as e: log.error("Claude: %s", e)
     return {"rating":"UNVERIFIABLE","verdict":"Analysis failed.","key_facts":[],"context":"","red_flags":[],"media_bias":"","sources":["Google FC — https://toolbox.google.com/factcheck/explorer","Snopes — https://www.snopes.com","FullFact — https://fullfact.org"],"confidence":"LOW","confidence_reason":"Unavailable"}
 
-def fmt_report(claim, a, st, cost):
+def fmt_report(claim, a, st, cost, used_sources=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -521,8 +563,11 @@ def fmt_report(claim, a, st, cost):
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
-    if a.get("sources"): lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
-    lines += ["─────────────────────────────",f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2_","_Snopes • FullFact • PolitiFact • AFP_"]
+    if used_sources:
+        lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:10]] + [""]
+    elif a.get("sources"):
+        lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
+    lines += ["─────────────────────────────",f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2_"]
     return "\n".join(lines)
 
 def confirm_msg(st, preview, cost):
@@ -546,7 +591,11 @@ def send(to, text):
             log.error("Send: %s", e)
 
 def run_check(from_num, query, st, img_bytes, cost):
-    send(from_num, "⚙️ Cross-referencing Snopes, FullFact, PolitiFact, AFP, FactCheck.org, Google FC...")
+    all_src = enabled_sources()
+    src_preview = ", ".join(all_src[:8])
+    if len(all_src) > 8:
+        src_preview += f" +{len(all_src)-8} more"
+    send(from_num, f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
     g = google_fc(query); sc = scrape_sites(query)
     a = claude_analyse(query, g, sc, st)
     send(from_num, fmt_report(query, a, st, cost))
