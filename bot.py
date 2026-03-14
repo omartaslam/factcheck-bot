@@ -73,6 +73,7 @@ COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 FB_COOKIES_B64 = os.getenv("FB_COOKIES_B64", "")
+IG_COOKIES_B64 = os.getenv("IG_COOKIES_B64", "")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -357,13 +358,14 @@ def _ytdlp_download(url):
     cookies_file = None
     try:
         # Write Facebook cookies to temp file if available
-        if FB_COOKIES_B64 and "facebook.com" in url:
+        cookies_b64 = FB_COOKIES_B64 if "facebook.com" in url or "fb.watch" in url else (IG_COOKIES_B64 if "instagram.com" in url else "")
+        if cookies_b64:
             import base64 as b64mod
-            cookies_data = b64mod.b64decode(FB_COOKIES_B64).decode("utf-8")
+            cookies_data = b64mod.b64decode(cookies_b64).decode("utf-8")
             cookies_file = tempfile.mktemp(suffix=".txt")
             with open(cookies_file, "w") as cf:
                 cf.write(cookies_data)
-            log.info("Using Facebook cookies file for yt-dlp")
+            log.info(f"Using cookies file for yt-dlp: {url[:50]}")
         temp_path = tempfile.mktemp(suffix=".mp4")
         ydl_opts = {
             "format": "worst[ext=mp4]/worst/worst",
