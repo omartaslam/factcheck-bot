@@ -23,6 +23,7 @@ GOOGLE_FC_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
+FB_COOKIES_B64 = os.getenv("FB_COOKIES_B64", "")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -262,8 +263,17 @@ def _cobalt_download(url):
 
 
 def _ytdlp_download(url):
-    """yt-dlp with spoofed headers — works for YouTube, Twitter/X, TikTok, FB (public posts), Instagram (public)."""
+    """yt-dlp with cookies + spoofed headers."""
+    cookies_file = None
     try:
+        # Write Facebook cookies to temp file if available
+        if FB_COOKIES_B64 and "facebook.com" in url:
+            import base64 as b64mod
+            cookies_data = b64mod.b64decode(FB_COOKIES_B64).decode("utf-8")
+            cookies_file = tempfile.mktemp(suffix=".txt")
+            with open(cookies_file, "w") as cf:
+                cf.write(cookies_data)
+            log.info("Using Facebook cookies file for yt-dlp")
         temp_path = tempfile.mktemp(suffix=".mp4")
         ydl_opts = {
             "format": "worst[ext=mp4]/worst/worst",
@@ -283,6 +293,8 @@ def _ytdlp_download(url):
             },
             "ignoreerrors": False,
         }
+        if cookies_file:
+            ydl_opts["cookiefile"] = cookies_file
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             if not info:
@@ -305,6 +317,10 @@ def _ytdlp_download(url):
     except Exception as e:
         log.error(f"yt-dlp failed: {e}")
         return None, ""
+    finally:
+        if cookies_file and os.path.exists(cookies_file):
+            try: os.unlink(cookies_file)
+            except: pass
 
 def _og_metadata(url):
     """Last resort: extract Open Graph tags (title, description) from the page."""
@@ -482,11 +498,6 @@ def process(from_num, message):
             video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com","t.me"]
             is_video_link = any(d in url for d in video_domains)
             if is_video_link:
-                # Detect Facebook private/login-gated links upfront
-                fb_private = ("facebook.com/share" in url or "fb.watch" in url)
-                if fb_private:
-                    send(from_num, "Facebook private links require login. Please use a public Facebook URL, or try YouTube/TikTok/Instagram/Twitter instead.")
-                    return
                 try:
                     send(from_num, "🎬 Downloading video from URL...")
                     video_bytes, metadata = download_video_url(url)
