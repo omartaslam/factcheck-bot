@@ -220,15 +220,17 @@ def _cobalt_download(url):
         return None, ""
 
     apis = [
+        # 1. coder2077 - Auto Download All In One (IG, TikTok, YT, Twitter, FB)
         {
             "host": "instagram-tiktok-youtube-downloader.p.rapidapi.com",
             "url": "https://instagram-tiktok-youtube-downloader.p.rapidapi.com/get-info",
             "params": {"url": url},
         },
+        # 2. GoDownloader - TikTok, Instagram, Twitter/X
         {
-            "host": "social-media-video-downloader.p.rapidapi.com",
-            "url": "https://social-media-video-downloader.p.rapidapi.com/smvd/get/all",
-            "params": {"url": url},
+            "host": "tiktok-download-video-no-watermark.p.rapidapi.com",
+            "url": "https://tiktok-download-video-no-watermark.p.rapidapi.com/analysis",
+            "params": {"url": url, "hd": "1"},
         },
     ]
 
