@@ -259,50 +259,91 @@ def analyze_video_frames(frames):
     except Exception as e: log.error("Video frame analysis: %s", e); return ""
 
 def _cobalt_download(url):
-    """Chain RapidAPI video downloader services — FB, IG, TikTok, YT, Twitter etc."""
+    """
+    Platform-specific downloaders:
+    - TikTok: 7scorp /index endpoint (confirmed working)
+    - Instagram: yt-dlp handles this (handled in _ytdlp_download)
+    - Facebook: yt-dlp with cookies (handled in _ytdlp_download)
+    - YouTube: yt-dlp (handled in _ytdlp_download)
+    - Twitter/X: vikas5914 /twitter endpoint
+    """
     if not RAPIDAPI_KEY:
-        log.warning("RAPIDAPI_KEY not set — skipping RapidAPI downloaders")
+        log.warning("RAPIDAPI_KEY not set")
         return None, ""
 
-    apis = [
-        # 1. coder2077 - Auto Download All In One (IG, TikTok, YT, Twitter, FB)
-        {
-            "host": "instagram-tiktok-youtube-downloader.p.rapidapi.com",
-            "url": "https://instagram-tiktok-youtube-downloader.p.rapidapi.com/get-info",
-            "params": {"url": url},
-        },
-        # 2. GoDownloader - TikTok, Instagram, Twitter/X
-        {
-            "host": "tiktok-download-video-no-watermark.p.rapidapi.com",
-            "url": "https://tiktok-download-video-no-watermark.p.rapidapi.com/analysis",
-            "params": {"url": url, "hd": "1"},
-        },
-    ]
-
-    for api in apis:
+    # TikTok — use 7scorp /index (confirmed working)
+    if "tiktok.com" in url:
         try:
-            headers = {
-                "x-rapidapi-key": RAPIDAPI_KEY,
-                "x-rapidapi-host": api["host"],
-            }
-            log.info(f"Trying RapidAPI: {api['host']}")
-            r = requests.get(api["url"], headers=headers, params=api["params"], timeout=25)
-            log.info(f"RapidAPI {api['host']} status: {r.status_code}")
-            if not r.ok:
-                log.warning(f"RapidAPI {api['host']} returned {r.status_code}: {r.text[:200]}")
-                continue
+            host = "tiktok-downloader-download-tiktok-videos-without-watermark.p.rapidapi.com"
+            headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
+            log.info(f"Trying 7scorp TikTok downloader for: {url}")
+            r = requests.get(
+                f"https://{host}/index",
+                headers=headers,
+                params={"url": url},
+                timeout=20
+            )
+            r.raise_for_status()
             data = r.json()
-            log.info(f"RapidAPI {api['host']} response: {str(data)[:300]}")
-            video_url, title = _extract_video_url(data)
-            if video_url:
-                content = _try_download_url(video_url, api["host"])
+            log.info(f"7scorp response: {str(data)[:200]}")
+            video_urls = data.get("video", [])
+            if video_urls:
+                content = _try_download_url(video_urls[0], "7scorp-TikTok")
                 if content:
+                    title = data.get("title", "") or data.get("desc", "") or ""
                     return content, title
-            log.warning(f"RapidAPI {api['host']}: no usable video URL found")
         except Exception as e:
-            log.error(f"RapidAPI {api['host']} failed: {e}")
-            continue
+            log.error(f"7scorp TikTok failed: {e}")
 
+    # Twitter/X — use vikas5914 /twitter endpoint
+    if "twitter.com" in url or "x.com" in url:
+        try:
+            host = "fastest-social-video-and-image-downloader.p.rapidapi.com"
+            headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
+            log.info(f"Trying vikas5914 Twitter downloader for: {url}")
+            r = requests.get(
+                f"https://{host}/twitter",
+                headers=headers,
+                params={"url": url},
+                timeout=20
+            )
+            r.raise_for_status()
+            data = r.json()
+            log.info(f"vikas5914 response: {str(data)[:200]}")
+            if data.get("success"):
+                video_url, title = _extract_video_url(data)
+                if video_url:
+                    content = _try_download_url(video_url, "vikas5914-Twitter")
+                    if content:
+                        return content, title
+        except Exception as e:
+            log.error(f"vikas5914 Twitter failed: {e}")
+
+    # Facebook — use vikas5914 /facebook endpoint
+    if "facebook.com" in url or "fb.watch" in url:
+        try:
+            host = "fastest-social-video-and-image-downloader.p.rapidapi.com"
+            headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
+            log.info(f"Trying vikas5914 Facebook downloader for: {url}")
+            r = requests.get(
+                f"https://{host}/facebook",
+                headers=headers,
+                params={"url": url},
+                timeout=20
+            )
+            r.raise_for_status()
+            data = r.json()
+            log.info(f"vikas5914 Facebook response: {str(data)[:200]}")
+            if data.get("success"):
+                video_url, title = _extract_video_url(data)
+                if video_url:
+                    content = _try_download_url(video_url, "vikas5914-Facebook")
+                    if content:
+                        return content, title
+        except Exception as e:
+            log.error(f"vikas5914 Facebook failed: {e}")
+
+    # Instagram & everything else — fall through to yt-dlp
     return None, ""
 
 
