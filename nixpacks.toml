@@ -1,2 +1,5 @@
 [phases.setup]
 aptPkgs = ["ffmpeg", "libsm6", "libxext6", "libxrender-dev"]
+
+[start]
+cmd = "gunicorn bot:app --workers 4 --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5 --log-level info"
