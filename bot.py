@@ -255,45 +255,104 @@ def analyze_video_frames(frames):
         log.error("Video frame analysis: %s",e)
         return ""
 
-def download_video_url(url):
-    """Download video from TikTok/YouTube/Instagram etc using yt-dlp"""
+def _cobalt_download(url):
+    """Try Cobalt API first — handles FB, IG, TikTok, YouTube, Twitter/X without cookies."""
     try:
-        temp_path=tempfile.mktemp(suffix='.mp4')
-        ydl_opts={
-            'format':'worst[ext=mp4]/worst',  # Lowest quality to save bandwidth
-            'outtmpl':temp_path,
-            'quiet':True,
-            'no_warnings':True,
-            'max_filesize':30*1024*1024,  # 30MB limit
-            'socket_timeout':20,
+        log.info(f"Trying Cobalt for: {url}")
+        r = requests.post(
+            COBALT_API, headers=COBALT_HEADERS,
+            json={"url": url, "vQuality": "360", "isAudioOnly": False},
+            timeout=20
+        )
+        r.raise_for_status()
+        data = r.json()
+        status = data.get("status")
+        log.info(f"Cobalt status: {status}")
+        if status in ("stream", "redirect", "tunnel"):
+            video_url = data.get("url")
+            if video_url:
+                vr = requests.get(video_url, timeout=60, stream=True)
+                vr.raise_for_status()
+                log.info(f"Cobalt download success: {len(vr.content)} bytes")
+                return vr.content, data.get("filename", "")
+        if status == "picker":
+            for item in data.get("picker", []):
+                if item.get("type") == "video":
+                    vr = requests.get(item["url"], timeout=60)
+                    vr.raise_for_status()
+                    return vr.content, ""
+        log.warning(f"Cobalt could not handle URL: {status} — {data.get('text','')}")
+        return None, ""
+    except Exception as e:
+        log.error(f"Cobalt failed: {e}")
+        return None, ""
+
+def _ytdlp_download(url):
+    """Fallback: yt-dlp (YouTube, Twitter/X, TikTok, Rumble etc)."""
+    try:
+        temp_path = tempfile.mktemp(suffix=".mp4")
+        ydl_opts = {
+            "format": "worst[ext=mp4]/worst",
+            "outtmpl": temp_path,
+            "quiet": True,
+            "no_warnings": True,
+            "max_filesize": 30 * 1024 * 1024,
+            "socket_timeout": 20,
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info=ydl.extract_info(url,download=True)
-            video_path=ydl.prepare_filename(info)
-
-            # Check if file exists
+            info = ydl.extract_info(url, download=True)
+            video_path = ydl.prepare_filename(info)
             if not os.path.exists(video_path):
-                if os.path.exists(temp_path):
-                    video_path=temp_path
-                else:
-                    log.error("Video file not found after download")
-                    return None,""
-
-            with open(video_path,'rb') as f:
-                video_bytes=f.read()
-
+                video_path = temp_path if os.path.exists(temp_path) else None
+            if not video_path:
+                return None, ""
+            with open(video_path, "rb") as f:
+                video_bytes = f.read()
             try:
                 os.unlink(video_path)
-            except:
+            except Exception:
                 pass
-
-            title=info.get('title','')
-            description=info.get('description','')[:200] if info.get('description') else ''
-            log.info(f"Downloaded: {title[:50]}")
-            return video_bytes,f"{title}\n{description}"
+            title = info.get("title", "")
+            description = info.get("description", "")[:200] if info.get("description") else ""
+            log.info(f"yt-dlp downloaded: {title[:50]}")
+            return video_bytes, f"{title}\n{description}".strip()
     except Exception as e:
-        log.error("Video download failed: %s",e)
-        return None,""
+        log.error(f"yt-dlp failed: {e}")
+        return None, ""
+
+def _og_metadata(url):
+    """Last resort: extract Open Graph tags from the page (title, description)."""
+    try:
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
+        r.raise_for_status()
+        html = r.text
+        parts = []
+        for prop in ("og:title", "og:description", "twitter:title", "twitter:description"):
+            m = re.search(rf'<meta[^>]+(?:property|name)=["\']{{0,1}}{re.escape(prop)}["\']{{0,1}}[^>]+content=["\']([^"\']+)["\']'  , html, re.I)
+            if not m:
+                m = re.search(rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']{{0,1}}{re.escape(prop)}["\']{{0,1}}', html, re.I)
+            if m:
+                parts.append(m.group(1).strip())
+        if parts:
+            metadata = " — ".join(dict.fromkeys(parts))
+            log.info(f"OG metadata: {metadata[:100]}")
+            return metadata
+    except Exception as e:
+        log.error(f"OG metadata failed: {e}")
+    return ""
+
+def download_video_url(url):
+    """Cobalt API → yt-dlp → OG metadata fallback."""
+    video_bytes, metadata = _cobalt_download(url)
+    if video_bytes:
+        return video_bytes, metadata
+    log.info("Cobalt failed, trying yt-dlp...")
+    video_bytes, metadata = _ytdlp_download(url)
+    if video_bytes:
+        return video_bytes, metadata
+    log.info("yt-dlp failed, extracting OG metadata...")
+    return None, _og_metadata(url)
+
 
 def google_fc(query):
     try:
