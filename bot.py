@@ -22,6 +22,7 @@ WHATSAPP_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 GOOGLE_FC_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
+RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
