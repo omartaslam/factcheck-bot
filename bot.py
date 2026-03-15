@@ -921,7 +921,7 @@ def process(from_num, message):
                         log.warning(f"yt-dlp info extraction failed: {e}")
                 if not page_text:
                     page_text = fetch(url) or ""
-                                query = page_text or body
+                query = page_text or body
                 source_type = "url"
         else:
             query, source_type = body, "text"
