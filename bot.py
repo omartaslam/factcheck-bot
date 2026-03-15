@@ -427,25 +427,36 @@ def transcribe(b, mime):
             log.warning("ffmpeg audio extract failed — sending raw MP4 to Whisper")
 
     if OPENAI_API_KEY:
-        try:
-            ext = whisper_ext or {"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(whisper_mime, "ogg")
-            with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as f:
-                f.write(whisper_bytes); path = f.name
-            with open(path, "rb") as f:
-                r = requests.post("https://api.openai.com/v1/audio/transcriptions",
-                    headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                    files={"file": (f"a.{ext}", f, whisper_mime)},
-                    data={"model": "whisper-1"}, timeout=60)
-            os.unlink(path)
-            if _is_credit_error(r.status_code, r.text):
-                send_admin_alert("openai", f"OpenAI API quota exceeded (HTTP {r.status_code}). Audio transcription unavailable.")
-                log.error(f"OpenAI credit error in Whisper: {r.status_code}")
-                raise Exception(f"OpenAI quota error {r.status_code}")
-            r.raise_for_status()
-            transcript = r.json().get("text", "").strip()
-            log.info(f"Whisper success: {len(transcript)} chars")
-            return transcript
-        except Exception as e: log.error(f"Whisper failed: {e}")
+        # Try multiple mime/ext combinations — Facebook CDN MP4s often fail as
+        # video/mp4 but succeed as audio/mp4 (m4a). Try both.
+        attempts = []
+        if whisper_ext:
+            attempts.append((whisper_bytes, whisper_ext, whisper_mime))
+        else:
+            ext0 = {"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(whisper_mime, "ogg")
+            attempts.append((b, ext0, whisper_mime))
+            if whisper_mime == "video/mp4":
+                attempts.append((b, "m4a", "audio/mp4"))  # retry as m4a
+        for wb, ext, wm in attempts:
+            try:
+                with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as f:
+                    f.write(wb); path = f.name
+                with open(path, "rb") as f:
+                    r = requests.post("https://api.openai.com/v1/audio/transcriptions",
+                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                        files={"file": (f"a.{ext}", f, wm)},
+                        data={"model": "whisper-1"}, timeout=60)
+                os.unlink(path)
+                if _is_credit_error(r.status_code, r.text):
+                    send_admin_alert("openai", f"OpenAI API quota exceeded (HTTP {r.status_code}). Audio transcription unavailable.")
+                    log.error(f"OpenAI credit error in Whisper: {r.status_code}")
+                    raise Exception(f"OpenAI quota error {r.status_code}")
+                r.raise_for_status()
+                transcript = r.json().get("text", "").strip()
+                log.info(f"Whisper success ({ext}): {len(transcript)} chars")
+                return transcript
+            except Exception as e:
+                log.warning(f"Whisper attempt ({ext}) failed: {e}")
 
     # Claude audio fallback — send extracted MP3 if available, else raw bytes
     log.info("Trying Claude audio fallback...")
