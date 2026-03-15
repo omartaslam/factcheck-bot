@@ -383,17 +383,58 @@ def ocr_image(b):
             log.error("OCR OpenAI failed: %s", e)
     return ""
 
+def _extract_audio_mp3(video_bytes):
+    """Use ffmpeg to extract audio track from video bytes → MP3 bytes. Returns None on failure."""
+    import subprocess
+    video_path = mp3_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as vf:
+            vf.write(video_bytes); video_path = vf.name
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as af:
+            mp3_path = af.name
+        r = subprocess.run(
+            ["ffmpeg", "-i", video_path, "-vn", "-ar", "16000", "-ac", "1",
+             "-b:a", "64k", "-y", mp3_path],
+            capture_output=True, timeout=30)
+        if r.returncode == 0 and os.path.exists(mp3_path) and os.path.getsize(mp3_path) > 0:
+            with open(mp3_path, "rb") as af:
+                audio = af.read()
+            log.info(f"ffmpeg audio extract: {len(audio)//1024}KB MP3")
+            return audio
+        else:
+            log.warning(f"ffmpeg audio extract failed (rc={r.returncode}): {r.stderr[-200:].decode('utf-8','ignore')}")
+    except Exception as e:
+        log.error(f"ffmpeg audio extract: {e}")
+    finally:
+        for p in (video_path, mp3_path):
+            if p and os.path.exists(p):
+                try: os.unlink(p)
+                except: pass
+    return None
+
 def transcribe(b, mime):
     log.info(f"Transcribing {len(b)} bytes, mime: {mime}")
+
+    # For video files, extract audio to MP3 first — avoids Whisper 400s on
+    # non-standard MP4 containers (common with Facebook/TikTok CDN videos)
+    whisper_bytes, whisper_ext, whisper_mime = b, None, mime
+    if mime == "video/mp4":
+        audio = _extract_audio_mp3(b)
+        if audio:
+            whisper_bytes, whisper_ext, whisper_mime = audio, "mp3", "audio/mpeg"
+            log.info("Using ffmpeg-extracted MP3 for Whisper")
+        else:
+            log.warning("ffmpeg audio extract failed — sending raw MP4 to Whisper")
+
     if OPENAI_API_KEY:
         try:
-            ext = {"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(mime, "ogg")
+            ext = whisper_ext or {"audio/ogg":"ogg","audio/mpeg":"mp3","video/mp4":"mp4"}.get(whisper_mime, "ogg")
             with tempfile.NamedTemporaryFile(suffix=f".{ext}", delete=False) as f:
-                f.write(b); path = f.name
+                f.write(whisper_bytes); path = f.name
             with open(path, "rb") as f:
                 r = requests.post("https://api.openai.com/v1/audio/transcriptions",
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                    files={"file": (f"a.{ext}", f, mime)},
+                    files={"file": (f"a.{ext}", f, whisper_mime)},
                     data={"model": "whisper-1"}, timeout=60)
             os.unlink(path)
             if _is_credit_error(r.status_code, r.text):
@@ -405,15 +446,19 @@ def transcribe(b, mime):
             log.info(f"Whisper success: {len(transcript)} chars")
             return transcript
         except Exception as e: log.error(f"Whisper failed: {e}")
+
+    # Claude audio fallback — send extracted MP3 if available, else raw bytes
     log.info("Trying Claude audio fallback...")
     try:
-        b64 = base64.b64encode(b).decode()
-        media = {"audio/ogg":"audio/ogg","audio/mpeg":"audio/mpeg","video/mp4":"video/mp4"}.get(mime, "audio/ogg")
+        fallback_bytes = whisper_bytes if whisper_ext == "mp3" else b
+        fallback_mime = "audio/mpeg" if whisper_ext == "mp3" else (
+            {"audio/ogg":"audio/ogg","audio/mpeg":"audio/mpeg","video/mp4":"video/mp4"}.get(mime, "audio/ogg"))
+        b64 = base64.b64encode(fallback_bytes).decode()
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
             json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,"messages":[{"role":"user","content":[
                 {"type":"text","text":"Transcribe all spoken words. Return only the transcript."},
-                {"type":"image","source":{"type":"base64","media_type":media,"data":b64}}
+                {"type":"image","source":{"type":"base64","media_type":fallback_mime,"data":b64}}
             ]}]}, timeout=60)
         r.raise_for_status()
         transcript = r.json()["content"][0]["text"].strip()
