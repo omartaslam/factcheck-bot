@@ -129,6 +129,9 @@ SRC_UNNEWS           = os.getenv("SRC_UNNEWS",           "true").lower() == "tru
 SRC_TOI              = os.getenv("SRC_TOI",              "true").lower() == "true"
 SRC_ARABNEWS         = os.getenv("SRC_ARABNEWS",         "true").lower() == "true"
 SRC_RESPSTATECRAFT   = os.getenv("SRC_RESPSTATECRAFT",   "true").lower() == "true"
+SRC_ANADOLU          = os.getenv("SRC_ANADOLU",          "true").lower() == "true"  # Anadolu Agency (Turkey)
+SRC_ALMONITOR        = os.getenv("SRC_ALMONITOR",        "true").lower() == "true"  # Al-Monitor (ME analysis)
+SRC_DAWN             = os.getenv("SRC_DAWN",             "true").lower() == "true"  # DAWN (US foreign policy critique)
 # Real-time search APIs
 TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
 BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")    # TODO: Brave Search API — 2000/month when free tier available
@@ -235,7 +238,19 @@ pending = {}
 pending_lock = threading.Lock()
 PENDING_TTL = 600
 
-SYSTEM = """You are FactCheck Pro — world-class fact-checker for journalists and activists. Deep expertise in Gaza conflict, Iran-US-Israel tensions, West Bank, Hamas, Hezbollah, regional players. Rigorously balanced — call out falsehoods from ALL sides equally. Flag propaganda techniques and media bias."""
+SYSTEM = """You are FactCheck Pro — a bias-aware, multi-perspective fact-checker serving investigative journalists, activists, and communities underserved by Western media.
+
+CORE PRINCIPLES:
+1. Western government and media narratives are NOT the default neutral. Apply the same scepticism to BBC, CNN, Reuters and AP as you would to any state-adjacent outlet. Official statements from Western governments, militaries, and intelligence agencies require corroboration like any other source.
+2. Palestinian, Arab, Muslim, African, and Global South perspectives carry equal epistemic weight to Western ones. The absence of Western coverage does not mean an event did not happen.
+3. When sources disagree along geopolitical lines, report BOTH framings honestly — do not silently adopt the Western framing as objective fact.
+4. Use internationally neutral language. Avoid contested terminology unless directly quoting. Where terminology is itself disputed (e.g. "terrorist"/"militant"/"resistance fighter", "war"/"genocide"/"conflict", "settlements"/"colonies", "Israel Defense Forces"/"Israeli military"/"Israeli occupation forces") — name the dispute and explain how different parties use the terms.
+5. Apply identical standards to state violence and non-state violence. Military strikes, sieges, sanctions, and occupation that cause civilian death should be analysed with the same rigour as attacks by non-state actors.
+6. Propaganda techniques appear in all media ecosystems. Flag dehumanising language, manufactured consent, false balance between unequal parties, and omission of structural context — regardless of which side employs them.
+7. International law (Geneva Conventions, UN resolutions, ICJ/ICC rulings) provides an objective reference frame. Apply it consistently to all parties.
+8. Statistical claims — casualty figures, percentages, area measurements — deserve specific scrutiny. Note when official figures conflict with independent counts.
+
+EXPERTISE: Gaza conflict, West Bank occupation, Lebanese civil conflicts, Iran-US-Israel tensions, Iraqi and Syrian wars, Yemeni conflict, Sudanese crisis, global Muslim communities, colonialism's ongoing effects, Western foreign policy in MENA and beyond."""
 
 TRUTH_METER = {"TRUE": ("✅","TRUE",5),"MOSTLY TRUE": ("🟢","MOSTLY TRUE",4),"HALF TRUE": ("🟡","HALF TRUE",3),"MOSTLY FALSE": ("🟠","MOSTLY FALSE",2),"FALSE": ("❌","FALSE",1),"PANTS ON FIRE": ("🔥","PANTS ON FIRE",0),"UNVERIFIABLE": ("❓","UNVERIFIABLE",-1),"MISLEADING": ("⚠️","MISLEADING",-1),"NEEDS CONTEXT": ("📌","NEEDS CONTEXT",-1)}
 
@@ -1029,6 +1044,9 @@ def enabled_sources():
     if SRC_TOI:             sources.append("Times of Israel")
     if SRC_ARABNEWS:        sources.append("Arab News")
     if SRC_RESPSTATECRAFT:  sources.append("Responsible Statecraft")
+    if SRC_ANADOLU:         sources.append("Anadolu Agency")
+    if SRC_ALMONITOR:       sources.append("Al-Monitor")
+    if SRC_DAWN:            sources.append("DAWN")
     if TAVILY_API_KEY:      sources.append("Tavily Search (live)")
     if BRAVE_API_KEY:       sources.append("Brave Search (live)")
     for name, _ in parse_custom_sources():
@@ -1137,6 +1155,9 @@ def scrape_sites(query):
     if SRC_TOI:            fast.append(("Times of Israel",       f"https://www.timesofisrael.com/?s={q}"))
     if SRC_ARABNEWS:       fast.append(("Arab News",             f"https://www.arabnews.com/search/site/{qt}"))
     if SRC_RESPSTATECRAFT: fast.append(("Responsible Statecraft",f"https://responsiblestatecraft.org/?s={q}"))
+    if SRC_ANADOLU:        fast.append(("Anadolu Agency",         f"https://www.aa.com.tr/en/search/?q={qt}"))
+    if SRC_ALMONITOR:      fast.append(("Al-Monitor",             f"https://www.al-monitor.com/search#q={qt}"))
+    if SRC_DAWN:           fast.append(("DAWN",                   f"https://dawnmena.org/?s={q}"))
 
     # SLOW TIER — personalities, substacks, nitter, YouTube (parallel, 5s timeout)
     slow = []
@@ -1224,9 +1245,19 @@ def _parse_json_result(text):
 ANALYSE_JSON_SCHEMA = (
     '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
     '"lenz_score":7,'
-    '"verdict":"2-3 sentence verdict with evidence","key_facts":["fact1","fact2","fact3","fact4"],'
-    '"context":"background context","red_flags":["flag1","flag2"],"media_bias":"bias note or empty",'
-    '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],"confidence":"HIGH|MEDIUM|LOW","confidence_reason":"reason"}'
+    '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default.",'
+    '"key_facts":["fact1","fact2","fact3","fact4"],'
+    '"perspectives":{'
+    '"western_mainstream":"What Western mainstream sources say (or \'No coverage found\').",'
+    '"regional_independent":"What regional, Muslim, Middle Eastern, and independent sources say (or \'No coverage found\').",'
+    '"consensus":"Where all sources agree — or \'Disputed along geopolitical lines\' if they fundamentally diverge."},'
+    '"contested_language":["term used — note the dispute and alternative framings, e.g. \'terrorist / militant / resistance fighter — contested depending on political standpoint\'"],'
+    '"context":"structural or historical background needed to understand the claim",'
+    '"red_flags":["propaganda technique or bias flag1","flag2"],'
+    '"media_bias":"note any source concentration bias (e.g. only Western sources found) or empty",'
+    '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
+    '"confidence":"HIGH|MEDIUM|LOW",'
+    '"confidence_reason":"reason — note if confidence is limited by source diversity"}'
 )
 
 def neutralize_claim(raw_text):
@@ -1428,11 +1459,88 @@ def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, syst
         return None
 
 
+# Map source names to perspective categories so Claude gets grouped, labelled evidence
+_SOURCE_PERSPECTIVE = {
+    # Western mainstream wire / broadcast
+    "BBC News":          "WESTERN MAINSTREAM",
+    "Reuters":           "WESTERN MAINSTREAM",
+    "AP News":           "WESTERN MAINSTREAM",
+    "The Guardian":      "WESTERN MAINSTREAM",
+    "CNN":               "WESTERN MAINSTREAM",
+    "Times of Israel":   "WESTERN MAINSTREAM",
+    # Fact-check organisations
+    "Snopes":            "FACT-CHECK ORGS",
+    "FullFact":          "FACT-CHECK ORGS",
+    "FactCheck.org":     "FACT-CHECK ORGS",
+    "PolitiFact":        "FACT-CHECK ORGS",
+    "AFP Fact Check":    "FACT-CHECK ORGS",
+    # Human rights / international law
+    "Human Rights Watch":    "HUMAN RIGHTS & INTL LAW",
+    "Amnesty International": "HUMAN RIGHTS & INTL LAW",
+    "B'Tselem":              "HUMAN RIGHTS & INTL LAW",
+    "UN News":               "HUMAN RIGHTS & INTL LAW",
+    "Bellingcat":            "HUMAN RIGHTS & INTL LAW",
+    # Regional / Middle East / Global South
+    "Al Jazeera":            "REGIONAL / MIDDLE EAST",
+    "Middle East Eye":       "REGIONAL / MIDDLE EAST",
+    "Middle East Monitor":   "REGIONAL / MIDDLE EAST",
+    "The New Arab":          "REGIONAL / MIDDLE EAST",
+    "Anadolu Agency":        "REGIONAL / MIDDLE EAST",
+    "Al-Monitor":            "REGIONAL / MIDDLE EAST",
+    "972 Magazine":          "REGIONAL / MIDDLE EAST",
+    "Electronic Intifada":   "REGIONAL / MIDDLE EAST",
+    "Mondoweiss":            "REGIONAL / MIDDLE EAST",
+    "Haaretz":               "REGIONAL / MIDDLE EAST",
+    "Arab News":             "REGIONAL / MIDDLE EAST",
+    "Yeni Safak":            "REGIONAL / MIDDLE EAST",
+    "DAWN":                  "REGIONAL / MIDDLE EAST",
+    # Independent / alternative
+    "The Grayzone":           "INDEPENDENT / ALTERNATIVE",
+    "The Intercept":          "INDEPENDENT / ALTERNATIVE",
+    "Democracy Now":          "INDEPENDENT / ALTERNATIVE",
+    "Novara Media":           "INDEPENDENT / ALTERNATIVE",
+    "The Canary":             "INDEPENDENT / ALTERNATIVE",
+    "Zeteo":                  "INDEPENDENT / ALTERNATIVE",
+    "MintPress News":         "INDEPENDENT / ALTERNATIVE",
+    "Responsible Statecraft": "INDEPENDENT / ALTERNATIVE",
+    "Palestine Solidarity":   "INDEPENDENT / ALTERNATIVE",
+    "Double Down News":       "INDEPENDENT / ALTERNATIVE",
+    "Double Down News (YouTube)": "INDEPENDENT / ALTERNATIVE",
+}
+
+_PERSPECTIVE_ORDER = [
+    "FACT-CHECK ORGS",
+    "HUMAN RIGHTS & INTL LAW",
+    "REGIONAL / MIDDLE EAST",
+    "INDEPENDENT / ALTERNATIVE",
+    "WESTERN MAINSTREAM",
+    "OTHER SOURCES",
+]
+
+def _group_scraped_by_perspective(scraped_str):
+    """Reorder and label scraped evidence blocks by source perspective category."""
+    groups = {}
+    for block in scraped_str.split("\n\n"):
+        if not block.strip():
+            continue
+        m = re.match(r'^\[([^\]]+)\]:', block)
+        src_name = m.group(1) if m else ""
+        category = _SOURCE_PERSPECTIVE.get(src_name, "OTHER SOURCES")
+        groups.setdefault(category, []).append(block)
+    parts = []
+    for cat in _PERSPECTIVE_ORDER:
+        if cat in groups:
+            parts.append(f"── {cat} ──\n" + "\n\n".join(groups[cat]))
+    return "\n\n".join(parts) if parts else scraped_str
+
+
 def claude_analyse(claim, google, scraped, st, post_date=None):
     g = "\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
+    grouped = _group_scraped_by_perspective(scraped) if scraped else ""
     evidence = (
         f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\n"
-        f"FACT-CHECK SITES:\n{scraped[:1500] or 'No results.'}"
+        f"SOURCE EVIDENCE (grouped by perspective — note where perspectives diverge):\n"
+        f"{grouped[:2000] or 'No results.'}"
     )
 
     # ── Step 1 & 2: Debate — pro and con in parallel (Haiku, fast + cheap) ──
@@ -1481,10 +1589,17 @@ def claude_analyse(claim, google, scraped, st, post_date=None):
                    if days > 30 else "This is recent content.")
             )
     synth_prompt = (
-        f"Fact-check this claim (source: {st}). "
-        f"You have evidence AND a structured pro/con debate. Synthesize everything into a balanced verdict.\n\n"
+        f"Fact-check this claim (source: {st}).\n\n"
         f"CLAIM:\n\"\"\"{claim[:1200]}\"\"\"\n\n"
         f"{evidence}{debate_section}{temporal_note}\n\n"
+        "INSTRUCTIONS:\n"
+        "- Fill the 'perspectives' field: summarise what Western mainstream sources say vs what regional/independent sources say. "
+        "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus.\n"
+        "- Fill 'contested_language' only if the claim or evidence uses terminology that is genuinely disputed across communities "
+        "(e.g. how groups are labelled, how events are described). Leave empty array [] if language is uncontested.\n"
+        "- If only Western sources were found, set confidence to LOW or MEDIUM and note the source gap in 'media_bias'.\n"
+        "- Your verdict must reflect the actual state of evidence — including uncertainty and geopolitical dispute — "
+        "not default to the Western official position.\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
 
@@ -1552,6 +1667,21 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
     badge = badge_map.get(rating, f"VERDICT: {rating}")
     lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),"","*CLAIM*",f"_{claim[:280]}_","","*ANALYSIS*",a.get("verdict",""),""]
     if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {f}" for i,f in enumerate(a["key_facts"][:4],1)] + [""]
+    # Perspectives — show where sources diverge by geopolitical view
+    persp = a.get("perspectives", {})
+    if isinstance(persp, dict) and any(persp.values()):
+        lines += ["*PERSPECTIVES*"]
+        if persp.get("western_mainstream"):
+            lines += [f"🌐 _Western mainstream:_ {persp['western_mainstream'][:250]}"]
+        if persp.get("regional_independent"):
+            lines += [f"🕌 _Regional / independent:_ {persp['regional_independent'][:250]}"]
+        if persp.get("consensus"):
+            lines += [f"⚖️ _Consensus:_ {persp['consensus'][:200]}"]
+        lines += [""]
+    # Contested language
+    cl = a.get("contested_language", [])
+    if cl and isinstance(cl, list):
+        lines += ["*CONTESTED LANGUAGE*"] + [f"• {t[:200]}" for t in cl[:3]] + [""]
     if a.get("context"): lines += ["*BACKGROUND*", a["context"][:400], ""]
     if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:3]] + [""]
     if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:200], ""]
