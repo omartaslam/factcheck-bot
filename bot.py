@@ -113,11 +113,24 @@ SRC_GALLOWAY_SITE    = os.getenv("SRC_GALLOWAY_SITE",     "true").lower() == "tr
 SRC_PSC              = os.getenv("SRC_PSC",               "true").lower() == "true"
 SRC_SUBSTACK         = os.getenv("SRC_SUBSTACK",          "true").lower() == "true"
 SRC_DDN_YT           = os.getenv("SRC_DDN_YT",            "true").lower() == "true"
-SRC_BBC          = os.getenv("SRC_BBC",          "true").lower() == "true"
-SRC_REUTERS      = os.getenv("SRC_REUTERS",      "true").lower() == "true"
-SRC_AP           = os.getenv("SRC_AP",           "true").lower() == "true"
-SRC_GUARDIAN     = os.getenv("SRC_GUARDIAN",     "true").lower() == "true"
-SRC_CNN          = os.getenv("SRC_CNN",          "true").lower() == "true"
+SRC_BBC              = os.getenv("SRC_BBC",              "true").lower() == "true"
+SRC_REUTERS          = os.getenv("SRC_REUTERS",          "true").lower() == "true"
+SRC_AP               = os.getenv("SRC_AP",               "true").lower() == "true"
+SRC_GUARDIAN         = os.getenv("SRC_GUARDIAN",         "true").lower() == "true"
+SRC_CNN              = os.getenv("SRC_CNN",              "true").lower() == "true"
+# Middle East expanded sources
+SRC_MEMO             = os.getenv("SRC_MEMO",             "true").lower() == "true"
+SRC_NEWARAB          = os.getenv("SRC_NEWARAB",          "true").lower() == "true"
+SRC_BTSELEM          = os.getenv("SRC_BTSELEM",          "true").lower() == "true"
+SRC_BELLINGCAT       = os.getenv("SRC_BELLINGCAT",       "true").lower() == "true"
+SRC_HRW              = os.getenv("SRC_HRW",              "true").lower() == "true"
+SRC_AMNESTY          = os.getenv("SRC_AMNESTY",          "true").lower() == "true"
+SRC_UNNEWS           = os.getenv("SRC_UNNEWS",           "true").lower() == "true"
+SRC_TOI              = os.getenv("SRC_TOI",              "true").lower() == "true"
+SRC_ARABNEWS         = os.getenv("SRC_ARABNEWS",         "true").lower() == "true"
+SRC_RESPSTATECRAFT   = os.getenv("SRC_RESPSTATECRAFT",   "true").lower() == "true"
+# Brave Search API — real-time web search
+BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")
 # Custom sources — add any source without code changes
 # Format in Railway: "Name|https://site.com/search?q={q},Name2|https://site2.com/?s={q}"
 # Use {q} for URL-encoded query, {qt} for URL-encoded short query
@@ -754,6 +767,17 @@ def enabled_sources():
     if SRC_AP:              sources.append("AP News")
     if SRC_GUARDIAN:        sources.append("The Guardian")
     if SRC_CNN:             sources.append("CNN")
+    if SRC_MEMO:            sources.append("Middle East Monitor")
+    if SRC_NEWARAB:         sources.append("The New Arab")
+    if SRC_BTSELEM:         sources.append("B'Tselem")
+    if SRC_BELLINGCAT:      sources.append("Bellingcat")
+    if SRC_HRW:             sources.append("Human Rights Watch")
+    if SRC_AMNESTY:         sources.append("Amnesty International")
+    if SRC_UNNEWS:          sources.append("UN News")
+    if SRC_TOI:             sources.append("Times of Israel")
+    if SRC_ARABNEWS:        sources.append("Arab News")
+    if SRC_RESPSTATECRAFT:  sources.append("Responsible Statecraft")
+    if BRAVE_API_KEY:       sources.append("Brave Search (live)")
     for name, _ in parse_custom_sources():
         sources.append(f"{name} (custom)")
     return sources
@@ -767,6 +791,30 @@ def _fetch_source(name, url):
     except Exception as e:
         log.warning(f"Scrape failed {name}: {e}")
     return None
+
+def brave_search(query, count=5):
+    """Query Brave Search API for real-time results. Returns list of (name, snippet) tuples."""
+    if not BRAVE_API_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY},
+            params={"q": query[:200], "count": count, "freshness": "pw", "text_decorations": False},
+            timeout=8
+        )
+        r.raise_for_status()
+        results = []
+        for item in r.json().get("web", {}).get("results", []):
+            title = item.get("title", "")
+            desc = item.get("description", "")
+            url = item.get("url", "")
+            snippet = f"{title} — {desc} ({url})"
+            results.append(("Brave Search", snippet[:400]))
+        return results
+    except Exception as e:
+        log.warning("Brave Search failed: %s", e)
+        return []
 
 def scrape_sites(query):
     # Collapse newlines to spaces so search URLs don't contain %0A (causes 403/404)
@@ -803,6 +851,17 @@ def scrape_sites(query):
     if SRC_AP:       fast.append(("AP News",    f"https://apnews.com/search?q={qt}"))
     if SRC_GUARDIAN: fast.append(("Guardian",   f"https://www.theguardian.com/search?q={qt}"))
     if SRC_CNN:      fast.append(("CNN",        f"https://edition.cnn.com/search?q={qt}"))
+    # Middle East expanded
+    if SRC_MEMO:           fast.append(("Middle East Monitor",   f"https://www.middleeastmonitor.com/?s={q}"))
+    if SRC_NEWARAB:        fast.append(("The New Arab",          f"https://www.newarab.com/search?q={qt}"))
+    if SRC_BTSELEM:        fast.append(("B'Tselem",              f"https://www.btselem.org/search/{qt}"))
+    if SRC_BELLINGCAT:     fast.append(("Bellingcat",            f"https://www.bellingcat.com/?s={q}"))
+    if SRC_HRW:            fast.append(("Human Rights Watch",   f"https://www.hrw.org/search?search={q}&content_type=country-page,report,world-report-chapter,news,dispatch,video,blog-post,feature,multimedia&regions[]=9727"))
+    if SRC_AMNESTY:        fast.append(("Amnesty International", f"https://www.amnesty.org/en/search/?q={q}&content_type=Post,Page,Resource,Taxonomy&regions=middle-east-north-africa"))
+    if SRC_UNNEWS:         fast.append(("UN News",               f"https://news.un.org/en/search?text={qt}"))
+    if SRC_TOI:            fast.append(("Times of Israel",       f"https://www.timesofisrael.com/?s={q}"))
+    if SRC_ARABNEWS:       fast.append(("Arab News",             f"https://www.arabnews.com/search/site/{qt}"))
+    if SRC_RESPSTATECRAFT: fast.append(("Responsible Statecraft",f"https://responsiblestatecraft.org/?s={q}"))
 
     # SLOW TIER — personalities, substacks, nitter, YouTube (parallel, 5s timeout)
     slow = []
@@ -853,6 +912,11 @@ def scrape_sites(query):
                     results.append(f"[{r[0]}]: {r[1]}")
             except Exception:
                 pass
+
+    # Brave Search — real-time web results
+    if BRAVE_API_KEY:
+        for name, snippet in brave_search(query_flat):
+            results.append(f"[{name}]: {snippet}")
 
     log.info(f"Scraped {len(results)} sources")
     return "\n\n".join(results), [r.split("]")[0].replace("[","").strip() for r in results]
