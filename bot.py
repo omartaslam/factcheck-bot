@@ -19,6 +19,7 @@ VERIFY_TOKEN = os.getenv("VERIFY_TOKEN", "factcheck_verify_123")
 GOOGLE_API_KEY = os.getenv("GOOGLE_FACT_CHECK_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
+ADMIN_NUMBER = os.getenv("ADMIN_NUMBER", "")  # WhatsApp number to receive credit/error alerts
 WHATSAPP_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 GOOGLE_FC_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 
@@ -80,6 +81,41 @@ IG_COOKIES_B64 = os.getenv("IG_COOKIES_B64", "")
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 app = Flask(__name__)
+
+# ── Admin alerting ────────────────────────────────────────────────────────────
+_alert_sent = {}   # provider -> timestamp of last alert (throttle to 1/hour)
+_alert_lock = threading.Lock()
+
+def send_admin_alert(provider, message):
+    """Send a WhatsApp alert to ADMIN_NUMBER — throttled to once per hour per provider."""
+    if not ADMIN_NUMBER or not WHATSAPP_TOKEN:
+        return
+    now = t.time()
+    with _alert_lock:
+        last = _alert_sent.get(provider, 0)
+        if now - last < 3600:
+            return
+        _alert_sent[provider] = now
+    try:
+        requests.post(
+            WHATSAPP_URL,
+            json={"messaging_product": "whatsapp", "to": ADMIN_NUMBER,
+                  "type": "text", "text": {"body": f"⚠️ *FactCheck Pro Alert*\n\n{message}"}},
+            headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"},
+            timeout=10
+        )
+        log.warning(f"Admin alert sent ({provider}): {message[:100]}")
+    except Exception as e:
+        log.error(f"Admin alert failed: {e}")
+
+def _is_credit_error(status_code, body_text):
+    """Return True if the API response indicates an out-of-credit / quota error."""
+    if status_code in (402, 529):
+        return True
+    low = body_text.lower()
+    return any(k in low for k in ("credit_balance_too_low", "insufficient_quota",
+                                   "exceeded your current quota", "billing_hard_limit",
+                                   "rate_limit_exceeded", "insufficient credits"))
 
 
 import atexit
@@ -247,11 +283,15 @@ def ocr_image(b):
                     {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}},
                     {"type":"text","text":OCR_PROMPT}
                 ]}]}, timeout=30)
-            r.raise_for_status()
-            result = r.json()["content"][0]["text"].strip()
-            if result and not _is_ocr_refusal(result):
-                return result
-            log.info("OCR Claude: no usable text extracted")
+            if _is_credit_error(r.status_code, r.text):
+                send_admin_alert("anthropic", f"Anthropic API credits exhausted (HTTP {r.status_code}). OCR falling back to OpenAI.")
+                log.error(f"Anthropic credit error in OCR: {r.status_code}")
+            else:
+                r.raise_for_status()
+                result = r.json()["content"][0]["text"].strip()
+                if result and not _is_ocr_refusal(result):
+                    return result
+                log.info("OCR Claude: no usable text extracted")
         except Exception as e:
             log.warning("OCR Claude failed (%s), trying OpenAI...", e)
     # Fallback: OpenAI gpt-4o-mini vision
@@ -263,11 +303,15 @@ def ocr_image(b):
                     {"type": "text", "text": OCR_PROMPT},
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
                 ]}]}, timeout=30)
-            r.raise_for_status()
-            result = r.json()["choices"][0]["message"]["content"].strip()
-            if result and not _is_ocr_refusal(result):
-                return result
-            log.info("OCR OpenAI: no usable text extracted (refusal or empty)")
+            if _is_credit_error(r.status_code, r.text):
+                send_admin_alert("openai", f"OpenAI API quota exceeded (HTTP {r.status_code}). OCR unavailable.")
+                log.error(f"OpenAI credit error in OCR: {r.status_code}")
+            else:
+                r.raise_for_status()
+                result = r.json()["choices"][0]["message"]["content"].strip()
+                if result and not _is_ocr_refusal(result):
+                    return result
+                log.info("OCR OpenAI: no usable text extracted (refusal or empty)")
         except Exception as e:
             log.error("OCR OpenAI failed: %s", e)
     return ""
@@ -284,7 +328,12 @@ def transcribe(b, mime):
                     headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
                     files={"file": (f"a.{ext}", f, mime)},
                     data={"model": "whisper-1"}, timeout=60)
-            os.unlink(path); r.raise_for_status()
+            os.unlink(path)
+            if _is_credit_error(r.status_code, r.text):
+                send_admin_alert("openai", f"OpenAI API quota exceeded (HTTP {r.status_code}). Audio transcription unavailable.")
+                log.error(f"OpenAI credit error in Whisper: {r.status_code}")
+                raise Exception(f"OpenAI quota error {r.status_code}")
+            r.raise_for_status()
             transcript = r.json().get("text", "").strip()
             log.info(f"Whisper success: {len(transcript)} chars")
             return transcript
@@ -667,8 +716,10 @@ def _fetch_source(name, url):
     return None
 
 def scrape_sites(query):
-    q = quote_plus(query[:100])
-    qt = quote_plus(query[:80])
+    # Collapse newlines to spaces so search URLs don't contain %0A (causes 403/404)
+    query_flat = " ".join(query.split())
+    q = quote_plus(query_flat[:100])
+    qt = quote_plus(query_flat[:80])
 
     # FAST TIER — fact-check DBs and major news outlets (run first, block until done)
     fast = []
@@ -846,6 +897,10 @@ def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, syst
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json=body, timeout=45)
+        if _is_credit_error(r.status_code, r.text):
+            send_admin_alert("anthropic", f"Anthropic API credits exhausted or quota exceeded (HTTP {r.status_code}). Fact-checking is degraded — top up at console.anthropic.com.")
+            log.error(f"Anthropic credit error {r.status_code}: {r.text[:200]}")
+            return None
         r.raise_for_status()
         return r.json()["content"][0]["text"].strip()
     except Exception as e:
@@ -907,6 +962,10 @@ def claude_analyse(claim, google, scraped, st):
                     json={"model": "claude-sonnet-4-6", "max_tokens": 2000, "system": SYSTEM,
                           "messages": [{"role": "user", "content": synth_prompt}]},
                     timeout=55)
+                if _is_credit_error(r.status_code, r.text):
+                    send_admin_alert("anthropic", f"Anthropic API credits exhausted (HTTP {r.status_code}). Falling back to OpenAI for synthesis.")
+                    log.error(f"Anthropic credit error in synthesis: {r.status_code}")
+                    break  # skip retry, go straight to OpenAI fallback
                 r.raise_for_status()
                 result = _parse_json_result(r.json()["content"][0]["text"])
                 if result:
@@ -928,11 +987,15 @@ def claude_analyse(claim, google, scraped, st):
                       "messages": [{"role": "system", "content": SYSTEM},
                                    {"role": "user", "content": synth_prompt}]},
                 timeout=55)
-            r.raise_for_status()
-            result = _parse_json_result(r.json()["choices"][0]["message"]["content"])
-            if result:
-                log.info("OpenAI synthesis succeeded")
-                return result
+            if _is_credit_error(r.status_code, r.text):
+                send_admin_alert("openai", f"OpenAI API quota exceeded (HTTP {r.status_code}). Both AI providers unavailable.")
+                log.error(f"OpenAI credit error in synthesis: {r.status_code}")
+            else:
+                r.raise_for_status()
+                result = _parse_json_result(r.json()["choices"][0]["message"]["content"])
+                if result:
+                    log.info("OpenAI synthesis succeeded")
+                    return result
         except Exception as e:
             log.error("OpenAI analyse: %s", e)
 
