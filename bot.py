@@ -913,7 +913,7 @@ def process(from_num, message):
                                 except Exception as oge:
                                     log.warning(f"og:image extraction failed: {oge}")
                                 ocr_texts = []
-                                for thumb in thumbnails[:3]:
+                                for thumb in thumbnails[:1]:
                                     try:
                                         img_url = thumb.get("url","")
                                         if not img_url:
