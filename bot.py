@@ -890,31 +890,30 @@ def process(from_num, message):
                                     parts.append(f"Post text: {info['description'][:800]}")
                                 if info.get("uploader"):
                                     parts.append(f"Posted by: {info['uploader']}")
-                                thumbnails = info.get("thumbnails") or []
-                                if info.get("thumbnail"):
-                                    thumbnails = [{"url": info["thumbnail"]}] + thumbnails
-                                for fmt in info.get("formats") or []:
-                                    if fmt.get("ext") in ("jpg","jpeg","png","webp"):
-                                        thumbnails.append({"url": fmt.get("url","")})
-                                # Prepend og:image from raw HTML — for link-share posts this is
-                                # the article's main image (the one with headline text), not the
-                                # page profile picture that yt-dlp often returns first.
-                                try:
-                                    html_r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}, timeout=12)
-                                    if html_r.ok:
-                                        m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html_r.text, re.I)
-                                        if not m:
-                                            m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html_r.text, re.I)
-                                        if m:
-                                            import html as _html
-                                            og_img_url = _html.unescape(m.group(1).strip())
-                                            if og_img_url and og_img_url.startswith("http"):
-                                                thumbnails.insert(0, {"url": og_img_url})
-                                                log.info(f"og:image prepended: {og_img_url[:80]}")
-                                except Exception as oge:
-                                    log.warning(f"og:image extraction failed: {oge}")
+                                # For link-share posts, try to find the external article URL
+                                # in the post description and fetch its og:image — this is the
+                                # article thumbnail (with headline text) not a FB profile pic.
+                                article_img_url = None
+                                desc = info.get("description", "") or ""
+                                ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
+                                if ext_urls:
+                                    try:
+                                        import html as _html
+                                        art_r = requests.get(ext_urls[0], headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                        if art_r.ok:
+                                            m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', art_r.text, re.I)
+                                            if not m:
+                                                m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', art_r.text, re.I)
+                                            if m:
+                                                article_img_url = _html.unescape(m.group(1).strip())
+                                                log.info(f"Article og:image found: {article_img_url[:80]}")
+                                    except Exception as ae:
+                                        log.warning(f"Article og:image failed: {ae}")
+
                                 ocr_texts = []
-                                for thumb in thumbnails[:1]:
+                                img_sources = ([{"url": article_img_url}] if article_img_url else []) or \
+                                              ([{"url": info["thumbnail"]}] if info.get("thumbnail") else [])
+                                for thumb in img_sources[:1]:
                                     try:
                                         img_url = thumb.get("url","")
                                         if not img_url:
