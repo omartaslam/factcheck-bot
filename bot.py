@@ -1699,18 +1699,16 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     # ── Multi-claim header (skip — already shown before Y confirmation) ───
     multi = len(claims) > 1
 
-    # ── Scrape sources once, shared across all claims ─────────────────────
-    # For video/audio, use the first extracted claim as search query (not raw video analysis text)
-    search_query = claims[0] if st in ("video", "audio") and claims else query
-    g = google_fc(search_query)
-    sc, used_sources = scrape_sites(search_query)
-    gfc_sources = [x["source"] for x in g if x.get("source")]
-    all_used = list(dict.fromkeys(gfc_sources + used_sources))
-
-    # ── Analyse each claim (with pro/con debate) ──────────────────────────
+    # ── Analyse each claim with its own search ────────────────────────────
+    all_used_combined = []
     for i, claim in enumerate(claims):
         if multi:
             send(from_num, f"⚖️ Analysing claim {i+1}/{len(claims)}...")
+        g = google_fc(claim)
+        sc, used_sources = scrape_sites(claim)
+        gfc_sources = [x["source"] for x in g if x.get("source")]
+        all_used = list(dict.fromkeys(gfc_sources + used_sources))
+        all_used_combined = list(dict.fromkeys(all_used_combined + all_used))
         a = claude_analyse(claim, g, sc, st)
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost, all_used, ad=ad)
@@ -1749,16 +1747,14 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
 
     multi = len(claims) > 1
 
-    search_query = claims[0] if st in ("video", "audio") and claims else query
-    g = google_fc(search_query)
-    sc, used_sources = scrape_sites(search_query)
-    gfc_sources = [x["source"] for x in g if x.get("source")]
-    all_used = list(dict.fromkeys(gfc_sources + used_sources))
-
     cost_est = estimate_cost(st)
     for i, claim in enumerate(claims):
         if multi:
             send_fn(f"⚖️ Analysing claim {i+1}/{len(claims)}...")
+        g = google_fc(claim)
+        sc, used_sources = scrape_sites(claim)
+        gfc_sources = [x["source"] for x in g if x.get("source")]
+        all_used = list(dict.fromkeys(gfc_sources + used_sources))
         a = claude_analyse(claim, g, sc, st)
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost_est, all_used, ad=ad)
