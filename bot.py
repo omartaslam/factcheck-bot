@@ -456,19 +456,9 @@ def extract_video_frames(video_bytes, num_frames=2):
         if not frames:
             log.info("cv2 got 0 frames — trying ffmpeg fallback")
             try:
-                # Get duration via ffprobe
-                probe = subprocess.run(
-                    ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", video_path],
-                    capture_output=True, text=True, timeout=15)
-                dur = 0.0
-                if probe.returncode == 0:
-                    import json as _json
-                    for s in _json.loads(probe.stdout).get("streams", []):
-                        try: dur = float(s.get("duration", 0)); break
-                        except: pass
-                duration = dur or 30.0  # assume 30s if unknown
-                # Extract frames at evenly spaced times
-                offsets = [duration * i / num_frames for i in range(num_frames)]
+                # Extract frames at fixed offsets without needing ffprobe
+                # Try 0s, 3s, 7s, 12s, 20s — covers most short social media clips
+                offsets = [0, 3, 7, 12, 20][:num_frames + 1]
                 for offset in offsets:
                     with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tf:
                         out_path = tf.name
@@ -482,7 +472,8 @@ def extract_video_frames(video_bytes, num_frames=2):
                     try: os.unlink(out_path)
                     except: pass
                 if frames:
-                    log.info(f"ffmpeg extracted {len(frames)} frames (duration: {duration:.1f}s)")
+                    log.info(f"ffmpeg extracted {len(frames)} frames")
+                    duration = offsets[len(frames) - 1]
             except Exception as fe:
                 log.error("ffmpeg frame fallback: %s", fe)
 
