@@ -1672,19 +1672,19 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
     if isinstance(persp, dict) and any(persp.values()):
         lines += ["*PERSPECTIVES*"]
         if persp.get("western_mainstream"):
-            lines += [f"🌐 _Western mainstream:_ {persp['western_mainstream'][:250]}"]
+            lines += [f"🌐 _Western:_ {persp['western_mainstream'][:180]}"]
         if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional / independent:_ {persp['regional_independent'][:250]}"]
+            lines += [f"🕌 _Regional:_ {persp['regional_independent'][:180]}"]
         if persp.get("consensus"):
-            lines += [f"⚖️ _Consensus:_ {persp['consensus'][:200]}"]
+            lines += [f"⚖️ _Consensus:_ {persp['consensus'][:150]}"]
         lines += [""]
     # Contested language
     cl = a.get("contested_language", [])
     if cl and isinstance(cl, list):
-        lines += ["*CONTESTED LANGUAGE*"] + [f"• {t[:200]}" for t in cl[:3]] + [""]
-    if a.get("context"): lines += ["*BACKGROUND*", a["context"][:400], ""]
-    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:3]] + [""]
-    if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:200], ""]
+        lines += ["*CONTESTED LANGUAGE*"] + [f"• {t[:160]}" for t in cl[:2]] + [""]
+    if a.get("context"): lines += ["*BACKGROUND*", a["context"][:280], ""]
+    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:2]] + [""]
+    if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:150], ""]
     score = a.get("lenz_score")
     if score is not None:
         try:
@@ -1697,7 +1697,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
     if used_sources:
-        lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:10]] + [""]
+        lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:6]] + [""]
     elif a.get("sources"):
         lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
     if post_date:
@@ -1719,10 +1719,23 @@ def confirm_msg(st, preview, cost):
     HDR = "*━━━━━━━━━━━━━━━━━━━━*"
     return (f"{HDR}\n*FACTCHECK PRO*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\n_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel")
 
+def _split_message(text, limit=4000):
+    """Split text at newline boundaries near limit to avoid mid-sentence cuts."""
+    chunks = []
+    while len(text) > limit:
+        pos = text.rfind("\n", 0, limit)
+        if pos <= 0:
+            pos = limit
+        chunks.append(text[:pos])
+        text = text[pos:].lstrip("\n")
+    if text:
+        chunks.append(text)
+    return chunks
+
 def send(to, text):
     # Sanitize: remove null bytes and non-BMP unicode that WhatsApp rejects
     text = text.replace("\x00", "").encode("utf-16", "surrogatepass").decode("utf-16")
-    for chunk in [text[i:i+4000] for i in range(0,len(text),4000)]:
+    for chunk in _split_message(text):
         try:
             r = requests.post(WHATSAPP_URL,
                 json={"messaging_product":"whatsapp","to":to,"type":"text","text":{"body":chunk}},
