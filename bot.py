@@ -446,7 +446,7 @@ def extract_video_frames(video_bytes, num_frames=2):
 def analyze_video_frames(frames):
     try:
         if not frames: return ""
-        content = [{"type":"text","text":"Extract ALL visible text, describe what's shown, identify people/locations/events mentioned, note any manipulation signs."}]
+        content = [{"type":"text","text":"You are helping fact-check a video. Do the following:\n1. Transcribe ALL visible text/captions/overlays word for word\n2. Identify the specific factual CLAIMS being made (e.g. 'missiles were fired at X', 'country Y did Z')\n3. Note people, locations, events shown\n4. Flag any signs of manipulation or editing\nBe specific and literal — do not paraphrase claims, quote them exactly."}]
         for frame_bytes in frames[:2]:
             b64 = base64.b64encode(frame_bytes).decode()
             content.append({"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}})
@@ -1396,7 +1396,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         query = neutral
 
     # ── Multi-claim extraction ────────────────────────────────────────────
-    claims = extract_claims(query) if st in ("text", "audio", "url") else [query]
+    claims = extract_claims(query) if st in ("text", "audio", "url", "video") else [query]
     multi = len(claims) > 1
     if multi:
         claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
@@ -1441,7 +1441,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn):
             log.info("Neutralized: %s", neutral[:80])
         query = neutral
 
-    claims = extract_claims(query) if st in ("text", "audio", "url") else [query]
+    claims = extract_claims(query) if st in ("text", "audio", "url", "video") else [query]
     multi = len(claims) > 1
     if multi:
         claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
