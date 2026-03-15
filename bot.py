@@ -483,6 +483,42 @@ def _is_useless_title(title):
     """Return True if the title is just a platform name and carries no information."""
     return not title or title.strip().lower() in _PLATFORM_TITLES
 
+def _parse_post_date(raw):
+    """Normalise various date formats to 'YYYY-MM-DD'. Returns '' on failure."""
+    if not raw:
+        return ""
+    try:
+        import datetime as _dt
+        if isinstance(raw, (int, float)):
+            return _dt.datetime.fromtimestamp(float(raw), tz=_dt.timezone.utc).strftime("%Y-%m-%d")
+        s = str(raw).strip()
+        if len(s) == 8 and s.isdigit():  # yt-dlp "YYYYMMDD"
+            return f"{s[:4]}-{s[4:6]}-{s[6:]}"
+        m = re.match(r'(\d{4}-\d{2}-\d{2})', s)
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return ""
+
+def _post_age_label(date_str):
+    """Return (friendly, days, age_str) for 'YYYY-MM-DD', or None on failure."""
+    try:
+        import datetime as _dt
+        posted = _dt.date.fromisoformat(date_str)
+        days = (_dt.date.today() - posted).days
+        if days < 0:
+            return None
+        friendly = posted.strftime("%-d %b %Y")
+        if days == 0:   age = "today"
+        elif days < 7:  age = f"{days}d ago"
+        elif days < 60: age = f"{days // 7}wk ago"
+        elif days < 730: age = f"{days // 30}mo ago"
+        else:           age = f"{days // 365}yr ago"
+        return friendly, days, age
+    except Exception:
+        return None
+
 def extract_video_frames(video_bytes, num_frames=2):
     """Extract frames with cv2; fall back to ffmpeg if cv2 reports 0 frames."""
     import subprocess
@@ -598,7 +634,7 @@ def _cobalt_download(url):
     """
     if not RAPIDAPI_KEY:
         log.warning("RAPIDAPI_KEY not set")
-        return None, ""
+        return None, "", ""
 
     # TikTok — use 7scorp /index (confirmed working)
     if "tiktok.com" in url:
@@ -620,7 +656,7 @@ def _cobalt_download(url):
                 content = _try_download_url(video_urls[0], "7scorp-TikTok")
                 if content:
                     title = data.get("title", "") or data.get("desc", "") or ""
-                    return content, title
+                    return content, title, ""
         except Exception as e:
             log.error(f"7scorp TikTok failed: {e}")
 
@@ -645,7 +681,7 @@ def _cobalt_download(url):
                 if video_url:
                     content = _try_download_url(video_url, "vikas5914-Twitter")
                     if content:
-                        return content, title
+                        return content, title, ""
         except Exception as e:
             log.error(f"vikas5914 Twitter failed: {e}")
 
@@ -669,12 +705,12 @@ def _cobalt_download(url):
                 if video_url:
                     content = _try_download_url(video_url, "vikas5914-Facebook")
                     if content:
-                        return content, title
+                        return content, title, ""
         except Exception as e:
             log.error(f"vikas5914 Facebook failed: {e}")
 
     # Instagram & everything else — fall through to yt-dlp
-    return None, ""
+    return None, "", ""
 
 
 def _ytdlp_download(url):
@@ -714,12 +750,12 @@ def _ytdlp_download(url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
             if not info:
-                return None, ""
+                return None, "", ""
             video_path = ydl.prepare_filename(info)
             if not os.path.exists(video_path):
                 video_path = temp_path if os.path.exists(temp_path) else None
             if not video_path:
-                return None, ""
+                return None, "", ""
             with open(video_path, "rb") as f:
                 video_bytes = f.read()
             try:
@@ -728,11 +764,12 @@ def _ytdlp_download(url):
                 pass
             title = info.get("title", "")
             description = info.get("description", "")[:200] if info.get("description") else ""
-            log.info(f"yt-dlp downloaded: {title[:50]}")
-            return video_bytes, f"{title}\n{description}".strip()
+            post_date = _parse_post_date(info.get("upload_date", ""))
+            log.info(f"yt-dlp downloaded: {title[:50]} date={post_date or 'unknown'}")
+            return video_bytes, f"{title}\n{description}".strip(), post_date
     except Exception as e:
         log.error(f"yt-dlp failed: {e}")
-        return None, ""
+        return None, "", ""
     finally:
         if cookies_file and os.path.exists(cookies_file):
             try: os.unlink(cookies_file)
@@ -815,7 +852,8 @@ def _fb_ig_post_scrape(url):
                 continue
             html = r.text
             result = {"is_post": is_post_url}
-            for prop, key in [("og:title","title"), ("og:description","description"), ("og:image","image_url")]:
+            for prop, key in [("og:title","title"), ("og:description","description"), ("og:image","image_url"),
+                              ("article:published_time","post_date"), ("og:updated_time","post_date")]:
                 # Use exact-match patterns with required quotes so og:image doesn't
                 # accidentally match og:image:alt (which contains text, not a URL)
                 for pat in [
@@ -824,7 +862,11 @@ def _fb_ig_post_scrape(url):
                 ]:
                     m = re.search(pat, html, re.I)
                     if m:
-                        result[key] = _html_mod.unescape(m.group(1).strip())
+                        val = _html_mod.unescape(m.group(1).strip())
+                        if key == "post_date":
+                            val = _parse_post_date(val)
+                        if val and key not in result:
+                            result[key] = val
                         break
             if result.get("description") or result.get("image_url"):
                 log.info(f"FB/IG externalhit ({ua.split('/')[0]}): desc={bool(result.get('description'))} img={bool(result.get('image_url'))}")
@@ -869,7 +911,7 @@ def _og_metadata(url):
     return ""
 
 def _fxtwitter_text(url):
-    """Extract tweet text via fxtwitter API (works for text/image posts, no auth needed)."""
+    """Extract tweet text and date via fxtwitter API. Returns (text, date_str)."""
     try:
         fx_url = re.sub(r"https?://(www\.)?(twitter\.com|x\.com)", "https://api.fxtwitter.com", url)
         log.info(f"Trying fxtwitter for tweet text: {fx_url}")
@@ -879,30 +921,32 @@ def _fxtwitter_text(url):
         tweet = data.get("tweet", {})
         text = tweet.get("text", "")
         author = tweet.get("author", {}).get("name", "")
+        post_date = _parse_post_date(tweet.get("created_at", ""))
         if text:
             combined = f"Tweet by {author}: {text}"
             for m in tweet.get("media", {}).get("photos", []):
                 combined += f"\n[Image: {m.get('url','')}]"
-            log.info(f"fxtwitter extracted: {combined[:100]}")
-            return combined
+            log.info(f"fxtwitter extracted: {combined[:100]} date={post_date or 'unknown'}")
+            return combined, post_date
     except Exception as e:
         log.error(f"fxtwitter failed: {e}")
-    return ""
+    return "", ""
 
 def download_video_url(url):
-    """Cobalt API → yt-dlp → fxtwitter (X/Twitter) → OG metadata fallback."""
-    video_bytes, metadata = _cobalt_download(url)
-    if video_bytes: return video_bytes, metadata
+    """Cobalt API → yt-dlp → fxtwitter (X/Twitter) → OG metadata fallback.
+    Returns (video_bytes, metadata, post_date). post_date is 'YYYY-MM-DD' or ''."""
+    video_bytes, metadata, post_date = _cobalt_download(url)
+    if video_bytes: return video_bytes, metadata, post_date
     log.info("Cobalt failed, trying yt-dlp...")
-    video_bytes, metadata = _ytdlp_download(url)
-    if video_bytes: return video_bytes, metadata
+    video_bytes, metadata, post_date = _ytdlp_download(url)
+    if video_bytes: return video_bytes, metadata, post_date
     # For X/Twitter URLs: extract tweet text via fxtwitter before giving up
     if "twitter.com" in url or "x.com" in url:
-        tweet_text = _fxtwitter_text(url)
+        tweet_text, tweet_date = _fxtwitter_text(url)
         if tweet_text:
-            return None, tweet_text
+            return None, tweet_text, tweet_date
     log.info("yt-dlp failed, extracting OG metadata...")
-    return None, _og_metadata(url)
+    return None, _og_metadata(url), ""
 
 def google_fc(query):
     try:
@@ -1384,7 +1428,7 @@ def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, syst
         return None
 
 
-def claude_analyse(claim, google, scraped, st):
+def claude_analyse(claim, google, scraped, st, post_date=None):
     g = "\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
     evidence = (
         f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\n"
@@ -1422,11 +1466,25 @@ def claude_analyse(claim, google, scraped, st):
             f"CASE FOR FALSE/MISLEADING:\n{con_text}"
         )
 
+    import datetime as _dt
+    today_str = _dt.date.today().isoformat()
+    temporal_note = ""
+    if post_date:
+        age = _post_age_label(post_date)
+        if age:
+            friendly, days, age_str = age
+            temporal_note = (
+                f"\n\nTEMPORAL CONTEXT: This content was originally posted on {friendly} ({age_str}). "
+                f"Today is {today_str}. "
+                + ("Consider whether any claims may have been superseded, confirmed, or refuted since then. "
+                   "Note if the claim was accurate at the time but circumstances have since changed."
+                   if days > 30 else "This is recent content.")
+            )
     synth_prompt = (
         f"Fact-check this claim (source: {st}). "
         f"You have evidence AND a structured pro/con debate. Synthesize everything into a balanced verdict.\n\n"
         f"CLAIM:\n\"\"\"{claim[:1200]}\"\"\"\n\n"
-        f"{evidence}{debate_section}\n\n"
+        f"{evidence}{debate_section}{temporal_note}\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
 
@@ -1487,7 +1545,7 @@ def claude_analyse(claim, google, scraped, st):
                         "Snopes — https://www.snopes.com", "FullFact — https://fullfact.org"],
             "confidence": "LOW", "confidence_reason": "AI provider error"}
 
-def fmt_report(claim, a, st, cost, used_sources=None, ad=None):
+def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -1512,6 +1570,14 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None):
         lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:10]] + [""]
     elif a.get("sources"):
         lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
+    if post_date:
+        age = _post_age_label(post_date)
+        if age:
+            friendly, days, age_str = age
+            lines += [f"📅 *Posted: {friendly}* _{age_str}_"]
+            if days > 180:
+                lines += ["⚠️ _Older content — verify claims are still current_"]
+            lines += [""]
     debate_indicator = "⚖️ pro/con debate" if a.get("_debate_pro") else "single-pass"
     lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2  •  {debate_indicator}_"]
     if ad:
@@ -1659,7 +1725,7 @@ def send_twitter_dm(recipient_id, text):
             log.error("Twitter DM send error: %s", e)
 
 
-def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None):
+def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     # Show all enabled sources
@@ -1710,9 +1776,9 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         gfc_sources = [x["source"] for x in g if x.get("source")]
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
         all_used_combined = list(dict.fromkeys(all_used_combined + all_used))
-        a = claude_analyse(claim, g, sc, st)
+        a = claude_analyse(claim, g, sc, st, post_date=post_date)
         ad = get_random_ad() if show_ad else None
-        report = fmt_report(claim, a, st, cost, all_used, ad=ad)
+        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
@@ -1723,7 +1789,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
 
-def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_claims=None):
+def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_claims=None, post_date=None):
     """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
     _cost_reset()
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
@@ -1756,9 +1822,9 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         sc, used_sources = scrape_sites(claim)
         gfc_sources = [x["source"] for x in g if x.get("source")]
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
-        a = claude_analyse(claim, g, sc, st)
+        a = claude_analyse(claim, g, sc, st, post_date=post_date)
         ad = get_random_ad() if show_ad else None
-        report = fmt_report(claim, a, st, cost_est, all_used, ad=ad)
+        report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date)
         if multi:
             send_fn(f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
@@ -1951,7 +2017,7 @@ def process(from_num, message):
                     send(from_num, "✓ Subscriber — unlimited access")
                 send(from_num, "Starting fact-check...")
                 threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
-                                 kwargs={"billing_type": bt, "pre_claims": data.get("claims")}, daemon=True).start()
+                                 kwargs={"billing_type": bt, "pre_claims": data.get("claims"), "post_date": data.get("post_date", "")}, daemon=True).start()
                 return
             elif body_upper in ("NO","N"):
                 with pending_lock: pending.pop(pkey, None)
@@ -1959,12 +2025,13 @@ def process(from_num, message):
         elif has_p and not is_yn:
             with pending_lock: pending.pop(pkey, None)
             log.info("New content received, clearing stale pending")
-    query, source_type, image_bytes = "", "text", None
+    query, source_type, image_bytes, post_date = "", "text", None, ""
     if msg_type == "text":
         body = message["text"]["body"].strip()
         urls = [w for w in body.split() if w.startswith("http")]
         if urls:
             url = urls[0]
+            post_date = ""  # will be set during content extraction if available
             # Video platforms — but only treat FB/IG as video if URL pattern suggests it
             video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","rumble.com","bitchute.com","t.me","fb.watch"]
             video_path_hints = ["watch", "video", "reel", "shorts", "clip", "live", "/share/v/", "/share/r/"]
@@ -1976,7 +2043,7 @@ def process(from_num, message):
             if is_video_link:
                 try:
                     send(from_num, "🎬 Downloading video from URL...")
-                    video_bytes, metadata = download_video_url(url)
+                    video_bytes, metadata, post_date = download_video_url(url)
                     if video_bytes:
                         send(from_num, f"✓ Downloaded ({len(video_bytes)//1024}KB)")
                         parts = []
@@ -2064,6 +2131,8 @@ def process(from_num, message):
                     # to get the actual post image (not the page profile picture) and
                     # the full post text without needing cookies or authentication.
                     fb_og = _fb_ig_post_scrape(url)
+                    if fb_og.get("post_date"):
+                        post_date = fb_og["post_date"]
                     if fb_og.get("description"):
                         parts.append(f"Post text: {fb_og['description'][:1200]}")
                     if fb_og.get("title") and not parts:
@@ -2257,13 +2326,14 @@ def process(from_num, message):
         claims = assessment["claims"]
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
-                             "cost": cost, "timestamp": t.time(), "claims": claims}
+                             "cost": cost, "timestamp": t.time(), "claims": claims,
+                             "post_date": post_date}
         send(from_num, claims_confirm_msg(claims, source_type, cost))
     else:
         # image / document — no claim extraction, show raw preview
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
-                             "cost": cost, "timestamp": t.time()}
+                             "cost": cost, "timestamp": t.time(), "post_date": post_date}
         send(from_num, confirm_msg(source_type, query, cost))
 
 # ── Web API: database, auth, rate-limiting ───────────────────────────────────
