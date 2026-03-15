@@ -896,6 +896,22 @@ def process(from_num, message):
                                 for fmt in info.get("formats") or []:
                                     if fmt.get("ext") in ("jpg","jpeg","png","webp"):
                                         thumbnails.append({"url": fmt.get("url","")})
+                                # Prepend og:image from raw HTML — for link-share posts this is
+                                # the article's main image (the one with headline text), not the
+                                # page profile picture that yt-dlp often returns first.
+                                try:
+                                    html_r = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}, timeout=12)
+                                    if html_r.ok:
+                                        m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html_r.text, re.I)
+                                        if not m:
+                                            m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html_r.text, re.I)
+                                        if m:
+                                            og_img_url = m.group(1).strip()
+                                            if og_img_url and og_img_url.startswith("http"):
+                                                thumbnails.insert(0, {"url": og_img_url})
+                                                log.info(f"og:image prepended: {og_img_url[:80]}")
+                                except Exception as oge:
+                                    log.warning(f"og:image extraction failed: {oge}")
                                 ocr_texts = []
                                 for thumb in thumbnails[:3]:
                                     try:
