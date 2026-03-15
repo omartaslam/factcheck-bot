@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-15
-> **Version:** v3.2
-> **Status:** Live on Railway, actively tested
+> **Last updated:** 2026-03-15 (evening)
+> **Version:** v3.3
+> **Status:** Live on Railway, pending test of new bias/perspective features
 
 ---
 
@@ -416,19 +416,75 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 
 ---
 
+## 16. Multi-Perspective / Bias-Aware Fact-Checking
+
+Added 2026-03-15. Key design goal: remove Western media bias and serve investigative journalists, activists, and Muslim/Middle Eastern communities.
+
+### SYSTEM prompt
+8 explicit principles including: Western narratives are not the default neutral; Palestinian/Arab/Muslim perspectives have equal standing; contested terminology must be named and explained; state violence held to same standard as non-state violence; international law as objective reference frame.
+
+### Source grouping by perspective
+Evidence fed to Claude is grouped into labelled categories so it can see WHERE sources agree vs disagree:
+- `FACT-CHECK ORGS` — Snopes, FullFact, PolitiFact, AFP
+- `HUMAN RIGHTS & INTL LAW` — HRW, Amnesty, B'Tselem, UN News, Bellingcat
+- `REGIONAL / MIDDLE EAST` — Al Jazeera, MEE, MEMO, 972 Magazine, Electronic Intifada, Mondoweiss, Anadolu Agency, Al-Monitor, DAWN, Arab News, Haaretz, Yeni Safak
+- `INDEPENDENT / ALTERNATIVE` — Grayzone, Intercept, Democracy Now, Novara, Canary, MintPress, Responsible Statecraft
+- `WESTERN MAINSTREAM` — BBC, Reuters, AP, Guardian, CNN, Times of Israel
+
+### New report fields
+- **PERSPECTIVES** — `🌐 Western:` / `🕌 Regional:` / `⚖️ Consensus:` — shows where sources diverge by geopolitical view
+- **CONTESTED LANGUAGE** — flags disputed terminology with all framings (e.g. "terrorist/militant/resistance fighter")
+
+### New sources (all toggleable via Railway env vars)
+- `SRC_ANADOLU` — Anadolu Agency (Turkey's main wire service)
+- `SRC_ALMONITOR` — Al-Monitor (credible Middle East analysis)
+- `SRC_DAWN` — DAWN (US foreign policy critique, Muslim-majority country focus)
+
+---
+
+## 17. Post Date & Staleness Detection
+
+Added 2026-03-15. Post date extracted from:
+- `yt-dlp` video downloads → `upload_date` field
+- Facebook/Instagram OG scrape → `article:published_time` meta tag
+- Twitter/X via fxtwitter → `created_at` field
+
+All normalised to `YYYY-MM-DD`. Stored in `pending` dict → passed to `run_check` → `claude_analyse` (temporal context in synthesis prompt for posts >30 days old) + `fmt_report` (📅 Posted label + ⚠️ staleness warning for posts >180 days old).
+
+---
+
+## 18. Outstanding Tasks
+
+### High Priority
+1. **Test multi-perspective output** — verify PERSPECTIVES + CONTESTED LANGUAGE sections with real Middle East content (test URLs in memory/project_status.md)
+2. **Stripe setup** — create Payment Links, set env vars, reset `FREE_CHECKS_LIMIT=3`
+3. **Low credit user alert** — notify user (not just admin) when free checks exhausted
+
+### Medium Priority
+4. **TikTok text overlay OCR** — switch `analyze_video_frames` to Sonnet or add pytesseract
+5. **ffmpeg on Railway** — in `nixpacks.toml` but not in PATH; video frames fail (yt-dlp audio fallback covers it)
+6. **Session 2 bias improvements** — "who benefits?" meta field, terminology neutrality post-check
+
+### Lower Priority
+7. **Messenger/Telegram** — set tokens when ready to expand
+8. **Twitter/X** — activate when ready to pay (~$100/month)
+9. **Supporting website** — standalone fact-check site as alternative channel
+10. **In-platform integrations** — FB, TikTok, Instagram native bot
+
+---
+
 ## 16. Recent Git History
 
 ```
+907f6fb  fix: split messages at line breaks, trim report to fit one WhatsApp message
+743e35a  feat: multi-perspective fact-checking — remove Western media bias
+7145008  feat: post date extraction and staleness warnings in fact-check reports
+8937dea  docs: add PROJECT.md handover document
 f8caa0a  fix: concise claim extraction — short direct assertions, no inferred context
 23a3807  fix: per-claim search queries instead of shared claims[0]
 afb8c55  fix: use Sonnet for claim extraction, max 6 claims, stricter enumeration
 889b105  fix: yt-dlp audio-only fallback when video transcription fails
-7717733  fix: retry Whisper as audio/mp4 (m4a) when video/mp4 returns 400
-8de3ccf  fix: extract audio to MP3 via ffmpeg before Whisper transcription
-6b93b46  fix: ffmpeg frame fallback without ffprobe (not in Railway PATH)
 5da8521  fix: video analysis fallback when cv2/audio both fail (FB Reels)
 900da4f  fix: detect Facebook Reels (/share/r/) as video links
 722f709  feat: extract and enumerate claims BEFORE Y confirmation
-7e2b17f  fix: add missing _try_download_url/_extract_video_url + use claim as search query
-ad7ca3c  fix: improve video claim extraction — more frames, concise prompt, larger text window
 ```
