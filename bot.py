@@ -30,7 +30,19 @@ STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
 TOPUP_5_LINK        = os.getenv("TOPUP_5_LINK", "")              # Stripe Payment Link for $5
 TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Payment Link for $10
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
-SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for $9.99/month
+SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for $9.99/month subscription
+
+# ── Multi-platform config ──────────────────────────────────────────────────────
+MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page Access Token (Messenger + Instagram DMs)
+MESSENGER_VERIFY_TOKEN = os.getenv("MESSENGER_VERIFY_TOKEN", "messenger_factcheck_verify")
+TELEGRAM_BOT_TOKEN    = os.getenv("TELEGRAM_BOT_TOKEN", "")      # Telegram bot token
+APP_BASE_URL          = os.getenv("APP_BASE_URL", "https://web-production-1f0a4.up.railway.app")
+TWITTER_CONSUMER_KEY    = os.getenv("TWITTER_CONSUMER_KEY", "")    # Twitter/X app consumer key
+TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET", "") # Twitter/X app consumer secret
+TWITTER_ACCESS_TOKEN    = os.getenv("TWITTER_ACCESS_TOKEN", "")    # Twitter/X bot access token
+TWITTER_ACCESS_SECRET   = os.getenv("TWITTER_ACCESS_SECRET", "")   # Twitter/X bot access token secret
+TWITTER_WEBHOOK_SECRET  = os.getenv("TWITTER_WEBHOOK_SECRET", "")  # Optional extra signing secret
+
 SPONSOR_ADS         = [a.strip() for a in os.getenv("SPONSOR_ADS", "").split("|") if a.strip()]
 
 # Anthropic model pricing: USD per million tokens
@@ -1106,6 +1118,127 @@ def send(to, text):
         except Exception as e:
             log.error("Send: %s", e)
 
+def send_messenger(recipient_id, text):
+    """Send a text message via Facebook Messenger/Instagram API."""
+    if not MESSENGER_PAGE_TOKEN:
+        log.warning("MESSENGER_PAGE_TOKEN not set")
+        return
+    for chunk in [text[i:i+2000] for i in range(0, len(text), 2000)]:
+        try:
+            r = requests.post(
+                "https://graph.facebook.com/v19.0/me/messages",
+                params={"access_token": MESSENGER_PAGE_TOKEN},
+                json={"recipient": {"id": recipient_id}, "message": {"text": chunk}},
+                timeout=10
+            )
+            if not r.ok:
+                log.error("Messenger send failed %s: %s", r.status_code, r.text[:200])
+        except Exception as e:
+            log.error("Messenger send error: %s", e)
+
+def send_telegram(chat_id, text):
+    """Send a message via Telegram Bot API."""
+    if not TELEGRAM_BOT_TOKEN:
+        log.warning("TELEGRAM_BOT_TOKEN not set")
+        return
+    for chunk in [text[i:i+4096] for i in range(0, len(text), 4096)]:
+        try:
+            r = requests.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                json={"chat_id": chat_id, "text": chunk, "parse_mode": "Markdown"},
+                timeout=10
+            )
+            if not r.ok:
+                # Retry without markdown if formatting caused the error
+                requests.post(
+                    f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={"chat_id": chat_id, "text": chunk},
+                    timeout=10
+                )
+        except Exception as e:
+            log.error("Telegram send error: %s", e)
+
+def _telegram_download(file_id):
+    """Download a file from Telegram by file_id. Returns bytes or None."""
+    if not TELEGRAM_BOT_TOKEN:
+        return None
+    try:
+        r = requests.get(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile",
+            params={"file_id": file_id}, timeout=10
+        )
+        r.raise_for_status()
+        file_path = r.json()["result"]["file_path"]
+        r2 = requests.get(
+            f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}",
+            timeout=30
+        )
+        r2.raise_for_status()
+        return r2.content
+    except Exception as e:
+        log.error("Telegram download failed: %s", e)
+        return None
+
+def _twitter_oauth1_header(method, url, params=None):
+    """Build OAuth 1.0a Authorization header for Twitter API requests."""
+    import urllib.parse, base64
+    oauth_params = {
+        "oauth_consumer_key": TWITTER_CONSUMER_KEY,
+        "oauth_nonce": secrets.token_hex(16),
+        "oauth_signature_method": "HMAC-SHA256",
+        "oauth_timestamp": str(int(t.time())),
+        "oauth_token": TWITTER_ACCESS_TOKEN,
+        "oauth_version": "1.0",
+    }
+    all_params = dict(oauth_params)
+    if params:
+        all_params.update(params)
+    sorted_params = "&".join(
+        f"{urllib.parse.quote(str(k), safe='')}"
+        f"={urllib.parse.quote(str(v), safe='')}"
+        for k, v in sorted(all_params.items())
+    )
+    base_string = "&".join([
+        method.upper(),
+        urllib.parse.quote(url, safe=""),
+        urllib.parse.quote(sorted_params, safe=""),
+    ])
+    signing_key = "&".join([
+        urllib.parse.quote(TWITTER_CONSUMER_SECRET, safe=""),
+        urllib.parse.quote(TWITTER_ACCESS_SECRET, safe=""),
+    ])
+    sig = hmac.new(signing_key.encode(), base_string.encode(), "sha256").digest()
+    oauth_params["oauth_signature"] = base64.b64encode(sig).decode()
+    header_value = "OAuth " + ", ".join(
+        f'{urllib.parse.quote(k, safe="")}="{urllib.parse.quote(str(v), safe="")}"'
+        for k, v in sorted(oauth_params.items())
+    )
+    return header_value
+
+
+def send_twitter_dm(recipient_id, text):
+    """Send a Direct Message via Twitter/X API v2."""
+    if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
+                TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET]):
+        log.warning("Twitter credentials not set")
+        return
+    url = f"https://api.twitter.com/2/dm_conversations/with/{recipient_id}/messages"
+    # Twitter DMs max 10000 chars; split if needed
+    for chunk in [text[i:i+10000] for i in range(0, len(text), 10000)]:
+        try:
+            auth_header = _twitter_oauth1_header("POST", url)
+            r = requests.post(
+                url,
+                headers={"Authorization": auth_header, "Content-Type": "application/json"},
+                json={"text": chunk},
+                timeout=15
+            )
+            if not r.ok:
+                log.error("Twitter DM send failed %s: %s", r.status_code, r.text[:200])
+        except Exception as e:
+            log.error("Twitter DM send error: %s", e)
+
+
 def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free"):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
@@ -1167,6 +1300,48 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
 
+def run_check_platform(platform, uid, query, st, billing_type, send_fn):
+    """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
+    _cost_reset()
+    show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
+    all_src = enabled_sources()
+    src_preview = ", ".join(all_src[:8])
+    if len(all_src) > 8: src_preview += f" +{len(all_src)-8} more"
+    send_fn(f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
+
+    if st in ("text", "audio", "url"):
+        send_fn("🔍 Identifying claims...")
+        neutral = neutralize_claim(query)
+        if neutral != query:
+            log.info("Neutralized: %s", neutral[:80])
+        query = neutral
+
+    claims = extract_claims(query) if st in ("text", "audio", "url") else [query]
+    multi = len(claims) > 1
+    if multi:
+        claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
+        send_fn(f"📋 Found {len(claims)} claims to check:\n{claim_preview}")
+
+    g = google_fc(query)
+    sc, used_sources = scrape_sites(query)
+    gfc_sources = [x["source"] for x in g if x.get("source")]
+    all_used = list(dict.fromkeys(gfc_sources + used_sources))
+
+    cost_est = estimate_cost(st)
+    for i, claim in enumerate(claims):
+        if multi:
+            send_fn(f"⚖️ Analysing claim {i+1}/{len(claims)}...")
+        a = claude_analyse(claim, g, sc, st)
+        ad = get_random_ad() if show_ad else None
+        report = fmt_report(claim, a, st, cost_est, all_used, ad=ad)
+        if multi:
+            send_fn(f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
+        else:
+            send_fn(report)
+
+    actual_cents = max(1, _cost_get())
+    _pdeduct(platform, uid, actual_cents, f"{st} fact-check", billing_type)
+
 def clean_query(q):
     lines = []
     for l in q.split("\n"):
@@ -1189,6 +1364,113 @@ def expire_pending():
             log.info(f"Expiring stale pending for {k}")
             del pending[k]
 
+# Shared pending state uses (platform, uid) as key
+# WhatsApp process() uses ("whatsapp", from_num) — updated below
+
+def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
+                              image_bytes=None, audio_bytes=None, audio_mime=None,
+                              msg_id=None, msg_time=None):
+    """
+    Platform-agnostic message handler for Messenger, Instagram, Telegram.
+    Handles Y/N confirm flow, media processing, billing gate, and dispatching run_check_platform.
+    """
+    pkey = (platform, str(uid))
+    # Dedup by message ID
+    if msg_id:
+        dedup_key = f"{platform}:{msg_id}"
+        with processed_lock:
+            if dedup_key in processed_ids: return
+            if msg_time and t.time() - msg_time > 300:
+                log.info("Stale %s message (>5 min), ignored", platform)
+                return
+            processed_ids.add(dedup_key)
+            if len(processed_ids) > MAX_PROCESSED_IDS:
+                to_keep = set(list(processed_ids)[MAX_PROCESSED_IDS//2:])
+                processed_ids.clear(); processed_ids.update(to_keep)
+
+    expire_pending()
+    body_upper = (text_body or "").strip().upper()
+    is_yn = body_upper in ("YES", "Y", "NO", "N")
+
+    with pending_lock:
+        has_p = pkey in pending
+        data = pending.get(pkey)
+
+    if has_p and is_yn:
+        if body_upper in ("YES", "Y"):
+            with pending_lock: data = pending.pop(pkey)
+            bt = _pbilling_type(platform, uid)
+            if bt == "blocked":
+                u = _puser(platform, uid)
+                _psend_payment_prompt(platform, uid, u["balance_cents"], send_fn)
+                return
+            if bt == "free":
+                u = _puser(platform, uid)
+                remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
+                send_fn(f"✓ Free check — {remaining} free check{'s' if remaining != 1 else ''} remaining after this")
+            elif bt == "paid":
+                u = _puser(platform, uid)
+                send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f}")
+            elif bt == "subscriber":
+                send_fn("✓ Subscriber — unlimited access")
+            send_fn("Starting fact-check...")
+            threading.Thread(
+                target=run_check_platform,
+                args=(platform, uid, data["query"], data["source_type"], bt, send_fn),
+                daemon=True
+            ).start()
+        elif body_upper in ("NO", "N"):
+            with pending_lock: pending.pop(pkey, None)
+            send_fn("Cancelled.")
+        return
+    elif has_p and not is_yn:
+        with pending_lock: pending.pop(pkey, None)
+
+    # ── Process content ────────────────────────────────────────────────────
+    query, source_type = "", "text"
+
+    if msg_type == "text":
+        body = (text_body or "").strip()
+        urls = [w for w in body.split() if w.startswith("http")]
+        if urls:
+            url = urls[0]
+            send_fn("🔍 Analysing post/article...")
+            page_text = fetch(url) or _og_metadata(url)
+            query = page_text or body
+            source_type = "url"
+        else:
+            query, source_type = body, "text"
+
+    elif msg_type == "image":
+        send_fn("🖼 Analysing image...")
+        if image_bytes:
+            query = clean_query(ocr_image(image_bytes))
+        source_type = "image"
+        if not query:
+            send_fn("⚠️ Could not analyse image.")
+            return
+
+    elif msg_type == "audio":
+        send_fn("🎤 Transcribing...")
+        if audio_bytes:
+            query = transcribe(audio_bytes, audio_mime or "audio/ogg")
+        source_type = "audio"
+        if not query:
+            send_fn("⚠️ Could not transcribe audio.")
+            return
+
+    if not query:
+        send_fn("⚠️ Could not extract content. Please send text or a URL.")
+        return
+
+    query = query.strip()[:2000]
+    log.info("[%s/%s] Received [%s]: %s", platform, uid, source_type, query[:100])
+    cost = estimate_cost(source_type)
+    with pending_lock:
+        pending[pkey] = {"query": query, "source_type": source_type,
+                         "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()}
+    send_fn(confirm_msg(source_type, query, cost))
+
 def process(from_num, message):
     msg_id = message.get("id",""); msg_time = int(message.get("timestamp",0))
     with processed_lock:
@@ -1199,6 +1481,7 @@ def process(from_num, message):
             to_keep = set(list(processed_ids)[MAX_PROCESSED_IDS//2:])
             processed_ids.clear(); processed_ids.update(to_keep)
     expire_pending()
+    pkey = ("whatsapp", from_num)
     msg_type = message.get("type")
     if msg_type == "video":
         send(from_num, "📹 Video detected! Starting processing...")
@@ -1206,10 +1489,10 @@ def process(from_num, message):
     if msg_type == "text":
         body = message["text"]["body"].strip(); body_upper = body.upper()
         is_yn = body_upper in ("YES","Y","NO","N") or (len(body) < 10 and body_upper in ("YES","Y","NO","N"))
-        with pending_lock: has_p = from_num in pending; data = pending.get(from_num)
+        with pending_lock: has_p = pkey in pending; data = pending.get(pkey)
         if has_p and is_yn:
             if body_upper in ("YES","Y"):
-                with pending_lock: data = pending.pop(from_num)
+                with pending_lock: data = pending.pop(pkey)
                 # ── Billing gate ───────────────────────────────────────────
                 bt = _wa_billing_type(from_num)
                 if bt == "blocked":
@@ -1231,10 +1514,10 @@ def process(from_num, message):
                                  kwargs={"billing_type": bt}, daemon=True).start()
                 return
             elif body_upper in ("NO","N"):
-                with pending_lock: pending.pop(from_num, None)
+                with pending_lock: pending.pop(pkey, None)
                 send(from_num, "Cancelled."); return
         elif has_p and not is_yn:
-            with pending_lock: pending.pop(from_num, None)
+            with pending_lock: pending.pop(pkey, None)
             log.info("New content received, clearing stale pending")
     query, source_type, image_bytes = "", "text", None
     if msg_type == "text":
@@ -1496,7 +1779,7 @@ def process(from_num, message):
     log.info("Received [%s]: %s", source_type, query[:100])
     cost = estimate_cost(source_type)
     with pending_lock:
-        pending[from_num] = {"query":query,"source_type":source_type,"image_bytes":image_bytes,"cost":cost,"timestamp":t.time()}
+        pending[pkey] = {"query":query,"source_type":source_type,"image_bytes":image_bytes,"cost":cost,"timestamp":t.time()}
     send(from_num, confirm_msg(source_type, query, cost))
 
 # ── Web API: database, auth, rate-limiting ───────────────────────────────────
@@ -1550,12 +1833,34 @@ def init_db():
                 stripe_session_id TEXT,
                 created_at INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS platform_users (
+                platform TEXT NOT NULL,
+                platform_id TEXT NOT NULL,
+                free_checks_used INTEGER NOT NULL DEFAULT 0,
+                balance_cents INTEGER NOT NULL DEFAULT 0,
+                tier TEXT NOT NULL DEFAULT 'free',
+                stripe_customer_id TEXT,
+                created_at INTEGER NOT NULL,
+                last_seen INTEGER NOT NULL,
+                PRIMARY KEY (platform, platform_id)
+            );
         """)
         # Migrations for existing deployments
         for col, defn in [("balance_cents","INTEGER NOT NULL DEFAULT 0"),
                           ("stripe_customer_id","TEXT")]:
             try: c.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
             except Exception: pass
+        # Migrate existing wa_users into platform_users
+        try:
+            rows = c.execute("SELECT * FROM wa_users").fetchall()
+            for r in rows:
+                c.execute("""INSERT OR IGNORE INTO platform_users
+                    (platform, platform_id, free_checks_used, balance_cents, tier, stripe_customer_id, created_at, last_seen)
+                    VALUES ('whatsapp', ?, ?, ?, ?, ?, ?, ?)""",
+                    (r["wa_id"], r["free_checks_used"], r["balance_cents"], r["tier"],
+                     r["stripe_customer_id"], r["created_at"], r["last_seen"]))
+        except Exception:
+            pass
     log.info("DB initialised at %s", DB_PATH)
 
 init_db()
@@ -1563,64 +1868,82 @@ init_db()
 # ── WhatsApp user billing ─────────────────────────────────────────────────────
 
 def _wa_user(wa_id):
-    """Get or create WhatsApp user record. Returns dict."""
-    now = int(t.time())
-    with _db() as c:
-        row = c.execute("SELECT * FROM wa_users WHERE wa_id=?", (wa_id,)).fetchone()
-        if not row:
-            c.execute("INSERT INTO wa_users (wa_id, created_at, last_seen) VALUES (?,?,?)",
-                      (wa_id, now, now))
-            row = c.execute("SELECT * FROM wa_users WHERE wa_id=?", (wa_id,)).fetchone()
-        else:
-            c.execute("UPDATE wa_users SET last_seen=? WHERE wa_id=?", (now, wa_id))
-    return dict(row)
+    return _puser("whatsapp", wa_id)
 
 def _wa_billing_type(wa_id):
+    return _pbilling_type("whatsapp", wa_id)
+
+def _wa_deduct(wa_id, cents, description, billing_type):
+    _pdeduct("whatsapp", wa_id, cents, description, billing_type)
+
+def _wa_credit(wa_id, cents, description, stripe_session_id=None):
+    _pcredit("whatsapp", wa_id, cents, description, stripe_session_id)
+
+def _send_payment_prompt(wa_id, balance_cents):
+    _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
+
+def get_random_ad():
+    """Return a random sponsor ad line, or empty string."""
+    return random.choice(SPONSOR_ADS) if SPONSOR_ADS else ""
+
+# ── Generalized platform billing ──────────────────────────────────────────────
+
+def _puser(platform, uid):
+    """Get or create platform user record. Returns dict."""
+    now = int(t.time())
+    uid = str(uid)
+    with _db() as c:
+        row = c.execute("SELECT * FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
+        if not row:
+            c.execute("INSERT INTO platform_users (platform, platform_id, created_at, last_seen) VALUES (?,?,?,?)",
+                      (platform, uid, now, now))
+            row = c.execute("SELECT * FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
+        else:
+            c.execute("UPDATE platform_users SET last_seen=? WHERE platform=? AND platform_id=?", (now, platform, uid))
+    return dict(row)
+
+def _pbilling_type(platform, uid):
     """Returns 'subscriber' | 'free' | 'paid' | 'blocked'."""
-    u = _wa_user(wa_id)
+    u = _puser(platform, uid)
     if u["tier"] == "subscriber": return "subscriber"
     if u["free_checks_used"] < FREE_CHECKS_LIMIT: return "free"
     if u["balance_cents"] > 0: return "paid"
     return "blocked"
 
-def _wa_deduct(wa_id, cents, description, billing_type):
-    """Record usage and deduct balance for paid checks."""
+def _pdeduct(platform, uid, cents, description, billing_type):
+    """Record usage and deduct balance."""
+    uid = str(uid)
     now = int(t.time())
-    if billing_type == "free":
+    txn_type = billing_type if billing_type in ("free", "subscriber") else "debit"
+    if billing_type == "paid":
         with _db() as c:
-            c.execute("UPDATE wa_users SET free_checks_used = free_checks_used + 1 WHERE wa_id=?", (wa_id,))
-            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES ('wa',?,'free',?,?,?)",
-                      (wa_id, cents, description, now))
-    elif billing_type == "paid":
+            c.execute("UPDATE platform_users SET balance_cents = MAX(0, balance_cents - ?) WHERE platform=? AND platform_id=?", (cents, platform, uid))
+    elif billing_type == "free":
         with _db() as c:
-            c.execute("UPDATE wa_users SET balance_cents = MAX(0, balance_cents - ?) WHERE wa_id=?", (cents, wa_id))
-            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES ('wa',?,'debit',?,?,?)",
-                      (wa_id, cents, description, now))
-        log.info("Billed WA %s: %d¢ — %s", wa_id, cents, description)
-    elif billing_type == "subscriber":
-        with _db() as c:
-            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES ('wa',?,'subscriber',?,?,?)",
-                      (wa_id, cents, description, now))
-
-def _wa_credit(wa_id, cents, description, stripe_session_id=None):
-    """Credit a WhatsApp user's balance (called from Stripe webhook)."""
+            c.execute("UPDATE platform_users SET free_checks_used = free_checks_used + 1 WHERE platform=? AND platform_id=?", (platform, uid))
     with _db() as c:
-        c.execute("UPDATE wa_users SET balance_cents = balance_cents + ? WHERE wa_id=?", (cents, wa_id))
-        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('wa',?,'credit',?,?,?,?)",
-                  (wa_id, cents, description, stripe_session_id, int(t.time())))
-    log.info("Credited WA %s: %d¢ — %s", wa_id, cents, description)
+        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES (?,?,?,?,?,?)",
+                  (platform, uid, txn_type, cents, description, now))
+    log.info("Billing %s/%s: type=%s cost=%d¢", platform, uid, billing_type, cents)
 
-def _send_payment_prompt(wa_id, balance_cents):
-    """Send Stripe payment links to a WhatsApp user who has run out of credit."""
-    cid = f"wa_{wa_id}"
+def _pcredit(platform, uid, cents, description, stripe_session_id=None):
+    """Credit a platform user's balance."""
+    uid = str(uid)
+    with _db() as c:
+        c.execute("UPDATE platform_users SET balance_cents = balance_cents + ? WHERE platform=? AND platform_id=?", (cents, platform, uid))
+        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES (?,?,?,?,?,?,?)",
+                  (platform, uid, "credit", cents, description, stripe_session_id, int(t.time())))
+    log.info("Credited %s/%s: %d¢", platform, uid, cents)
+
+def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
+    """Send Stripe payment links via any platform's send_fn."""
+    cid = f"{platform[:4]}_{uid}"
     suffix = f"?client_reference_id={cid}"
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
     lines = [
-        "💳 *FactCheck Pro — Top Up Required*",
-        "",
+        "💳 *FactCheck Pro — Top Up Required*", "",
         f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.",
-        f"Current balance: *${balance_cents/100:.2f}*",
-        "",
+        f"Current balance: *${balance_cents/100:.2f}*", "",
         "*Choose a top-up amount:*",
     ]
     if TOPUP_5_LINK:  lines.append(f"• *$5*  (~60–100 checks) → {TOPUP_5_LINK}{suffix}")
@@ -1629,13 +1952,9 @@ def _send_payment_prompt(wa_id, balance_cents):
     if SUB_LINK:
         lines += ["", f"*♾ Unlimited* — $9.99/month → {SUB_LINK}{suffix}"]
     if not any([TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
-        lines += ["", "_Payment system coming soon. Please check back later._"]
+        lines += ["", "_Payment system coming soon._"]
     lines += ["", "_Secure payment by Stripe_"]
-    send(wa_id, "\n".join(lines))
-
-def get_random_ad():
-    """Return a random sponsor ad line, or empty string."""
-    return random.choice(SPONSOR_ADS) if SPONSOR_ADS else ""
+    send_fn("\n".join(lines))
 
 # ── Stripe webhook helpers ────────────────────────────────────────────────────
 
@@ -1884,38 +2203,60 @@ def stripe_webhook():
             session_id = obj.get("id", "")
             customer_id = obj.get("customer", "")
 
-            if cid.startswith("wa_"):
-                # WhatsApp user
-                wa_id = cid[3:]
-                _wa_user(wa_id)  # ensure record exists
+            # Parse platform prefix: wa_/msgr_/inst_/tg_/tw_/web_
+            platform_map = {"wa": "whatsapp", "msgr": "messenger", "inst": "instagram",
+                            "tg": "telegram", "tw": "twitter", "web": "web"}
+            platform, uid = None, None
+            for prefix, pname in platform_map.items():
+                if cid.startswith(f"{prefix}_"):
+                    platform = pname
+                    uid = cid[len(prefix)+1:]
+                    break
+
+            if platform and uid and platform != "web":
+                # Messenger/Telegram/WhatsApp user
+                _puser(platform, uid)  # ensure record exists
                 if mode == "payment":
-                    _wa_credit(wa_id, amount, f"Top-up ${amount/100:.2f}", session_id)
-                    send(wa_id, f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact-checking. Send any claim to get started.")
+                    _pcredit(platform, uid, amount, f"Top-up ${amount/100:.2f}", session_id)
+                    platform_send = {
+                        "whatsapp": lambda t, u=uid: send(u, t),
+                        "messenger": lambda t, u=uid: send_messenger(u, t),
+                        "instagram": lambda t, u=uid: send_messenger(u, t),
+                        "telegram": lambda t, u=uid: send_telegram(u, t),
+                        "twitter": lambda t, u=uid: send_twitter_dm(u, t),
+                    }.get(platform, lambda t: None)
+                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact-checking. Send any claim to get started.")
                 elif mode == "subscription":
                     with _db() as c:
-                        c.execute("UPDATE wa_users SET tier='subscriber', stripe_customer_id=? WHERE wa_id=?", (customer_id, wa_id))
-                        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('wa',?,'credit',?,?,?,?)",
-                                  (wa_id, amount, "Subscription activated", session_id, int(t.time())))
-                    send(wa_id, "🎉 *Subscription activated!* You now have unlimited FactCheck Pro access. Send any claim to get started.")
-                    log.info("Subscription activated for WA %s", wa_id)
+                        c.execute("UPDATE platform_users SET tier='subscriber', stripe_customer_id=? WHERE platform=? AND platform_id=?", (customer_id, platform, uid))
+                        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES (?,?,'credit',?,?,?,?)",
+                                  (platform, uid, amount, "Subscription activated", session_id, int(t.time())))
+                    platform_send = {
+                        "whatsapp": lambda t, u=uid: send(u, t),
+                        "messenger": lambda t, u=uid: send_messenger(u, t),
+                        "instagram": lambda t, u=uid: send_messenger(u, t),
+                        "telegram": lambda t, u=uid: send_telegram(u, t),
+                        "twitter": lambda t, u=uid: send_twitter_dm(u, t),
+                    }.get(platform, lambda t: None)
+                    platform_send("🎉 *Subscription activated!* You now have unlimited FactCheck Pro access.")
+                    log.info("Subscription activated for %s/%s", platform, uid)
 
-            elif cid.startswith("web_"):
-                # Web user
+            elif platform == "web" and uid:
                 try:
-                    uid = int(cid[4:])
+                    web_uid = int(uid)
                     if mode == "payment":
                         with _db() as c:
                             c.execute("UPDATE users SET balance_cents = balance_cents + ?, stripe_customer_id=COALESCE(stripe_customer_id,?) WHERE id=?",
-                                      (amount, customer_id, uid))
+                                      (amount, customer_id, web_uid))
                             c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('web',?,'credit',?,?,?,?)",
-                                      (str(uid), amount, f"Top-up ${amount/100:.2f}", session_id, int(t.time())))
-                        log.info("Web user %d credited: %d¢", uid, amount)
+                                      (str(web_uid), amount, f"Top-up ${amount/100:.2f}", session_id, int(t.time())))
+                        log.info("Web user %d credited: %d¢", web_uid, amount)
                     elif mode == "subscription":
                         with _db() as c:
-                            c.execute("UPDATE users SET tier='subscriber', stripe_customer_id=? WHERE id=?", (customer_id, uid))
+                            c.execute("UPDATE users SET tier='subscriber', stripe_customer_id=? WHERE id=?", (customer_id, web_uid))
                             c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('web',?,'credit',?,?,?,?)",
-                                      (str(uid), amount, "Subscription activated", session_id, int(t.time())))
-                        log.info("Web user %d subscribed", uid)
+                                      (str(web_uid), amount, "Subscription activated", session_id, int(t.time())))
+                        log.info("Web user %d subscribed", web_uid)
                 except (ValueError, Exception) as e:
                     log.error("Web top-up webhook error: %s", e)
 
@@ -1923,6 +2264,7 @@ def stripe_webhook():
             customer_id = obj.get("customer", "")
             if customer_id:
                 with _db() as c:
+                    c.execute("UPDATE platform_users SET tier='free' WHERE stripe_customer_id=?", (customer_id,))
                     c.execute("UPDATE wa_users SET tier='free' WHERE stripe_customer_id=?", (customer_id,))
                     c.execute("UPDATE users SET tier='free' WHERE stripe_customer_id=?", (customer_id,))
                 log.info("Subscription cancelled for customer %s", customer_id)
@@ -1932,9 +2274,292 @@ def stripe_webhook():
         log.error("Stripe webhook error: %s", e)
         return jsonify({"error": str(e)}), 500
 
+# ── Facebook Messenger + Instagram DMs webhooks ───────────────────────────────
+
+@app.route("/webhook/messenger", methods=["GET"])
+def messenger_verify():
+    if (request.args.get("hub.mode") == "subscribe" and
+            request.args.get("hub.verify_token") == MESSENGER_VERIFY_TOKEN):
+        return request.args.get("hub.challenge"), 200
+    return "Forbidden", 403
+
+@app.route("/webhook/messenger", methods=["POST"])
+def messenger_receive():
+    data = request.get_json()
+    try:
+        for entry in data.get("entry", []):
+            for event in entry.get("messaging", []):
+                sender_id = event.get("sender", {}).get("id", "")
+                if not sender_id:
+                    continue
+                msg = event.get("message", {})
+                if msg.get("is_echo"):
+                    continue  # skip our own messages
+                # Determine platform (Instagram vs Messenger by entry app)
+                platform = "instagram" if entry.get("id", "").startswith("17") else "messenger"
+                send_fn = lambda text, sid=sender_id: send_messenger(sid, text)
+                msg_id = msg.get("mid", "")
+                msg_time = int(event.get("timestamp", 0)) // 1000
+
+                attachments = msg.get("attachments", [])
+                if attachments:
+                    att = attachments[0]
+                    att_type = att.get("type", "")
+                    payload = att.get("payload", {})
+                    if att_type == "image":
+                        img_url = payload.get("url", "")
+                        img_bytes = None
+                        if img_url:
+                            try:
+                                r = requests.get(img_url, timeout=15,
+                                    headers={"User-Agent": "Mozilla/5.0"})
+                                if r.ok and len(r.content) > 500:
+                                    img_bytes = r.content
+                            except Exception as e:
+                                log.error("Messenger image download: %s", e)
+                        threading.Thread(
+                            target=_handle_platform_message,
+                            args=(platform, sender_id, "image", None, send_fn),
+                            kwargs={"image_bytes": img_bytes, "msg_id": msg_id, "msg_time": msg_time},
+                            daemon=True
+                        ).start()
+                    elif att_type == "audio":
+                        audio_url = payload.get("url", "")
+                        audio_bytes = None
+                        if audio_url:
+                            try:
+                                r = requests.get(audio_url, timeout=30,
+                                    headers={"User-Agent": "Mozilla/5.0"})
+                                if r.ok:
+                                    audio_bytes = r.content
+                            except Exception as e:
+                                log.error("Messenger audio download: %s", e)
+                        threading.Thread(
+                            target=_handle_platform_message,
+                            args=(platform, sender_id, "audio", None, send_fn),
+                            kwargs={"audio_bytes": audio_bytes, "audio_mime": "audio/mpeg",
+                                    "msg_id": msg_id, "msg_time": msg_time},
+                            daemon=True
+                        ).start()
+                    else:
+                        send_fn("⚠️ Unsupported attachment. Send text, image, voice note, or URL.")
+                elif msg.get("text"):
+                    threading.Thread(
+                        target=_handle_platform_message,
+                        args=(platform, sender_id, "text", msg["text"], send_fn),
+                        kwargs={"msg_id": msg_id, "msg_time": msg_time},
+                        daemon=True
+                    ).start()
+    except Exception as e:
+        log.error("Messenger webhook error: %s", e)
+    return jsonify({"status": "ok"}), 200
+
+
+# ── Telegram webhook ──────────────────────────────────────────────────────────
+
+@app.route("/webhook/telegram", methods=["POST"])
+def telegram_receive():
+    data = request.get_json()
+    try:
+        msg = data.get("message") or data.get("edited_message")
+        if not msg:
+            return jsonify({"status": "ok"}), 200
+        chat_id = str(msg["chat"]["id"])
+        msg_id = str(msg.get("message_id", ""))
+        msg_time = int(msg.get("date", 0))
+        send_fn = lambda text, cid=chat_id: send_telegram(cid, text)
+
+        if "text" in msg:
+            threading.Thread(
+                target=_handle_platform_message,
+                args=("telegram", chat_id, "text", msg["text"], send_fn),
+                kwargs={"msg_id": msg_id, "msg_time": msg_time},
+                daemon=True
+            ).start()
+
+        elif "photo" in msg:
+            # Telegram sends multiple sizes; take the largest
+            file_id = msg["photo"][-1]["file_id"]
+            caption = msg.get("caption", "")
+            def _tg_image(cid=chat_id, fid=file_id, cap=caption, sfn=send_fn, mid=msg_id, mt=msg_time):
+                sfn("🖼 Analysing image...")
+                img_bytes = _telegram_download(fid)
+                _handle_platform_message("telegram", cid, "image", cap or None, sfn,
+                                         image_bytes=img_bytes, msg_id=mid, msg_time=mt)
+            threading.Thread(target=_tg_image, daemon=True).start()
+
+        elif "voice" in msg or "audio" in msg:
+            media = msg.get("voice") or msg.get("audio")
+            file_id = media["file_id"]
+            mime = media.get("mime_type", "audio/ogg")
+            def _tg_audio(cid=chat_id, fid=file_id, m=mime, sfn=send_fn, mid=msg_id, mt=msg_time):
+                sfn("🎤 Transcribing...")
+                audio_bytes = _telegram_download(fid)
+                _handle_platform_message("telegram", cid, "audio", None, sfn,
+                                         audio_bytes=audio_bytes, audio_mime=m,
+                                         msg_id=mid, msg_time=mt)
+            threading.Thread(target=_tg_audio, daemon=True).start()
+
+        elif "document" in msg:
+            # Treat documents as text if small enough
+            doc = msg["document"]
+            caption = msg.get("caption", "")
+            if doc.get("mime_type", "").startswith("text/") and doc.get("file_size", 0) < 50000:
+                def _tg_doc(cid=chat_id, fid=doc["file_id"], cap=caption, sfn=send_fn, mid=msg_id, mt=msg_time):
+                    raw = _telegram_download(fid)
+                    text = raw.decode("utf-8", errors="ignore")[:2000] if raw else cap
+                    _handle_platform_message("telegram", cid, "text", text or cap, sfn,
+                                             msg_id=mid, msg_time=mt)
+                threading.Thread(target=_tg_doc, daemon=True).start()
+            else:
+                send_fn("⚠️ Please send text, image, voice note, or URL to fact-check.")
+        else:
+            send_fn("⚠️ Send a text claim, image, voice note, or URL to get started.")
+
+    except Exception as e:
+        log.error("Telegram webhook error: %s", e)
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route("/api/setup-telegram-webhook", methods=["POST"])
+def setup_telegram_webhook():
+    """Register the Telegram webhook URL. Call once after deployment."""
+    if not TELEGRAM_BOT_TOKEN:
+        return jsonify({"error": "TELEGRAM_BOT_TOKEN not set"}), 400
+    webhook_url = f"{APP_BASE_URL}/webhook/telegram"
+    try:
+        r = requests.post(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/setWebhook",
+            json={"url": webhook_url, "allowed_updates": ["message", "edited_message"]},
+            timeout=15
+        )
+        r.raise_for_status()
+        return jsonify({"status": "ok", "webhook_url": webhook_url, "response": r.json()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/webhook/twitter", methods=["GET"])
+def twitter_crc():
+    """Twitter Account Activity API CRC challenge-response check."""
+    crc_token = request.args.get("crc_token", "")
+    if not crc_token:
+        return "Missing crc_token", 400
+    # Sign with consumer secret
+    secret = TWITTER_CONSUMER_SECRET.encode() if TWITTER_CONSUMER_SECRET else b""
+    sig = hmac.new(secret, crc_token.encode(), "sha256").digest()
+    import base64
+    response_token = "sha256=" + base64.b64encode(sig).decode()
+    return jsonify({"response_token": response_token})
+
+
+@app.route("/webhook/twitter", methods=["POST"])
+def twitter_receive():
+    """Twitter Account Activity API — receive DM events."""
+    # Optional: verify Twitter signature header
+    sig_header = request.headers.get("X-Twitter-Webhooks-Signature", "")
+    if TWITTER_CONSUMER_SECRET and sig_header:
+        import base64
+        expected = "sha256=" + base64.b64encode(
+            hmac.new(TWITTER_CONSUMER_SECRET.encode(), request.data, "sha256").digest()
+        ).decode()
+        if not hmac.compare_digest(sig_header, expected):
+            log.warning("Twitter webhook signature mismatch")
+            return "Forbidden", 403
+
+    data = request.get_json(force=True) or {}
+    try:
+        for dm_event in data.get("direct_message_events", []):
+            event_type = dm_event.get("type", "")
+            if event_type != "message_create":
+                continue
+            msg_create = dm_event.get("message_create", {})
+            sender_id = msg_create.get("sender_id", "")
+
+            # Ignore messages sent by the bot itself
+            if TWITTER_ACCESS_TOKEN and sender_id == TWITTER_ACCESS_TOKEN.split("-")[0]:
+                continue
+
+            msg_data = msg_create.get("message_data", {})
+            text = msg_data.get("text", "").strip()
+            attachment = msg_data.get("attachment", {})
+            msg_id = dm_event.get("id", "")
+            msg_time = int(dm_event.get("created_timestamp", 0)) // 1000
+
+            send_fn = lambda txt, sid=sender_id: send_twitter_dm(sid, txt)
+
+            if attachment.get("type") == "media":
+                media = attachment.get("media", {})
+                media_url = media.get("media_url_https", "") or media.get("media_url", "")
+                media_type = media.get("type", "photo")
+                if media_type == "photo" and media_url:
+                    def _tw_image(sid=sender_id, url=media_url, cap=text, sfn=send_fn,
+                                  mid=msg_id, mt=msg_time):
+                        sfn("🖼 Analysing image...")
+                        try:
+                            img_resp = requests.get(url, timeout=30)
+                            img_resp.raise_for_status()
+                            img_bytes = img_resp.content
+                        except Exception as e:
+                            log.error("Twitter image download failed: %s", e)
+                            img_bytes = None
+                        _handle_platform_message("twitter", sid, "image", cap or None, sfn,
+                                                 image_bytes=img_bytes, msg_id=mid, msg_time=mt)
+                    threading.Thread(target=_tw_image, daemon=True).start()
+                else:
+                    # Video or animated GIF — pass URL as text claim
+                    threading.Thread(
+                        target=_handle_platform_message,
+                        args=("twitter", sender_id, "text",
+                              media_url or text or "(media)", send_fn),
+                        kwargs={"msg_id": msg_id, "msg_time": msg_time},
+                        daemon=True
+                    ).start()
+            elif text:
+                threading.Thread(
+                    target=_handle_platform_message,
+                    args=("twitter", sender_id, "text", text, send_fn),
+                    kwargs={"msg_id": msg_id, "msg_time": msg_time},
+                    daemon=True
+                ).start()
+
+    except Exception as e:
+        log.error("Twitter webhook error: %s", e)
+    return jsonify({"status": "ok"}), 200
+
+
+@app.route("/api/setup-twitter-webhook", methods=["POST"])
+def setup_twitter_webhook():
+    """Register the Twitter/X Account Activity API webhook. Call once after deployment."""
+    if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
+                TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET]):
+        return jsonify({"error": "Twitter credentials not set"}), 400
+    webhook_url = f"{APP_BASE_URL}/webhook/twitter"
+    url = "https://api.twitter.com/2/account_activity/webhooks"
+    try:
+        auth_header = _twitter_oauth1_header("POST", url)
+        r = requests.post(
+            url,
+            headers={"Authorization": auth_header, "Content-Type": "application/json"},
+            json={"url": webhook_url},
+            timeout=15
+        )
+        if not r.ok:
+            return jsonify({"error": r.text[:500], "status": r.status_code}), 400
+        return jsonify({"status": "ok", "webhook_url": webhook_url, "response": r.json()})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/", methods=["GET"])
 def health():
-    return jsonify({"status":"running","version":"v3.2","keys":{"whatsapp":bool(WHATSAPP_TOKEN),"google_fc":bool(GOOGLE_API_KEY),"anthropic":bool(ANTHROPIC_KEY),"openai":bool(OPENAI_API_KEY),"rapidapi":bool(RAPIDAPI_KEY)}}), 200
+    return jsonify({"status":"running","version":"v3.2","keys":{
+        "whatsapp":bool(WHATSAPP_TOKEN),"google_fc":bool(GOOGLE_API_KEY),
+        "anthropic":bool(ANTHROPIC_KEY),"openai":bool(OPENAI_API_KEY),
+        "rapidapi":bool(RAPIDAPI_KEY),"messenger":bool(MESSENGER_PAGE_TOKEN),
+        "telegram":bool(TELEGRAM_BOT_TOKEN),"stripe":bool(STRIPE_SECRET_KEY),
+        "twitter":bool(TWITTER_CONSUMER_KEY)
+    }}), 200
 
 @app.route("/webhook", methods=["GET"])
 def verify():
