@@ -1818,7 +1818,7 @@ def process(from_num, message):
             url = urls[0]
             # Video platforms — but only treat FB/IG as video if URL pattern suggests it
             video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","rumble.com","bitchute.com","t.me","fb.watch"]
-            video_path_hints = ["watch", "video", "reel", "shorts", "clip", "live", "/share/v/"]
+            video_path_hints = ["watch", "video", "reel", "shorts", "clip", "live", "/share/v/", "/share/r/"]
             is_fb_ig = any(d in url for d in ["facebook.com","instagram.com"])
             is_video_link = (
                 any(d in url for d in video_domains) or
