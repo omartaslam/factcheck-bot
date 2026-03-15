@@ -421,27 +421,81 @@ def transcribe(b, mime):
         return transcript
     except Exception as e: log.error(f"Claude transcribe failed: {e}"); return ""
 
+_PLATFORM_TITLES = {"facebook", "instagram", "tiktok", "youtube", "twitter", "x", "reels", "reel", "video"}
+
+def _is_useless_title(title):
+    """Return True if the title is just a platform name and carries no information."""
+    return not title or title.strip().lower() in _PLATFORM_TITLES
+
 def extract_video_frames(video_bytes, num_frames=2):
+    """Extract frames with cv2; fall back to ffmpeg if cv2 reports 0 frames."""
+    import subprocess
+    video_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
             f.write(video_bytes); video_path = f.name
+
+        # ── Try cv2 first ────────────────────────────────────────────────
         cap = cv2.VideoCapture(video_path)
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         fps = cap.get(cv2.CAP_PROP_FPS)
         duration = total_frames / fps if fps > 0 else 0
-        frame_indices = [int(total_frames * i / num_frames) for i in range(num_frames)]
         frames = []
-        for idx in frame_indices:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, idx); ret, frame = cap.read()
-            if ret:
-                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                img = Image.fromarray(frame_rgb)
-                buffer = io.BytesIO(); img.save(buffer, format="JPEG", quality=70)
-                frames.append(buffer.getvalue())
-        cap.release(); os.unlink(video_path)
+        if total_frames > 0:
+            frame_indices = [int(total_frames * i / num_frames) for i in range(num_frames)]
+            for idx in frame_indices:
+                cap.set(cv2.CAP_PROP_POS_FRAMES, idx); ret, frame = cap.read()
+                if ret:
+                    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    img = Image.fromarray(frame_rgb)
+                    buf = io.BytesIO(); img.save(buf, format="JPEG", quality=70)
+                    frames.append(buf.getvalue())
+        cap.release()
+
+        # ── ffmpeg fallback if cv2 got nothing ───────────────────────────
+        if not frames:
+            log.info("cv2 got 0 frames — trying ffmpeg fallback")
+            try:
+                # Get duration via ffprobe
+                probe = subprocess.run(
+                    ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_streams", video_path],
+                    capture_output=True, text=True, timeout=15)
+                dur = 0.0
+                if probe.returncode == 0:
+                    import json as _json
+                    for s in _json.loads(probe.stdout).get("streams", []):
+                        try: dur = float(s.get("duration", 0)); break
+                        except: pass
+                duration = dur or 30.0  # assume 30s if unknown
+                # Extract frames at evenly spaced times
+                offsets = [duration * i / num_frames for i in range(num_frames)]
+                for offset in offsets:
+                    with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as tf:
+                        out_path = tf.name
+                    r = subprocess.run(
+                        ["ffmpeg", "-ss", str(offset), "-i", video_path,
+                         "-frames:v", "1", "-q:v", "3", "-y", out_path],
+                        capture_output=True, timeout=20)
+                    if r.returncode == 0 and os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                        with open(out_path, "rb") as img_f:
+                            frames.append(img_f.read())
+                    try: os.unlink(out_path)
+                    except: pass
+                if frames:
+                    log.info(f"ffmpeg extracted {len(frames)} frames (duration: {duration:.1f}s)")
+            except Exception as fe:
+                log.error("ffmpeg frame fallback: %s", fe)
+
+        if video_path and os.path.exists(video_path):
+            os.unlink(video_path)
         log.info(f"Extracted {len(frames)} frames (duration: {duration:.1f}s)")
         return frames, duration
-    except Exception as e: log.error("Frame extraction: %s", e); return [], 0
+    except Exception as e:
+        if video_path and os.path.exists(video_path):
+            try: os.unlink(video_path)
+            except: pass
+        log.error("Frame extraction: %s", e)
+        return [], 0
 
 def analyze_video_frames(frames):
     try:
@@ -1831,7 +1885,9 @@ def process(from_num, message):
                     if video_bytes:
                         send(from_num, f"✓ Downloaded ({len(video_bytes)//1024}KB)")
                         parts = []
-                        if metadata: parts.append(f"Video: {metadata}")
+                        # Only add title if it's not just the platform name
+                        if metadata and not _is_useless_title(metadata):
+                            parts.append(f"Video: {metadata}")
                         send(from_num, "🎞️ Analysing video frames...")
                         try:
                             frames, duration = extract_video_frames(video_bytes, num_frames=5)
@@ -1840,6 +1896,8 @@ def process(from_num, message):
                                 if visual:
                                     parts.append(f"Visual analysis:\n{visual}")
                                     log.info(f"URL video frame analysis: {len(visual)} chars")
+                            else:
+                                log.warning("URL video: 0 frames extracted (cv2+ffmpeg both failed)")
                         except Exception as e:
                             log.error(f"URL video frame analysis: {e}")
                         send(from_num, "🎧 Transcribing audio...")
@@ -1849,13 +1907,23 @@ def process(from_num, message):
                                 parts.append(f"Audio: {transcript}")
                                 send(from_num, "✓ Got transcript")
                             else:
-                                send(from_num, "⚠️ No speech detected or audio transcription unavailable")
                                 log.warning("URL video: transcribe() returned empty")
                         except Exception as e:
-                            send(from_num, f"⚠️ Transcription failed: {str(e)[:100]}")
                             log.error(f"URL video transcription: {e}")
-                        query = "\n\n".join(parts) if parts else f"Video URL: {url}"
-                        source_type = "video"
+                        # If we got nothing useful from the video, fall back to OG post scrape
+                        if not parts and is_fb_ig:
+                            send(from_num, "⚠️ Could not analyse video content — extracting post text instead...")
+                            fb_og = _fb_ig_post_scrape(url)
+                            if fb_og.get("description"):
+                                parts.append(f"Post text: {fb_og['description'][:1200]}")
+                            if fb_og.get("title") and not _is_useless_title(fb_og.get("title", "")):
+                                parts.append(f"Title: {fb_og['title']}")
+                        if parts:
+                            query = "\n\n".join(parts)
+                            source_type = "video" if any("Visual analysis" in p or "Audio:" in p for p in parts) else "url"
+                        else:
+                            send(from_num, "❌ Could not extract any content from this video. Please paste the claim as text or send a screenshot.")
+                            return
                     elif metadata:
                         send(from_num, "⚠️ Video download not available for this platform — analysing post text instead...")
                         query = f"Social media post: {metadata}\n\nURL: {url}"
