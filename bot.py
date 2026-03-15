@@ -906,7 +906,8 @@ def process(from_num, message):
                                         if not m:
                                             m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html_r.text, re.I)
                                         if m:
-                                            og_img_url = m.group(1).strip()
+                                            import html as _html
+                                            og_img_url = _html.unescape(m.group(1).strip())
                                             if og_img_url and og_img_url.startswith("http"):
                                                 thumbnails.insert(0, {"url": og_img_url})
                                                 log.info(f"og:image prepended: {og_img_url[:80]}")
