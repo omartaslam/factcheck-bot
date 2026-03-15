@@ -228,17 +228,37 @@ def download_media(mid):
         return r2.content
     except Exception as e: log.error(f"Media download failed: {e}"); return None
 
+OCR_PROMPT = "Extract ALL text verbatim from this image. Then in 2 sentences describe what it depicts. Note any signs of manipulation."
+
 def ocr_image(b):
-    try:
-        b64 = base64.b64encode(b).decode()
-        r = requests.post("https://api.anthropic.com/v1/messages",
-            headers={"x-api-key": ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
-            json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,"messages":[{"role":"user","content":[
-                {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}},
-                {"type":"text","text":"Extract ALL text verbatim from this image. Then in 2 sentences describe what it depicts. Note any signs of manipulation."}
-            ]}]}, timeout=30)
-        r.raise_for_status(); return r.json()["content"][0]["text"].strip()
-    except Exception as e: log.error("OCR: %s", e); return ""
+    b64 = base64.b64encode(b).decode()
+    # Try Claude first
+    if ANTHROPIC_KEY:
+        try:
+            r = requests.post("https://api.anthropic.com/v1/messages",
+                headers={"x-api-key": ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
+                json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,"messages":[{"role":"user","content":[
+                    {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}},
+                    {"type":"text","text":OCR_PROMPT}
+                ]}]}, timeout=30)
+            r.raise_for_status()
+            return r.json()["content"][0]["text"].strip()
+        except Exception as e:
+            log.warning("OCR Claude failed (%s), trying OpenAI...", e)
+    # Fallback: OpenAI gpt-4o-mini vision
+    if OPENAI_API_KEY:
+        try:
+            r = requests.post("https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "gpt-4o-mini", "max_tokens": 1500, "messages": [{"role": "user", "content": [
+                    {"type": "text", "text": OCR_PROMPT},
+                    {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
+                ]}]}, timeout=30)
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"].strip()
+        except Exception as e:
+            log.error("OCR OpenAI failed: %s", e)
+    return ""
 
 def transcribe(b, mime):
     log.info(f"Transcribing {len(b)} bytes, mime: {mime}")
@@ -460,7 +480,7 @@ def _ytdlp_download(url):
             except: pass
 
 def _og_metadata(url):
-    """Last resort: extract Open Graph tags (title, description) from the page."""
+    """Last resort: extract Open Graph tags (title, description, image OCR) from the page."""
     try:
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12)
         r.raise_for_status(); html = r.text; parts = []
@@ -469,6 +489,24 @@ def _og_metadata(url):
             if not m:
                 m = re.search(rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']?{re.escape(prop)}["\']?', html, re.I)
             if m: parts.append(m.group(1).strip())
+        # Also try og:image OCR to capture thumbnail headline text
+        import html as _html3
+        for pat in [r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']',
+                    r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']']:
+            m = re.search(pat, html, re.I)
+            if m:
+                og_img = _html3.unescape(m.group(1).strip())
+                if og_img.startswith("http"):
+                    try:
+                        img_r = requests.get(og_img, timeout=10, headers={"User-Agent":"Mozilla/5.0"})
+                        if img_r.ok and len(img_r.content) > 500:
+                            ocr = ocr_image(img_r.content)
+                            if ocr and len(ocr) > 20:
+                                parts.append(f"Image text: {ocr[:300]}")
+                                log.info(f"og:image OCR in _og_metadata: {ocr[:80]}")
+                    except Exception:
+                        pass
+                break
         if parts:
             metadata = " — ".join(dict.fromkeys(parts))
             log.info(f"OG metadata: {metadata[:100]}")
@@ -663,27 +701,62 @@ def estimate_cost(st):
     base = {"text":0.0085,"url":0.0095,"image":0.0110,"audio":0.0120,"video":0.0180,"document":0.0095}
     return base.get(st, 0.0085)
 
+def _parse_json_result(text):
+    s = text.find("{"); e = text.rfind("}") + 1
+    if s < 0 or e <= s: return None
+    raw = text[s:e]
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        raw = re.sub(r'[\x00-\x1f\x7f]', lambda m: '' if m.group() not in '\n\r\t' else m.group(), raw)
+        return json.loads(raw)
+
+ANALYSE_JSON_SCHEMA = (
+    '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
+    '"verdict":"2-3 sentence verdict with evidence","key_facts":["fact1","fact2","fact3","fact4"],'
+    '"context":"background context","red_flags":["flag1","flag2"],"media_bias":"bias note or empty",'
+    '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],"confidence":"HIGH|MEDIUM|LOW","confidence_reason":"reason"}'
+)
+
 def claude_analyse(claim, google, scraped, st):
     g = "\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
     prompt = (
-        f"Fact-check this claim (source: {st}).\n\nCLAIM:\n\"\"\"{claim[:800]}\"\"\"\n\n"
+        f"Fact-check this claim (source: {st}).\n\nCLAIM:\n\"\"\"{claim[:1500]}\"\"\"\n\n"
         f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\nFACT-CHECK SITES:\n{scraped[:1500] or 'No results.'}\n\n"
-        f"Respond ONLY with valid JSON:\n"
-        f'{{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
-        f'"verdict":"2-3 sentence verdict with evidence","key_facts":["fact1","fact2","fact3","fact4"],'
-        f'"context":"background context","red_flags":["flag1","flag2"],"media_bias":"bias note or empty",'
-        f'"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],"confidence":"HIGH|MEDIUM|LOW","confidence_reason":"reason"}}'
+        f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
-    try:
-        r = requests.post("https://api.anthropic.com/v1/messages",
-            headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
-            json={"model":"claude-sonnet-4-6","max_tokens":2000,"system":SYSTEM,"messages":[{"role":"user","content":prompt}]},
-            timeout=45)
-        r.raise_for_status(); text = r.json()["content"][0]["text"]
-        s = text.find("{"); e = text.rfind("}") + 1
-        if s >= 0 and e > s: return json.loads(text[s:e])
-    except Exception as e: log.error("Claude: %s", e)
-    return {"rating":"UNVERIFIABLE","verdict":"Analysis failed.","key_facts":[],"context":"","red_flags":[],"media_bias":"","sources":["Google FC — https://toolbox.google.com/factcheck/explorer","Snopes — https://www.snopes.com","FullFact — https://fullfact.org"],"confidence":"LOW","confidence_reason":"Unavailable"}
+    # Try Claude (Sonnet)
+    if ANTHROPIC_KEY:
+        for attempt in range(2):
+            try:
+                r = requests.post("https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
+                    json={"model":"claude-sonnet-4-6","max_tokens":2000,"system":SYSTEM,"messages":[{"role":"user","content":prompt}]},
+                    timeout=55)
+                r.raise_for_status()
+                result = _parse_json_result(r.json()["content"][0]["text"])
+                if result: return result
+            except Exception as e:
+                log.warning("Claude analyse attempt %d: %s", attempt+1, e)
+                if attempt == 0:
+                    import time as _t; _t.sleep(1)
+    # Fallback: OpenAI gpt-4o
+    if OPENAI_API_KEY:
+        try:
+            log.info("Falling back to OpenAI for analysis...")
+            r = requests.post("https://api.openai.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
+                json={"model": "gpt-4o", "max_tokens": 2000,
+                      "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}]},
+                timeout=55)
+            r.raise_for_status()
+            result = _parse_json_result(r.json()["choices"][0]["message"]["content"])
+            if result:
+                log.info("OpenAI analysis succeeded")
+                return result
+        except Exception as e:
+            log.error("OpenAI analyse: %s", e)
+    return {"rating":"UNVERIFIABLE","verdict":"Analysis failed — both AI providers unavailable. Please try again shortly.","key_facts":[],"context":"","red_flags":[],"media_bias":"","sources":["Google FC — https://toolbox.google.com/factcheck/explorer","Snopes — https://www.snopes.com","FullFact — https://fullfact.org"],"confidence":"LOW","confidence_reason":"AI provider error"}
 
 def fmt_report(claim, a, st, cost, used_sources=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
@@ -890,14 +963,55 @@ def process(from_num, message):
                                     parts.append(f"Post text: {info['description'][:800]}")
                                 if info.get("uploader"):
                                     parts.append(f"Posted by: {info['uploader']}")
-                                # Log all image-related fields so we can identify the right one
-                                log.info(f"DEBUG thumbnail: {info.get('thumbnail','')[:120]}")
-                                log.info(f"DEBUG url: {info.get('url','')[:120]}")
-                                log.info(f"DEBUG ext: {info.get('ext','')}")
-                                for i, th in enumerate((info.get('thumbnails') or [])[:5]):
-                                    log.info(f"DEBUG thumbs[{i}]: {th.get('url','')[:120]}")
-                                for i, fmt in enumerate((info.get('formats') or [])[:5]):
-                                    log.info(f"DEBUG fmt[{i}] ext={fmt.get('ext')} url={str(fmt.get('url',''))[:100]}")
+                                log.info(f"FB/IG yt-dlp: title={info.get('title','')[:60]} thumb={'yes' if info.get('thumbnail') else 'no'}")
+                                # For link-share posts, try to find the external article URL
+                                # in the post description and fetch its og:image — this is the
+                                # article thumbnail (with headline text) not a FB profile pic.
+                                article_img_url = None
+                                desc = info.get("description", "") or ""
+                                ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
+                                if ext_urls:
+                                    try:
+                                        import html as _html
+                                        art_r = requests.get(ext_urls[0], headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                        if art_r.ok:
+                                            m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', art_r.text, re.I)
+                                            if not m:
+                                                m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', art_r.text, re.I)
+                                            if m:
+                                                article_img_url = _html.unescape(m.group(1).strip())
+                                                log.info(f"Article og:image found: {article_img_url[:80]}")
+                                    except Exception as ae:
+                                        log.warning(f"Article og:image failed: {ae}")
+                                ocr_texts = []
+                                # Build candidate image URLs: article og:image → yt-dlp thumbnail → yt-dlp url (if image ext)
+                                img_candidates = []
+                                if article_img_url:
+                                    img_candidates.append(article_img_url)
+                                if info.get("thumbnail"):
+                                    img_candidates.append(info["thumbnail"])
+                                raw_url = info.get("url","")
+                                if raw_url and any(raw_url.lower().endswith(ext) for ext in (".jpg",".jpeg",".png",".webp")):
+                                    img_candidates.append(raw_url)
+                                for fmt in (info.get("formats") or []):
+                                    if fmt.get("ext") in ("jpg","jpeg","png","webp") and fmt.get("url"):
+                                        img_candidates.append(fmt["url"])
+                                # Try each candidate until one OCRs successfully
+                                for img_url in img_candidates[:3]:
+                                    try:
+                                        if not img_url: continue
+                                        img_r = requests.get(img_url, timeout=12, headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+                                        if img_r.ok and len(img_r.content) > 500:
+                                            ocr = ocr_image(img_r.content)
+                                            if ocr and len(ocr) > 20:
+                                                ocr_texts.append(ocr)
+                                                log.info(f"OCR from post image: {ocr[:80]}")
+                                                break  # stop after first successful OCR
+                                    except Exception as ie:
+                                        log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
+                                if ocr_texts:
+                                    parts.append("Image text/content:\n" + "\n---\n".join(ocr_texts))
+                                    send(from_num, f"🖼 Analysed image in post")
                                 page_text = "\n\n".join(parts)
                                 log.info(f"FB/IG post extracted: {len(page_text)} chars")
                         if cookies_file and os.path.exists(cookies_file):
@@ -906,6 +1020,26 @@ def process(from_num, message):
                         log.warning(f"yt-dlp info extraction failed: {e}")
                 if not page_text:
                     page_text = fetch(url) or ""
+                # For any URL, also try og:image OCR (gets headline/thumbnail text)
+                if page_text and "facebook.com" not in url and "instagram.com" not in url:
+                    try:
+                        html_r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                        if html_r.ok:
+                            import html as _html2
+                            m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html_r.text, re.I)
+                            if not m:
+                                m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html_r.text, re.I)
+                            if m:
+                                og_img = _html2.unescape(m.group(1).strip())
+                                if og_img.startswith("http"):
+                                    img_r = requests.get(og_img, timeout=10, headers={"User-Agent":"Mozilla/5.0"})
+                                    if img_r.ok and len(img_r.content) > 500:
+                                        ocr = ocr_image(img_r.content)
+                                        if ocr and len(ocr) > 20:
+                                            page_text += f"\n\nImage text:\n{ocr}"
+                                            log.info(f"og:image OCR for article: {ocr[:80]}")
+                    except Exception as oe:
+                        log.debug(f"Article og:image OCR failed: {oe}")
                 query = page_text or body
                 source_type = "url"
         else:
@@ -921,8 +1055,32 @@ def process(from_num, message):
         source_type = "audio"
         if not query: send(from_num, "⚠️ Could not transcribe."); return
     elif msg_type == "video":
-        send(from_num, "⚠️ VIDEO PROCESSING TEMPORARILY DISABLED\n\nFor now, please:\n\n• Send the video URL (TikTok/YouTube/Facebook/Instagram)\n• Or take a screenshot and send as image\n• Or describe the claim in text")
-        log.warning("Video upload attempted - currently disabled"); return
+        send(from_num, "🎬 Processing video...")
+        vid_data = message.get("video", {})
+        video_bytes = download_media(vid_data["id"]) if vid_data.get("id") else None
+        if video_bytes:
+            query_parts = []
+            if vid_data.get("caption"):
+                query_parts.append(f"Caption: {vid_data['caption']}")
+            try:
+                frames, duration = extract_video_frames(video_bytes, num_frames=3)
+                if frames:
+                    visual = analyze_video_frames(frames)
+                    if visual:
+                        query_parts.append(f"Visual analysis:\n{visual}")
+            except Exception as ve:
+                log.warning(f"Video frame analysis: {ve}")
+            try:
+                transcript = transcribe(video_bytes, vid_data.get("mime_type","video/mp4"))
+                if transcript:
+                    query_parts.append(f"Audio transcript:\n{transcript}")
+                    send(from_num, "✓ Transcribed audio")
+            except Exception as te:
+                log.warning(f"Video transcription: {te}")
+            query = "\n\n".join(query_parts) if query_parts else ""
+            source_type = "video"
+        if not query:
+            send(from_num, "⚠️ Could not process video. Try sending the URL instead."); return
     elif msg_type == "document":
         send(from_num, "📄 Reading..."); b = download_media(message["document"]["id"])
         if b: query = b.decode("utf-8", errors="ignore")[:2000]
@@ -932,7 +1090,7 @@ def process(from_num, message):
         send(from_num, f"⚠️ Unsupported: {msg_type}"); return
     if not query: send(from_num, "⚠️ Could not extract content."); return
     query = clean_ocr(query) if source_type == "image" else query
-    query = query.strip()[:800]
+    query = query.strip()[:2000]
     log.info("Received [%s]: %s", source_type, query[:100])
     cost = estimate_cost(source_type)
     with pending_lock:
