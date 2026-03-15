@@ -494,8 +494,9 @@ def _cobalt_download(url):
         except Exception as e:
             log.error(f"7scorp TikTok failed: {e}")
 
-    # Twitter/X — use vikas5914 /twitter endpoint
+    # Twitter/X — use vikas5914 /twitter endpoint for video, fxtwitter for text/image posts
     if "twitter.com" in url or "x.com" in url:
+        # Try video download first
         try:
             host = "fastest-social-video-and-image-downloader.p.rapidapi.com"
             headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
@@ -687,13 +688,39 @@ def _og_metadata(url):
     except Exception as e: log.error(f"OG metadata failed: {e}")
     return ""
 
+def _fxtwitter_text(url):
+    """Extract tweet text via fxtwitter API (works for text/image posts, no auth needed)."""
+    try:
+        fx_url = re.sub(r"https?://(www\.)?(twitter\.com|x\.com)", "https://api.fxtwitter.com", url)
+        log.info(f"Trying fxtwitter for tweet text: {fx_url}")
+        r = requests.get(fx_url, timeout=10)
+        r.raise_for_status()
+        data = r.json()
+        tweet = data.get("tweet", {})
+        text = tweet.get("text", "")
+        author = tweet.get("author", {}).get("name", "")
+        if text:
+            combined = f"Tweet by {author}: {text}"
+            for m in tweet.get("media", {}).get("photos", []):
+                combined += f"\n[Image: {m.get('url','')}]"
+            log.info(f"fxtwitter extracted: {combined[:100]}")
+            return combined
+    except Exception as e:
+        log.error(f"fxtwitter failed: {e}")
+    return ""
+
 def download_video_url(url):
-    """Cobalt API → yt-dlp → OG metadata fallback."""
+    """Cobalt API → yt-dlp → fxtwitter (X/Twitter) → OG metadata fallback."""
     video_bytes, metadata = _cobalt_download(url)
     if video_bytes: return video_bytes, metadata
     log.info("Cobalt failed, trying yt-dlp...")
     video_bytes, metadata = _ytdlp_download(url)
     if video_bytes: return video_bytes, metadata
+    # For X/Twitter URLs: extract tweet text via fxtwitter before giving up
+    if "twitter.com" in url or "x.com" in url:
+        tweet_text = _fxtwitter_text(url)
+        if tweet_text:
+            return None, tweet_text
     log.info("yt-dlp failed, extracting OG metadata...")
     return None, _og_metadata(url)
 
