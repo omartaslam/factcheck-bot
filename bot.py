@@ -479,6 +479,51 @@ def _ytdlp_download(url):
             try: os.unlink(cookies_file)
             except: pass
 
+def _fb_ig_post_scrape(url):
+    """Scrape a specific Facebook/Instagram POST URL to get full post text and post image.
+
+    Uses specialised crawlers that FB/IG serve correct og: tags to:
+      • facebookexternalhit — FB's own link-preview bot (gets post-specific og:image)
+      • WhatsApp preview bot — the same UA WhatsApp itself uses for link cards
+
+    For POST URLs (containing /posts/, /photo, /p/, /share/ etc.) the og:image
+    returned is the actual post image, not the page profile picture.
+    """
+    import html as _html_mod
+    POST_INDICATORS = ['/posts/', '/photo', '/p/', '/share/', 'story.php', 'fbid=', 'story_fbid=']
+    is_post_url = any(s in url for s in POST_INDICATORS)
+
+    UAS = [
+        "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_udata.php)",
+        "WhatsApp/2.24.6.77 A",
+        "Twitterbot/1.0",
+    ]
+    for ua in UAS:
+        try:
+            r = requests.get(url, headers={"User-Agent": ua, "Accept-Language": "en-US,en;q=0.9"},
+                             timeout=14, allow_redirects=True)
+            if not r.ok:
+                continue
+            html = r.text
+            result = {"is_post": is_post_url}
+            for prop, key in [("og:title","title"), ("og:description","description"), ("og:image","image_url")]:
+                # Use exact-match patterns with required quotes so og:image doesn't
+                # accidentally match og:image:alt (which contains text, not a URL)
+                for pat in [
+                    rf'<meta[^>]+property=["\'](?:{re.escape(prop)})["\'][^>]+content=["\']([^"\']+)["\']',
+                    rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\'](?:{re.escape(prop)})["\']'
+                ]:
+                    m = re.search(pat, html, re.I)
+                    if m:
+                        result[key] = _html_mod.unescape(m.group(1).strip())
+                        break
+            if result.get("description") or result.get("image_url"):
+                log.info(f"FB/IG externalhit ({ua.split('/')[0]}): desc={bool(result.get('description'))} img={bool(result.get('image_url'))}")
+                return result
+        except Exception as e:
+            log.debug(f"FB/IG externalhit failed ({ua[:20]}): {e}")
+    return {"is_post": is_post_url}
+
 def _og_metadata(url):
     """Last resort: extract Open Graph tags (title, description, image OCR) from the page."""
     try:
@@ -935,6 +980,28 @@ def process(from_num, message):
                 send(from_num, "🔍 Analysing post...")
                 page_text = ""
                 if "facebook.com" in url or "instagram.com" in url:
+                    parts = []
+                    img_candidates = []  # ordered list of image URLs to try for OCR
+
+                    # ── STEP 1: facebookexternalhit scrape ───────────────────────
+                    # FB/IG serve post-specific og:image and full og:description to
+                    # their own link-preview crawlers. This is the most reliable way
+                    # to get the actual post image (not the page profile picture) and
+                    # the full post text without needing cookies or authentication.
+                    fb_og = _fb_ig_post_scrape(url)
+                    if fb_og.get("description"):
+                        parts.append(f"Post text: {fb_og['description'][:1200]}")
+                    if fb_og.get("title") and not parts:
+                        parts.append(f"Title: {fb_og['title']}")
+                    if fb_og.get("image_url") and fb_og["image_url"].startswith("http"):
+                        # Only use og:image from post-specific URLs (not page profile pictures)
+                        if fb_og.get("is_post", True):
+                            img_candidates.append(fb_og["image_url"])
+                            log.info(f"FB/IG post og:image: {fb_og['image_url'][:80]}")
+                        else:
+                            log.info(f"FB/IG page URL — skipping profile og:image")
+
+                    # ── STEP 2: yt-dlp metadata (uploader, and additional text) ──
                     try:
                         cookies_b64 = FB_COOKIES_B64 if "facebook.com" in url else IG_COOKIES_B64
                         cookies_file = None
@@ -945,9 +1012,7 @@ def process(from_num, message):
                             with open(cookies_file, "w") as cf:
                                 cf.write(cookies_data)
                         ydl_opts = {
-                            "quiet": True,
-                            "no_warnings": True,
-                            "skip_download": True,
+                            "quiet": True, "no_warnings": True, "skip_download": True,
                             "socket_timeout": 15,
                             "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
                         }
@@ -956,19 +1021,29 @@ def process(from_num, message):
                         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                             info = ydl.extract_info(url, download=False)
                             if info:
-                                parts = []
-                                if info.get("title") and info["title"] != "Facebook":
-                                    parts.append(f"Title: {info['title']}")
-                                if info.get("description"):
-                                    parts.append(f"Post text: {info['description'][:800]}")
+                                # Add title only if we don't have description from Step 1
+                                title = info.get("title","")
+                                if title and title not in ("Facebook","Instagram") and not parts:
+                                    parts.append(f"Title: {title}")
+                                # Add description if Step 1 didn't get it
+                                desc = info.get("description","") or ""
+                                if desc and "Post text:" not in "\n".join(parts):
+                                    parts.append(f"Post text: {desc[:1200]}")
                                 if info.get("uploader"):
                                     parts.append(f"Posted by: {info['uploader']}")
-                                log.info(f"FB/IG yt-dlp: title={info.get('title','')[:60]} thumb={'yes' if info.get('thumbnail') else 'no'}")
-                                # For link-share posts, try to find the external article URL
-                                # in the post description and fetch its og:image — this is the
-                                # article thumbnail (with headline text) not a FB profile pic.
-                                article_img_url = None
-                                desc = info.get("description", "") or ""
+                                log.info(f"yt-dlp: title={title[:50]} desc={bool(desc)} thumb={bool(info.get('thumbnail'))}")
+                                # Add yt-dlp thumbnail as fallback image candidate
+                                if info.get("thumbnail"):
+                                    img_candidates.append(info["thumbnail"])
+                                # Also add direct image URLs from yt-dlp
+                                raw_url = info.get("url","")
+                                if raw_url and any(raw_url.lower().endswith(x) for x in (".jpg",".jpeg",".png",".webp")):
+                                    img_candidates.append(raw_url)
+                                for fmt in (info.get("formats") or []):
+                                    if fmt.get("ext") in ("jpg","jpeg","png","webp") and fmt.get("url"):
+                                        img_candidates.append(fmt["url"])
+                                # For link-share posts: if description has external article URL,
+                                # append its og:image as a further fallback
                                 ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
                                 if ext_urls:
                                     try:
@@ -979,53 +1054,48 @@ def process(from_num, message):
                                             if not m:
                                                 m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', art_r.text, re.I)
                                             if m:
-                                                article_img_url = _html.unescape(m.group(1).strip())
-                                                log.info(f"Article og:image found: {article_img_url[:80]}")
+                                                art_img = _html.unescape(m.group(1).strip())
+                                                img_candidates.append(art_img)
+                                                log.info(f"Article og:image fallback: {art_img[:80]}")
                                     except Exception as ae:
                                         log.warning(f"Article og:image failed: {ae}")
-                                ocr_texts = []
-                                # Build candidate image URLs: article og:image → yt-dlp thumbnail → yt-dlp url (if image ext)
-                                img_candidates = []
-                                if article_img_url:
-                                    img_candidates.append(article_img_url)
-                                if info.get("thumbnail"):
-                                    img_candidates.append(info["thumbnail"])
-                                raw_url = info.get("url","")
-                                if raw_url and any(raw_url.lower().endswith(ext) for ext in (".jpg",".jpeg",".png",".webp")):
-                                    img_candidates.append(raw_url)
-                                for fmt in (info.get("formats") or []):
-                                    if fmt.get("ext") in ("jpg","jpeg","png","webp") and fmt.get("url"):
-                                        img_candidates.append(fmt["url"])
-                                # Try each candidate until one OCRs successfully
-                                for img_url in img_candidates[:3]:
-                                    try:
-                                        if not img_url: continue
-                                        img_r = requests.get(img_url, timeout=12, headers={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
-                                        if img_r.ok and len(img_r.content) > 500:
-                                            ocr = ocr_image(img_r.content)
-                                            if ocr and len(ocr) > 20:
-                                                ocr_texts.append(ocr)
-                                                log.info(f"OCR from post image: {ocr[:80]}")
-                                                break  # stop after first successful OCR
-                                    except Exception as ie:
-                                        log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
-                                if ocr_texts:
-                                    parts.append("Image text/content:\n" + "\n---\n".join(ocr_texts))
-                                    send(from_num, f"🖼 Analysed image in post")
-                                page_text = "\n\n".join(parts)
-                                log.info(f"FB/IG post extracted: {len(page_text)} chars")
                         if cookies_file and os.path.exists(cookies_file):
                             os.unlink(cookies_file)
                     except Exception as e:
                         log.warning(f"yt-dlp info extraction failed: {e}")
+
+                    # ── STEP 3: OCR the best image ────────────────────────────────
+                    # Try candidates in order: og:image (post-specific) → yt-dlp thumbnail → formats
+                    seen_urls = set()
+                    for img_url in img_candidates:
+                        if not img_url or img_url in seen_urls: continue
+                        seen_urls.add(img_url)
+                        try:
+                            img_r = requests.get(img_url, timeout=12,
+                                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+                            if not img_r.ok or len(img_r.content) < 500: continue
+                            ocr = ocr_image(img_r.content)
+                            if ocr and len(ocr) > 20:
+                                parts.append(f"Image text/content:\n{ocr}")
+                                send(from_num, "🖼 Analysed image in post")
+                                log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
+                                break
+                        except Exception as ie:
+                            log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
+
+                    if parts:
+                        page_text = "\n\n".join(parts)
+                        log.info(f"FB/IG extracted: {len(page_text)} chars, {len(img_candidates)} img candidates")
+
                 if not page_text:
                     page_text = fetch(url) or ""
-                # For any URL, also try og:image OCR (gets headline/thumbnail text)
+
+                # For non-FB/IG URLs: also OCR the og:image (captures headline graphics)
                 if page_text and "facebook.com" not in url and "instagram.com" not in url:
                     try:
+                        import html as _html2
                         html_r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
                         if html_r.ok:
-                            import html as _html2
                             m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', html_r.text, re.I)
                             if not m:
                                 m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', html_r.text, re.I)
@@ -1040,6 +1110,7 @@ def process(from_num, message):
                                             log.info(f"og:image OCR for article: {ocr[:80]}")
                     except Exception as oe:
                         log.debug(f"Article og:image OCR failed: {oe}")
+
                 query = page_text or body
                 source_type = "url"
         else:
