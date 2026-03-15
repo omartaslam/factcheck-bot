@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FactCheck Pro — AI-Powered Fact Checking</title>
+<style>
+  :root {
+    --bg: #0d0d0d; --surface: #161616; --border: #2a2a2a;
+    --accent: #4ade80; --accent2: #22c55e; --text: #e8e8e8;
+    --muted: #888; --danger: #f87171; --warn: #fbbf24; --info: #60a5fa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+  /* NAV */
+  nav { display: flex; align-items: center; justify-content: space-between; padding: 1rem 2rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; background: rgba(13,13,13,0.95); backdrop-filter: blur(8px); z-index: 100; }
+  .logo { font-size: 1.25rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; }
+  .logo span { color: var(--text); }
+  nav .nav-right { display: flex; gap: 1rem; align-items: center; }
+  .btn { padding: 0.5rem 1.25rem; border-radius: 6px; font-size: 0.9rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-ghost { background: transparent; color: var(--text); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-sm { padding: 0.4rem 0.9rem; font-size: 0.82rem; }
+
+  /* HERO */
+  .hero { text-align: center; padding: 5rem 1.5rem 3rem; max-width: 750px; margin: 0 auto; }
+  .hero h1 { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; line-height: 1.15; margin-bottom: 1rem; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p { color: var(--muted); font-size: 1.1rem; line-height: 1.7; margin-bottom: 2.5rem; }
+
+  /* SEARCH BOX */
+  .search-box { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.25rem; max-width: 700px; margin: 0 auto 1rem; }
+  .search-box textarea { width: 100%; background: transparent; border: none; outline: none; color: var(--text); font-size: 1rem; line-height: 1.6; resize: none; font-family: inherit; min-height: 90px; }
+  .search-box textarea::placeholder { color: var(--muted); }
+  .search-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+  .char-hint { font-size: 0.8rem; color: var(--muted); }
+  #submitBtn { min-width: 140px; }
+  .anon-note { font-size: 0.8rem; color: var(--muted); text-align: center; margin-bottom: 2.5rem; }
+  .anon-note a { color: var(--accent); cursor: pointer; }
+
+  /* LOADING */
+  #loadingBlock { display: none; text-align: center; padding: 3rem 1rem; }
+  .spinner { display: inline-block; width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-msg { margin-top: 1rem; color: var(--muted); font-size: 0.95rem; }
+
+  /* RESULTS */
+  #resultsBlock { max-width: 700px; margin: 0 auto 3rem; display: none; }
+  .result-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.5rem; margin-bottom: 1.25rem; }
+  .result-card + .result-card { border-top: 0; }
+  .claim-label { font-size: 0.75rem; font-weight: 700; letter-spacing: 1px; color: var(--muted); text-transform: uppercase; margin-bottom: 0.5rem; }
+  .claim-text { font-style: italic; color: #bbb; margin-bottom: 1.25rem; font-size: 0.95rem; line-height: 1.6; }
+  .verdict-badge { display: inline-flex; align-items: center; gap: 0.4rem; padding: 0.4rem 1rem; border-radius: 20px; font-weight: 700; font-size: 0.9rem; margin-bottom: 1rem; }
+  .verdict-TRUE { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+  .verdict-MOSTLY_TRUE { background: #052e16; color: #86efac; border: 1px solid #166534; }
+  .verdict-HALF_TRUE { background: #2d1b00; color: #fbbf24; border: 1px solid #92400e; }
+  .verdict-MOSTLY_FALSE { background: #2d1500; color: #fb923c; border: 1px solid #9a3412; }
+  .verdict-FALSE { background: #2d0a0a; color: #f87171; border: 1px solid #991b1b; }
+  .verdict-PANTS_ON_FIRE { background: #2d0a0a; color: #f87171; border: 1px solid #991b1b; }
+  .verdict-UNVERIFIABLE { background: #1a1a2e; color: #93c5fd; border: 1px solid #1e40af; }
+  .verdict-MISLEADING { background: #2d1b00; color: #fbbf24; border: 1px solid #92400e; }
+  .verdict-NEEDS_CONTEXT { background: #1a1a2e; color: #93c5fd; border: 1px solid #1e40af; }
+  .truth-bar { margin-bottom: 1rem; }
+  .truth-bar-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-top: 0.35rem; }
+  .truth-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
+  .bar-label { font-size: 0.75rem; color: var(--muted); display: flex; justify-content: space-between; }
+  .section { margin-bottom: 1rem; }
+  .section-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); margin-bottom: 0.4rem; }
+  .section p { font-size: 0.95rem; line-height: 1.65; color: #ccc; }
+  .facts-list { list-style: none; }
+  .facts-list li { padding: 0.25rem 0; padding-left: 1rem; position: relative; font-size: 0.92rem; color: #ccc; line-height: 1.5; }
+  .facts-list li::before { content: "→"; position: absolute; left: 0; color: var(--accent); }
+  .flags-list li::before { content: "⚠"; color: var(--warn); }
+  .confidence-pill { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.78rem; font-weight: 600; }
+  .conf-HIGH { background: #052e16; color: #4ade80; }
+  .conf-MEDIUM { background: #2d1b00; color: #fbbf24; }
+  .conf-LOW { background: #2d0a0a; color: #f87171; }
+  .sources-list { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.4rem; }
+  .source-chip { font-size: 0.75rem; background: #1e1e1e; border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.5rem; color: #aaa; }
+  .score-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .score-num { font-size: 1.4rem; font-weight: 800; }
+  .score-bar { flex: 1; height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; }
+  .score-fill { height: 100%; background: linear-gradient(90deg, #f87171, #fbbf24, #4ade80); border-radius: 4px; }
+
+  /* ERROR */
+  .error-card { background: #1a0a0a; border: 1px solid #7f1d1d; border-radius: 12px; padding: 1.25rem; color: #fca5a5; max-width: 700px; margin: 0 auto 2rem; }
+
+  /* FEATURES */
+  .features { padding: 4rem 1.5rem; max-width: 900px; margin: 0 auto; }
+  .features h2 { text-align: center; font-size: 1.8rem; margin-bottom: 0.75rem; }
+  .features .sub { text-align: center; color: var(--muted); margin-bottom: 3rem; }
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; }
+  .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1.5rem; }
+  .feature-icon { font-size: 1.75rem; margin-bottom: 0.75rem; }
+  .feature-card h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+  .feature-card p { font-size: 0.87rem; color: var(--muted); line-height: 1.6; }
+
+  /* WHATSAPP CTA */
+  .wa-cta { background: linear-gradient(135deg, #052e16, #0a1a0a); border: 1px solid #166534; border-radius: 16px; padding: 2.5rem; text-align: center; max-width: 600px; margin: 0 auto 5rem; }
+  .wa-cta h2 { margin-bottom: 0.5rem; }
+  .wa-cta p { color: var(--muted); margin-bottom: 1.5rem; }
+  .wa-btn { display: inline-flex; align-items: center; gap: 0.5rem; background: #25d366; color: #000; font-weight: 700; padding: 0.75rem 1.75rem; border-radius: 8px; text-decoration: none; font-size: 1rem; }
+  .wa-btn:hover { background: #1ebe5c; }
+
+  /* FOOTER */
+  footer { border-top: 1px solid var(--border); padding: 1.5rem 2rem; text-align: center; color: var(--muted); font-size: 0.82rem; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; align-items: center; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 2rem; width: 100%; max-width: 400px; margin: 1rem; position: relative; }
+  .modal h2 { margin-bottom: 1.5rem; font-size: 1.3rem; }
+  .modal input { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; padding: 0.7rem 1rem; color: var(--text); font-size: 0.95rem; margin-bottom: 0.75rem; outline: none; font-family: inherit; }
+  .modal input:focus { border-color: var(--accent); }
+  .modal .btn { width: 100%; padding: 0.75rem; font-size: 1rem; margin-top: 0.25rem; }
+  .modal-close { position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1.25rem; line-height: 1; }
+  .modal-close:hover { color: var(--text); }
+  .modal-switch { text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--muted); }
+  .modal-switch a { color: var(--accent); cursor: pointer; }
+  .modal-msg { font-size: 0.85rem; margin-top: 0.5rem; padding: 0.5rem 0.75rem; border-radius: 6px; }
+  .modal-msg.err { background: #2d0a0a; color: #f87171; }
+  .modal-msg.ok { background: #052e16; color: #4ade80; }
+
+  /* USER STATE */
+  .user-pill { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--muted); }
+  .user-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">FactCheck<span>Pro</span></div>
+  <div class="nav-right" id="navRight">
+    <button class="btn btn-ghost btn-sm" onclick="openModal('login')">Sign in</button>
+    <button class="btn btn-primary btn-sm" onclick="openModal('register')">Sign up free</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Fact-check anything<br>with <em>AI-powered</em> analysis</h1>
+  <p>Paste a claim, article URL, or social media post. Get an instant verdict backed by dozens of news sources and fact-checking databases.</p>
+</div>
+
+<div class="search-box" style="max-width:700px;margin:0 auto 0.75rem;">
+  <textarea id="claimInput" placeholder="Paste a claim, article URL, or social media post to fact-check…" maxlength="2000" oninput="updateChar()"></textarea>
+  <div class="search-footer">
+    <span class="char-hint"><span id="charCount">0</span>/2000</span>
+    <button class="btn btn-primary" id="submitBtn" onclick="doFactcheck()">Fact-check now →</button>
+  </div>
+</div>
+<p class="anon-note" id="anonNote">Free · 5 fact-checks per day without an account · <a onclick="openModal('register')">Sign up</a> for unlimited</p>
+
+<div id="errorBlock" style="display:none;max-width:700px;margin:0 auto 1.5rem;"></div>
+<div id="loadingBlock">
+  <div class="spinner"></div>
+  <p class="loading-msg" id="loadingMsg">Analysing claim…</p>
+</div>
+<div id="resultsBlock"></div>
+
+<div class="features">
+  <h2>How it works</h2>
+  <p class="sub">Multi-layer analysis across 40+ sources in seconds</p>
+  <div class="feature-grid">
+    <div class="feature-card"><div class="feature-icon">🔍</div><h3>Claim extraction</h3><p>AI strips emotional framing and identifies the distinct factual claims in your text.</p></div>
+    <div class="feature-card"><div class="feature-icon">⚖️</div><h3>Pro/con debate</h3><p>Two AI models argue opposing sides before a third synthesises a balanced verdict.</p></div>
+    <div class="feature-card"><div class="feature-icon">📰</div><h3>40+ sources</h3><p>Cross-references Snopes, FullFact, AFP, Al Jazeera, BBC, Reuters, The Guardian and more.</p></div>
+    <div class="feature-card"><div class="feature-icon">📊</div><h3>Truth score</h3><p>Every verdict includes a 1–10 truth score, confidence rating, red flags, and bias notes.</p></div>
+    <div class="feature-card"><div class="feature-icon">🖼️</div><h3>Images & URLs</h3><p>Paste an article URL or image URL — the bot reads the content and fact-checks it directly.</p></div>
+    <div class="feature-card"><div class="feature-icon">💬</div><h3>WhatsApp bot</h3><p>Use FactCheck Pro on WhatsApp — send images, voice notes, videos, and social media posts.</p></div>
+  </div>
+</div>
+
+<div style="padding:0 1.5rem">
+  <div class="wa-cta">
+    <h2>Also on WhatsApp 📱</h2>
+    <p>Send images, voice notes, TikToks, Facebook posts — get a fact-check reply in under a minute.</p>
+    <a href="https://wa.me/message/factcheckpro" class="wa-btn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      Try on WhatsApp
+    </a>
+  </div>
+</div>
+
+<footer>FactCheck Pro · AI-powered fact checking · <a href="/web" style="color:var(--accent)">Web</a> · WhatsApp bot · Built for journalists and activists</footer>
+
+<!-- AUTH MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h2 id="modalTitle">Sign in</h2>
+    <input type="email" id="authEmail" placeholder="Email address" autocomplete="email">
+    <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password">
+    <input type="password" id="authPassword2" placeholder="Confirm password" style="display:none" autocomplete="new-password">
+    <div id="modalMsg" class="modal-msg" style="display:none"></div>
+    <button class="btn btn-primary" id="authSubmitBtn" onclick="submitAuth()">Sign in</button>
+    <div class="modal-switch" id="modalSwitch">No account? <a onclick="switchModal()">Sign up free</a></div>
+  </div>
+</div>
+
+<script>
+let _mode = 'login', _token = localStorage.getItem('fc_token'), _email = localStorage.getItem('fc_email');
+const MSGS = ['Neutralising claim…','Identifying key facts…','Cross-referencing 40+ sources…','Running pro/con analysis…','Synthesising verdict…'];
+let _msgIdx = 0, _msgTimer;
+
+function updateChar() {
+  document.getElementById('charCount').textContent = document.getElementById('claimInput').value.length;
+}
+
+// ── Auth state ────────────────────────────────────────────────────────────────
+function refreshNav() {
+  const el = document.getElementById('navRight');
+  const note = document.getElementById('anonNote');
+  if (_token && _email) {
+    el.innerHTML = `<div class="user-pill"><div class="user-dot"></div><span>${_email}</span></div><button class="btn btn-ghost btn-sm" onclick="logout()">Sign out</button>`;
+    note.style.display = 'none';
+  } else {
+    el.innerHTML = `<button class="btn btn-ghost btn-sm" onclick="openModal('login')">Sign in</button><button class="btn btn-primary btn-sm" onclick="openModal('register')">Sign up free</button>`;
+    note.style.display = '';
+  }
+}
+refreshNav();
+
+function logout() {
+  _token = null; _email = null;
+  localStorage.removeItem('fc_token'); localStorage.removeItem('fc_email');
+  refreshNav();
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(mode) {
+  _mode = mode;
+  document.getElementById('modalTitle').textContent = mode === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('authSubmitBtn').textContent = mode === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('authPassword2').style.display = mode === 'register' ? '' : 'none';
+  document.getElementById('modalSwitch').innerHTML = mode === 'login'
+    ? 'No account? <a onclick="switchModal()">Sign up free</a>'
+    : 'Already have an account? <a onclick="switchModal()">Sign in</a>';
+  setModalMsg('', '');
+  document.getElementById('modalOverlay').classList.add('active');
+  document.getElementById('authEmail').focus();
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modalOverlay'))
+    document.getElementById('modalOverlay').classList.remove('active');
+}
+function switchModal() { openModal(_mode === 'login' ? 'register' : 'login'); }
+function setModalMsg(txt, type) {
+  const el = document.getElementById('modalMsg');
+  el.textContent = txt; el.className = 'modal-msg ' + type;
+  el.style.display = txt ? '' : 'none';
+}
+
+async function submitAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pw = document.getElementById('authPassword').value;
+  const pw2 = document.getElementById('authPassword2').value;
+  if (_mode === 'register' && pw !== pw2) { setModalMsg('Passwords do not match', 'err'); return; }
+  const btn = document.getElementById('authSubmitBtn');
+  btn.disabled = true; btn.textContent = 'Please wait…';
+  try {
+    const res = await fetch('/api/' + (_mode === 'login' ? 'login' : 'register'), {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pw})
+    });
+    const data = await res.json();
+    if (!res.ok) { setModalMsg(data.error || 'Error', 'err'); return; }
+    _token = data.token; _email = data.email;
+    localStorage.setItem('fc_token', _token); localStorage.setItem('fc_email', _email);
+    refreshNav();
+    document.getElementById('modalOverlay').classList.remove('active');
+  } catch(e) { setModalMsg('Network error', 'err'); }
+  finally { btn.disabled = false; btn.textContent = _mode === 'login' ? 'Sign in' : 'Create account'; }
+}
+
+// Handle Enter key in modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && document.getElementById('modalOverlay').classList.contains('active')) submitAuth();
+});
+
+// ── Fact-check ────────────────────────────────────────────────────────────────
+function cycleMsgs() {
+  _msgIdx = (_msgIdx + 1) % MSGS.length;
+  document.getElementById('loadingMsg').textContent = MSGS[_msgIdx];
+  _msgTimer = setTimeout(cycleMsgs, 4000);
+}
+
+async function doFactcheck() {
+  const query = document.getElementById('claimInput').value.trim();
+  if (!query) { document.getElementById('claimInput').focus(); return; }
+  document.getElementById('errorBlock').style.display = 'none';
+  document.getElementById('resultsBlock').style.display = 'none';
+  document.getElementById('loadingBlock').style.display = '';
+  document.getElementById('submitBtn').disabled = true;
+  document.getElementById('loadingMsg').textContent = MSGS[0];
+  _msgIdx = 0; clearTimeout(_msgTimer); _msgTimer = setTimeout(cycleMsgs, 4000);
+  try {
+    const headers = {'Content-Type': 'application/json'};
+    if (_token) headers['Authorization'] = 'Bearer ' + _token;
+    const res = await fetch('/api/factcheck', { method: 'POST', headers, body: JSON.stringify({claim: query}) });
+    const data = await res.json();
+    clearTimeout(_msgTimer);
+    document.getElementById('loadingBlock').style.display = 'none';
+    if (!res.ok) {
+      const eb = document.getElementById('errorBlock');
+      eb.innerHTML = `<div class="error-card">⚠️ ${data.error || 'Something went wrong. Please try again.'}</div>`;
+      eb.style.display = '';
+      if (res.status === 429 && !_token) openModal('register');
+      return;
+    }
+    renderResults(data.results);
+  } catch(e) {
+    clearTimeout(_msgTimer);
+    document.getElementById('loadingBlock').style.display = 'none';
+    const eb = document.getElementById('errorBlock');
+    eb.innerHTML = `<div class="error-card">⚠️ Network error. Please check your connection and try again.</div>`;
+    eb.style.display = '';
+  } finally {
+    document.getElementById('submitBtn').disabled = false;
+  }
+}
+
+function verdictClass(r) {
+  return 'verdict-' + r.replace(/\s+/g, '_');
+}
+function verdictEmoji(r) {
+  const map = {TRUE:'✅',MOSTLY_TRUE:'🟢',HALF_TRUE:'🟡',MOSTLY_FALSE:'🟠',FALSE:'❌',PANTS_ON_FIRE:'🔥',UNVERIFIABLE:'❓',MISLEADING:'⚠️',NEEDS_CONTEXT:'📌'};
+  return map[r.replace(/\s+/g,'_')] || '❓';
+}
+function barColor(score) {
+  if (score >= 7) return '#4ade80';
+  if (score >= 4) return '#fbbf24';
+  return '#f87171';
+}
+
+function renderResults(results) {
+  const el = document.getElementById('resultsBlock');
+  const multi = results.length > 1;
+  el.innerHTML = results.map((r, i) => {
+    const a = r.analysis || {};
+    const rating = (a.rating || 'UNVERIFIABLE').toUpperCase();
+    const rKey = rating.replace(/\s+/g,'_');
+    const score = parseInt(a.lenz_score) || 0;
+    const conf = (a.confidence || 'LOW').toUpperCase();
+    const factsHtml = (a.key_facts || []).slice(0,4).map(f => `<li>${f}</li>`).join('');
+    const flagsHtml = (a.red_flags || []).slice(0,3).map(f => `<li>${f}</li>`).join('');
+    const sourcesHtml = (r.sources_consulted || []).slice(0,12).map(s => `<span class="source-chip">${s}</span>`).join('');
+    return `
+    <div class="result-card">
+      ${multi ? `<div class="claim-label">Claim ${i+1} of ${results.length}</div>` : ''}
+      <div class="claim-text">"${r.claim || ''}"</div>
+      <div class="verdict-badge ${verdictClass(rating)}">${verdictEmoji(rating)} ${rating.replace(/_/g,' ')}</div>
+      ${score ? `<div class="score-row"><div class="score-num" style="color:${barColor(score)}">${score}/10</div><div class="score-bar"><div class="score-fill" style="width:${score*10}%"></div></div><div style="font-size:0.8rem;color:var(--muted)">Truth score</div></div>` : ''}
+      <div class="section"><div class="section-title">Analysis</div><p>${a.verdict || ''}</p></div>
+      ${factsHtml ? `<div class="section"><div class="section-title">Key facts</div><ul class="facts-list">${factsHtml}</ul></div>` : ''}
+      ${a.context ? `<div class="section"><div class="section-title">Background</div><p>${a.context}</p></div>` : ''}
+      ${flagsHtml ? `<div class="section"><div class="section-title">Red flags</div><ul class="facts-list flags-list">${flagsHtml}</ul></div>` : ''}
+      ${a.media_bias ? `<div class="section"><div class="section-title">Bias note</div><p>${a.media_bias}</p></div>` : ''}
+      <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem"><span class="section-title" style="margin:0">Confidence</span><span class="confidence-pill conf-${conf}">${conf}</span>${a.confidence_reason ? `<span style="font-size:0.82rem;color:var(--muted)">${a.confidence_reason}</span>` : ''}</div>
+      ${sourcesHtml ? `<div class="section"><div class="section-title">Sources consulted</div><div class="sources-list">${sourcesHtml}</div></div>` : ''}
+    </div>`;
+  }).join('');
+  el.style.display = '';
+  el.scrollIntoView({behavior:'smooth', block:'start'});
+}
+</script>
+</body>
+</html>

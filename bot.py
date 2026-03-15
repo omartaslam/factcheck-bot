@@ -1,7 +1,7 @@
 """FactCheck Pro v3.2 - Enhanced Video Analysis"""
-import os, base64, json, logging, tempfile, threading, requests, re
+import os, base64, json, logging, tempfile, threading, requests, re, sqlite3, hashlib, secrets
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
 from html.parser import HTMLParser
 from urllib.parse import quote_plus
@@ -20,6 +20,7 @@ GOOGLE_API_KEY = os.getenv("GOOGLE_FACT_CHECK_API_KEY")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 ADMIN_NUMBER = os.getenv("ADMIN_NUMBER", "")  # WhatsApp number to receive credit/error alerts
+DB_PATH = os.getenv("DB_PATH", "/tmp/factcheck.db")  # Set to a Railway Volume path for persistence
 WHATSAPP_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 GOOGLE_FC_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 
@@ -1421,6 +1422,197 @@ def process(from_num, message):
     with pending_lock:
         pending[from_num] = {"query":query,"source_type":source_type,"image_bytes":image_bytes,"cost":cost,"timestamp":t.time()}
     send(from_num, confirm_msg(source_type, query, cost))
+
+# ── Web API: database, auth, rate-limiting ───────────────────────────────────
+
+def _db():
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    with _db() as c:
+        c.executescript("""
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                created_at INTEGER NOT NULL,
+                tier TEXT NOT NULL DEFAULT 'free'
+            );
+            CREATE TABLE IF NOT EXISTS tokens (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER NOT NULL,
+                created_at INTEGER NOT NULL,
+                expires_at INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                query TEXT NOT NULL,
+                results_json TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            );
+        """)
+    log.info("DB initialised at %s", DB_PATH)
+
+init_db()
+
+# Anonymous rate-limit: 5 fact-checks per IP per day
+_rate_store = {}  # ip -> {"count": n, "date": "YYYY-MM-DD"}
+_rate_lock = threading.Lock()
+ANON_DAILY_LIMIT = 5
+
+def _check_rate(ip):
+    """Return True if request is allowed, False if limit exceeded."""
+    today = t.strftime("%Y-%m-%d")
+    with _rate_lock:
+        entry = _rate_store.get(ip, {"count": 0, "date": today})
+        if entry["date"] != today:
+            entry = {"count": 0, "date": today}
+        if entry["count"] >= ANON_DAILY_LIMIT:
+            return False
+        entry["count"] += 1
+        _rate_store[ip] = entry
+    return True
+
+def _hash_pw(pw):
+    salt = secrets.token_hex(16)
+    h = hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 200_000).hex()
+    return f"{salt}:{h}"
+
+def _verify_pw(pw, stored):
+    try:
+        salt, h = stored.split(":", 1)
+        return hashlib.pbkdf2_hmac("sha256", pw.encode(), salt.encode(), 200_000).hex() == h
+    except Exception:
+        return False
+
+def _create_token(user_id):
+    token = secrets.token_hex(32)
+    expires = int(t.time()) + 30 * 86400  # 30 days
+    with _db() as c:
+        c.execute("INSERT INTO tokens VALUES (?,?,?,?)", (token, user_id, int(t.time()), expires))
+    return token
+
+def _auth_user():
+    """Return user_id from Bearer token in request, or None."""
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth[7:].strip()
+    now = int(t.time())
+    with _db() as c:
+        row = c.execute("SELECT user_id FROM tokens WHERE token=? AND expires_at>?", (token, now)).fetchone()
+    return row["user_id"] if row else None
+
+def _factcheck_pipeline(query, source_type="text"):
+    """Core pipeline: neutralize → extract → scrape → analyse. Returns list of result dicts."""
+    if source_type in ("text", "url"):
+        neutral = neutralize_claim(query)
+        claims = extract_claims(neutral)
+    else:
+        neutral = query
+        claims = [query]
+    g = google_fc(neutral)
+    sc, used_sources = scrape_sites(neutral)
+    gfc_sources = [x["source"] for x in g if x.get("source")]
+    all_used = list(dict.fromkeys(gfc_sources + used_sources))
+    results = []
+    for claim in claims:
+        a = claude_analyse(claim, g, sc, source_type)
+        # strip internal debate fields from API response
+        a.pop("_debate_pro", None); a.pop("_debate_con", None)
+        results.append({"claim": claim, "analysis": a, "sources_consulted": all_used[:15]})
+    return results
+
+# ── Web API endpoints ─────────────────────────────────────────────────────────
+
+@app.route("/web")
+@app.route("/web/")
+def web_index():
+    return send_from_directory("static", "index.html")
+
+@app.route("/api/register", methods=["POST"])
+def api_register():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    pw = data.get("password") or ""
+    if not email or "@" not in email:
+        return jsonify({"error": "Valid email required"}), 400
+    if len(pw) < 8:
+        return jsonify({"error": "Password must be at least 8 characters"}), 400
+    try:
+        with _db() as c:
+            c.execute("INSERT INTO users (email, password_hash, created_at) VALUES (?,?,?)",
+                      (email, _hash_pw(pw), int(t.time())))
+            uid = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()["id"]
+        token = _create_token(uid)
+        log.info("New user registered: %s", email)
+        return jsonify({"token": token, "email": email}), 201
+    except sqlite3.IntegrityError:
+        return jsonify({"error": "Email already registered"}), 409
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    pw = data.get("password") or ""
+    with _db() as c:
+        row = c.execute("SELECT id, password_hash FROM users WHERE email=?", (email,)).fetchone()
+    if not row or not _verify_pw(pw, row["password_hash"]):
+        return jsonify({"error": "Invalid email or password"}), 401
+    token = _create_token(row["id"])
+    return jsonify({"token": token, "email": email})
+
+@app.route("/api/me", methods=["GET"])
+def api_me():
+    uid = _auth_user()
+    if not uid:
+        return jsonify({"error": "Unauthorised"}), 401
+    with _db() as c:
+        row = c.execute("SELECT email, tier, created_at FROM users WHERE id=?", (uid,)).fetchone()
+        count = c.execute("SELECT COUNT(*) as n FROM history WHERE user_id=?", (uid,)).fetchone()["n"]
+    return jsonify({"email": row["email"], "tier": row["tier"], "checks_total": count})
+
+@app.route("/api/factcheck", methods=["POST"])
+def api_factcheck():
+    uid = _auth_user()
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+    # Rate-limit anonymous users
+    if not uid and not _check_rate(ip):
+        return jsonify({"error": f"Daily limit of {ANON_DAILY_LIMIT} fact-checks reached. Sign up for unlimited access."}), 429
+    data = request.get_json() or {}
+    query = (data.get("claim") or data.get("query") or "").strip()[:2000]
+    if not query:
+        return jsonify({"error": "No claim provided"}), 400
+    source_type = "url" if query.startswith("http") else "text"
+    # For article URLs, scrape the page text first
+    if source_type == "url":
+        page_text = fetch(query) or _og_metadata(query)
+        if page_text:
+            query = page_text
+    try:
+        results = _factcheck_pipeline(query, source_type)
+        # Save to history if logged in
+        if uid:
+            with _db() as c:
+                c.execute("INSERT INTO history (user_id, query, results_json, created_at) VALUES (?,?,?,?)",
+                          (uid, query[:500], json.dumps(results), int(t.time())))
+        return jsonify({"results": results})
+    except Exception as e:
+        log.error("API factcheck error: %s", e)
+        return jsonify({"error": "Fact-check failed. Please try again."}), 500
+
+@app.route("/api/history", methods=["GET"])
+def api_history():
+    uid = _auth_user()
+    if not uid:
+        return jsonify({"error": "Unauthorised"}), 401
+    with _db() as c:
+        rows = c.execute("SELECT id, query, results_json, created_at FROM history WHERE user_id=? ORDER BY created_at DESC LIMIT 20", (uid,)).fetchall()
+    return jsonify({"history": [{"id": r["id"], "query": r["query"], "created_at": r["created_at"],
+                                  "results": json.loads(r["results_json"])} for r in rows]})
 
 @app.route("/", methods=["GET"])
 def health():
