@@ -129,8 +129,9 @@ SRC_UNNEWS           = os.getenv("SRC_UNNEWS",           "true").lower() == "tru
 SRC_TOI              = os.getenv("SRC_TOI",              "true").lower() == "true"
 SRC_ARABNEWS         = os.getenv("SRC_ARABNEWS",         "true").lower() == "true"
 SRC_RESPSTATECRAFT   = os.getenv("SRC_RESPSTATECRAFT",   "true").lower() == "true"
-# Brave Search API — real-time web search
-BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")
+# Real-time search APIs
+TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
+BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")    # TODO: Brave Search API — 2000/month when free tier available
 # Custom sources — add any source without code changes
 # Format in Railway: "Name|https://site.com/search?q={q},Name2|https://site2.com/?s={q}"
 # Use {q} for URL-encoded query, {qt} for URL-encoded short query
@@ -777,6 +778,7 @@ def enabled_sources():
     if SRC_TOI:             sources.append("Times of Israel")
     if SRC_ARABNEWS:        sources.append("Arab News")
     if SRC_RESPSTATECRAFT:  sources.append("Responsible Statecraft")
+    if TAVILY_API_KEY:      sources.append("Tavily Search (live)")
     if BRAVE_API_KEY:       sources.append("Brave Search (live)")
     for name, _ in parse_custom_sources():
         sources.append(f"{name} (custom)")
@@ -793,27 +795,49 @@ def _fetch_source(name, url):
     return None
 
 def brave_search(query, count=5):
-    """Query Brave Search API for real-time results. Returns list of (name, snippet) tuples."""
+    """Brave Search API — activate via BRAVE_API_KEY env var (TODO: enable when free tier available)."""
     if not BRAVE_API_KEY:
         return []
     try:
         r = requests.get(
             "https://api.search.brave.com/res/v1/web/search",
             headers={"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY},
-            params={"q": query[:200], "count": count, "freshness": "pw", "text_decorations": False},
+            params={"q": query[:200], "count": count, "text_decorations": False},
             timeout=8
         )
         r.raise_for_status()
         results = []
         for item in r.json().get("web", {}).get("results", []):
-            title = item.get("title", "")
-            desc = item.get("description", "")
-            url = item.get("url", "")
-            snippet = f"{title} — {desc} ({url})"
+            snippet = f"{item.get('title','')} — {item.get('description','')} ({item.get('url','')})"
             results.append(("Brave Search", snippet[:400]))
         return results
     except Exception as e:
         log.warning("Brave Search failed: %s", e)
+        return []
+
+
+def tavily_search(query, max_results=5):
+    """Query Tavily Search API for real-time results. Returns list of (name, snippet) tuples."""
+    if not TAVILY_API_KEY:
+        return []
+    try:
+        r = requests.post(
+            "https://api.tavily.com/search",
+            json={"api_key": TAVILY_API_KEY, "query": query[:400], "max_results": max_results,
+                  "search_depth": "basic", "include_answer": False},
+            timeout=10
+        )
+        r.raise_for_status()
+        results = []
+        for item in r.json().get("results", []):
+            title = item.get("title", "")
+            content = item.get("content", "")
+            url = item.get("url", "")
+            snippet = f"{title} — {content} ({url})"
+            results.append(("Tavily Search", snippet[:400]))
+        return results
+    except Exception as e:
+        log.warning("Tavily Search failed: %s", e)
         return []
 
 def scrape_sites(query):
@@ -913,7 +937,10 @@ def scrape_sites(query):
             except Exception:
                 pass
 
-    # Brave Search — real-time web results
+    # Real-time web search
+    if TAVILY_API_KEY:
+        for name, snippet in tavily_search(query_flat):
+            results.append(f"[{name}]: {snippet}")
     if BRAVE_API_KEY:
         for name, snippet in brave_search(query_flat):
             results.append(f"[{name}]: {snippet}")
