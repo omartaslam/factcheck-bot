@@ -770,50 +770,177 @@ def _parse_json_result(text):
 
 ANALYSE_JSON_SCHEMA = (
     '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
+    '"lenz_score":7,'
     '"verdict":"2-3 sentence verdict with evidence","key_facts":["fact1","fact2","fact3","fact4"],'
     '"context":"background context","red_flags":["flag1","flag2"],"media_bias":"bias note or empty",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],"confidence":"HIGH|MEDIUM|LOW","confidence_reason":"reason"}'
 )
 
+def neutralize_claim(raw_text):
+    """Strip emotional framing and return the neutral, testable core of a claim."""
+    if not ANTHROPIC_KEY:
+        return raw_text
+    prompt = (
+        "Strip ALL emotional language, sensationalism, and partisan framing from the text below. "
+        "Return ONLY the neutral factual core as plain text — no bullet points, no preamble. "
+        "If there are multiple claims, separate them with a newline.\n\n"
+        f"TEXT:\n{raw_text[:1200]}"
+    )
+    try:
+        r = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=20)
+        r.raise_for_status()
+        result = r.json()["content"][0]["text"].strip()
+        if result and len(result) > 10:
+            log.info(f"Neutralized: {result[:80]}")
+            return result
+    except Exception as e:
+        log.warning(f"Neutralize failed: {e}")
+    return raw_text
+
+
+def extract_claims(text):
+    """Split text into individual checkable factual claims (max 4). Returns list of strings."""
+    if len(text) < 60:
+        return [text]
+    if not ANTHROPIC_KEY:
+        return [text]
+    prompt = (
+        "Identify the distinct, independently checkable factual claims in the text below. "
+        "Return a JSON array of strings — one string per claim, self-contained and testable. "
+        "Maximum 4 claims. If there is only one claim return a single-element array. "
+        "Ignore pure opinion, emotion, and non-falsifiable statements.\n\n"
+        f"TEXT:\n{text[:1500]}\n\n"
+        'Respond ONLY with a JSON array, e.g.: ["Claim one", "Claim two"]'
+    )
+    try:
+        r = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=20)
+        r.raise_for_status()
+        raw = r.json()["content"][0]["text"].strip()
+        s = raw.find("["); e = raw.rfind("]") + 1
+        if s >= 0 and e > s:
+            claims = json.loads(raw[s:e])
+            claims = [c.strip() for c in claims if isinstance(c, str) and c.strip()][:4]
+            if claims:
+                log.info(f"Extracted {len(claims)} claim(s)")
+                return claims
+    except Exception as e:
+        log.warning(f"Claim extraction failed: {e}")
+    return [text]
+
+
+def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, system=None):
+    """Single Claude API call. Returns text or None."""
+    body = {"model": model, "max_tokens": max_tokens,
+            "messages": [{"role": "user", "content": prompt}]}
+    if system:
+        body["system"] = system
+    try:
+        r = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json=body, timeout=45)
+        r.raise_for_status()
+        return r.json()["content"][0]["text"].strip()
+    except Exception as e:
+        log.warning(f"_claude_call {model}: {e}")
+        return None
+
+
 def claude_analyse(claim, google, scraped, st):
     g = "\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
-    prompt = (
-        f"Fact-check this claim (source: {st}).\n\nCLAIM:\n\"\"\"{claim[:1500]}\"\"\"\n\n"
-        f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\nFACT-CHECK SITES:\n{scraped[:1500] or 'No results.'}\n\n"
+    evidence = (
+        f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\n"
+        f"FACT-CHECK SITES:\n{scraped[:1500] or 'No results.'}"
+    )
+
+    # ── Step 1 & 2: Debate — pro and con in parallel (Haiku, fast + cheap) ──
+    pro_text, con_text = "", ""
+    if ANTHROPIC_KEY:
+        pro_prompt = (
+            "You are a fact-checker. Using ONLY the evidence provided, make the strongest "
+            "honest case that the claim below is TRUE or mostly accurate. Be specific, cite sources. "
+            "3-4 sentences.\n\n"
+            f"CLAIM: {claim[:800]}\n\n{evidence}"
+        )
+        con_prompt = (
+            "You are a fact-checker. Using ONLY the evidence provided, make the strongest "
+            "honest case that the claim below is FALSE or misleading. Be specific, cite sources. "
+            "3-4 sentences.\n\n"
+            f"CLAIM: {claim[:800]}\n\n{evidence}"
+        )
+        with ThreadPoolExecutor(max_workers=2) as ex:
+            f_pro = ex.submit(_claude_call, pro_prompt, "claude-haiku-4-5-20251001", 500)
+            f_con = ex.submit(_claude_call, con_prompt, "claude-haiku-4-5-20251001", 500)
+            pro_text = f_pro.result() or ""
+            con_text = f_con.result() or ""
+        log.info(f"Debate: pro={len(pro_text)}ch con={len(con_text)}ch")
+
+    # ── Step 3: Synthesis — Sonnet reads both sides and produces verdict ──
+    debate_section = ""
+    if pro_text or con_text:
+        debate_section = (
+            f"\n\nSTRUCTURED DEBATE:\n"
+            f"CASE FOR TRUE:\n{pro_text}\n\n"
+            f"CASE FOR FALSE/MISLEADING:\n{con_text}"
+        )
+
+    synth_prompt = (
+        f"Fact-check this claim (source: {st}). "
+        f"You have evidence AND a structured pro/con debate. Synthesize everything into a balanced verdict.\n\n"
+        f"CLAIM:\n\"\"\"{claim[:1200]}\"\"\"\n\n"
+        f"{evidence}{debate_section}\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
-    # Try Claude (Sonnet)
+
     if ANTHROPIC_KEY:
         for attempt in range(2):
             try:
                 r = requests.post("https://api.anthropic.com/v1/messages",
-                    headers={"x-api-key":ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
-                    json={"model":"claude-sonnet-4-6","max_tokens":2000,"system":SYSTEM,"messages":[{"role":"user","content":prompt}]},
+                    headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+                    json={"model": "claude-sonnet-4-6", "max_tokens": 2000, "system": SYSTEM,
+                          "messages": [{"role": "user", "content": synth_prompt}]},
                     timeout=55)
                 r.raise_for_status()
                 result = _parse_json_result(r.json()["content"][0]["text"])
-                if result: return result
+                if result:
+                    if pro_text: result["_debate_pro"] = pro_text
+                    if con_text: result["_debate_con"] = con_text
+                    return result
             except Exception as e:
-                log.warning("Claude analyse attempt %d: %s", attempt+1, e)
+                log.warning("Claude synthesis attempt %d: %s", attempt+1, e)
                 if attempt == 0:
                     import time as _t; _t.sleep(1)
-    # Fallback: OpenAI gpt-4o
+
+    # Fallback: OpenAI gpt-4o for synthesis
     if OPENAI_API_KEY:
         try:
-            log.info("Falling back to OpenAI for analysis...")
+            log.info("Falling back to OpenAI for synthesis...")
             r = requests.post("https://api.openai.com/v1/chat/completions",
                 headers={"Authorization": f"Bearer {OPENAI_API_KEY}", "Content-Type": "application/json"},
                 json={"model": "gpt-4o", "max_tokens": 2000,
-                      "messages": [{"role": "system", "content": SYSTEM}, {"role": "user", "content": prompt}]},
+                      "messages": [{"role": "system", "content": SYSTEM},
+                                   {"role": "user", "content": synth_prompt}]},
                 timeout=55)
             r.raise_for_status()
             result = _parse_json_result(r.json()["choices"][0]["message"]["content"])
             if result:
-                log.info("OpenAI analysis succeeded")
+                log.info("OpenAI synthesis succeeded")
                 return result
         except Exception as e:
             log.error("OpenAI analyse: %s", e)
-    return {"rating":"UNVERIFIABLE","verdict":"Analysis failed — both AI providers unavailable. Please try again shortly.","key_facts":[],"context":"","red_flags":[],"media_bias":"","sources":["Google FC — https://toolbox.google.com/factcheck/explorer","Snopes — https://www.snopes.com","FullFact — https://fullfact.org"],"confidence":"LOW","confidence_reason":"AI provider error"}
+
+    return {"rating": "UNVERIFIABLE", "verdict": "Analysis failed — both AI providers unavailable. Please try again shortly.",
+            "key_facts": [], "context": "", "red_flags": [], "media_bias": "",
+            "sources": ["Google FC — https://toolbox.google.com/factcheck/explorer",
+                        "Snopes — https://www.snopes.com", "FullFact — https://fullfact.org"],
+            "confidence": "LOW", "confidence_reason": "AI provider error"}
 
 def fmt_report(claim, a, st, cost, used_sources=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
@@ -825,6 +952,14 @@ def fmt_report(claim, a, st, cost, used_sources=None):
     if a.get("context"): lines += ["*BACKGROUND*", a["context"][:400], ""]
     if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:3]] + [""]
     if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:200], ""]
+    score = a.get("lenz_score")
+    if score is not None:
+        try:
+            s = int(score)
+            filled = "█" * s + "░" * (10 - s)
+            lines += [f"*TRUTH SCORE*  `{filled}` {s}/10", ""]
+        except (ValueError, TypeError):
+            pass
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
@@ -832,7 +967,8 @@ def fmt_report(claim, a, st, cost, used_sources=None):
         lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:10]] + [""]
     elif a.get("sources"):
         lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
-    lines += ["─────────────────────────────",f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2_"]
+    debate_indicator = "⚖️ pro/con debate" if a.get("_debate_pro") else "single-pass"
+    lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2  •  {debate_indicator}_"]
     return "\n".join(lines)
 
 def confirm_msg(st, preview, cost):
@@ -856,14 +992,14 @@ def send(to, text):
             log.error("Send: %s", e)
 
 def run_check(from_num, query, st, img_bytes, cost, video_bytes=None):
-    # Show all enabled sources in cross-ref message
+    # Show all enabled sources
     all_src = enabled_sources()
     src_preview = ", ".join(all_src[:8])
     if len(all_src) > 8:
         src_preview += f" +{len(all_src)-8} more"
     send(from_num, f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
 
-    # For video content, extract frames and analyse visuals before fact-checking
+    # For video content, extract frames before fact-checking
     if st == "video" and video_bytes:
         try:
             send(from_num, "🎞️ Analysing video frames...")
@@ -876,14 +1012,37 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None):
         except Exception as e:
             log.error(f"Frame analysis failed: {e}")
 
+    # ── Claim neutralization (text/audio/url only) ────────────────────────
+    if st in ("text", "audio", "url"):
+        send(from_num, "🔍 Identifying claims...")
+        neutral = neutralize_claim(query)
+        if neutral != query:
+            log.info(f"Neutralized: {neutral[:80]}")
+        query = neutral
+
+    # ── Multi-claim extraction ────────────────────────────────────────────
+    claims = extract_claims(query) if st in ("text", "audio", "url") else [query]
+    multi = len(claims) > 1
+    if multi:
+        claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
+        send(from_num, f"📋 Found {len(claims)} claims to check:\n{claim_preview}")
+
+    # ── Scrape sources once, shared across all claims ─────────────────────
     g = google_fc(query)
     sc, used_sources = scrape_sites(query)
-    a = claude_analyse(query, g, sc, st)
-
-    # Merge Google FC sources with scraped sources that returned results
     gfc_sources = [x["source"] for x in g if x.get("source")]
     all_used = list(dict.fromkeys(gfc_sources + used_sources))
-    send(from_num, fmt_report(query, a, st, cost, all_used))
+
+    # ── Analyse each claim (with pro/con debate) ──────────────────────────
+    for i, claim in enumerate(claims):
+        if multi:
+            send(from_num, f"⚖️ Analysing claim {i+1}/{len(claims)}...")
+        a = claude_analyse(claim, g, sc, st)
+        report = fmt_report(claim, a, st, cost, all_used)
+        if multi:
+            send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
+        else:
+            send(from_num, report)
 
 def clean_query(q):
     lines = []
