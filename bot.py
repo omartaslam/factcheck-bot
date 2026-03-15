@@ -863,21 +863,28 @@ def process(from_num, message):
                 page_text = fetch(url) or ""
                 # Try to extract og:image and OCR it for posts with images
                 try:
-                    import re as _re
-                    img_match = _re.search(r'<meta[^>]+(?:property|name)=["']?og:image["']?[^>]+content=["']([^"']+)["']', page_text, _re.I)
-                    if not img_match:
-                        img_match = _re.search(r'<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']?og:image["']?', page_text, _re.I)
-                    if img_match:
-                        img_url = img_match.group(1)
+                # Try to extract og:image and OCR it for posts with images
+                try:
+                    img_url = None
+                    for chunk in page_text.split("og:image"):
+                        if "content=" in chunk:
+                            for q in ['"', "'"]:
+                                idx2 = chunk.find("content=" + q)
+                                if idx2 >= 0:
+                                    start2 = idx2 + len("content=" + q)
+                                    end2 = chunk.find(q, start2)
+                                    if end2 > start2:
+                                        img_url = chunk[start2:end2]
+                                        break
+                            if img_url:
+                                break
+                    if img_url and img_url.startswith("http"):
                         log.info(f"Found og:image: {img_url[:80]}")
                         img_r = requests.get(img_url, timeout=10)
                         if img_r.ok and len(img_r.content) > 1000:
                             ocr_text = ocr_image(img_r.content)
                             if ocr_text:
-                                page_text = f"{page_text}
-
-IMAGE TEXT:
-{ocr_text}"
+                                page_text = page_text + "\n\nIMAGE TEXT:\n" + ocr_text
                                 send(from_num, "🖼 Found and analysed image in post")
                                 log.info(f"OCR from og:image: {ocr_text[:100]}")
                 except Exception as e:
