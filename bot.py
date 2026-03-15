@@ -860,34 +860,68 @@ def process(from_num, message):
                     source_type = "url"
             else:
                 send(from_num, "🔍 Analysing post...")
-                page_text = fetch(url) or ""
-                # Try to extract og:image and OCR it for posts with images
-                try:
-                    img_url = None
-                    for chunk in page_text.split("og:image"):
-                        if "content=" in chunk:
-                            for q in ['"', "'"]:
-                                idx2 = chunk.find("content=" + q)
-                                if idx2 >= 0:
-                                    start2 = idx2 + len("content=" + q)
-                                    end2 = chunk.find(q, start2)
-                                    if end2 > start2:
-                                        img_url = chunk[start2:end2]
-                                        break
-                            if img_url:
-                                break
-                    if img_url and img_url.startswith("http"):
-                        log.info(f"Found og:image: {img_url[:80]}")
-                        img_r = requests.get(img_url, timeout=10)
-                        if img_r.ok and len(img_r.content) > 1000:
-                            ocr_text = ocr_image(img_r.content)
-                            if ocr_text:
-                                page_text = page_text + "\n\nIMAGE TEXT:\n" + ocr_text
-                                send(from_num, "🖼 Found and analysed image in post")
-                                log.info(f"OCR from og:image: {ocr_text[:100]}")
-                except Exception as e:
-                    log.warning(f"og:image OCR failed: {e}")
-                query = page_text or body
+                page_text = ""
+                if "facebook.com" in url or "instagram.com" in url:
+                    try:
+                        cookies_b64 = FB_COOKIES_B64 if "facebook.com" in url else IG_COOKIES_B64
+                        cookies_file = None
+                        if cookies_b64:
+                            import base64 as _b64
+                            cookies_data = _b64.b64decode(cookies_b64).decode("utf-8")
+                            cookies_file = tempfile.mktemp(suffix=".txt")
+                            with open(cookies_file, "w") as cf:
+                                cf.write(cookies_data)
+                        ydl_opts = {
+                            "quiet": True,
+                            "no_warnings": True,
+                            "skip_download": True,
+                            "socket_timeout": 15,
+                            "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                        }
+                        if cookies_file:
+                            ydl_opts["cookiefile"] = cookies_file
+                        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                            info = ydl.extract_info(url, download=False)
+                            if info:
+                                parts = []
+                                if info.get("title") and info["title"] != "Facebook":
+                                    parts.append(f"Title: {info['title']}")
+                                if info.get("description"):
+                                    parts.append(f"Post text: {info['description'][:800]}")
+                                if info.get("uploader"):
+                                    parts.append(f"Posted by: {info['uploader']}")
+                                thumbnails = info.get("thumbnails") or []
+                                if info.get("thumbnail"):
+                                    thumbnails = [{"url": info["thumbnail"]}] + thumbnails
+                                for fmt in info.get("formats") or []:
+                                    if fmt.get("ext") in ("jpg","jpeg","png","webp"):
+                                        thumbnails.append({"url": fmt.get("url","")})
+                                ocr_texts = []
+                                for thumb in thumbnails[:3]:
+                                    try:
+                                        img_url = thumb.get("url","")
+                                        if not img_url:
+                                            continue
+                                        img_r = requests.get(img_url, timeout=10, headers={"User-Agent":"Mozilla/5.0"})
+                                        if img_r.ok and len(img_r.content) > 5000:
+                                            ocr = ocr_image(img_r.content)
+                                            if ocr and len(ocr) > 20:
+                                                ocr_texts.append(ocr)
+                                                log.info(f"OCR from post image: {ocr[:80]}")
+                                    except Exception as ie:
+                                        log.warning(f"Image OCR failed: {ie}")
+                                if ocr_texts:
+                                    parts.append("Image text/content:\n" + "\n---\n".join(ocr_texts))
+                                    send(from_num, f"🖼 Analysed {len(ocr_texts)} image(s) in post")
+                                page_text = "\n\n".join(parts)
+                                log.info(f"FB/IG post extracted: {len(page_text)} chars")
+                        if cookies_file and os.path.exists(cookies_file):
+                            os.unlink(cookies_file)
+                    except Exception as e:
+                        log.warning(f"yt-dlp info extraction failed: {e}")
+                if not page_text:
+                    page_text = fetch(url) or ""
+                                query = page_text or body
                 source_type = "url"
         else:
             query, source_type = body, "text"
