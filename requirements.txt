@@ -3,6 +3,7 @@ requests
 python-dotenv
 pillow
 opencv-python-headless
-yt-dlp>=2024.12.13gunicorn
+yt-dlp>=2024.12.13
+gunicorn
 numpy
 apscheduler>=3.10.0
