@@ -813,8 +813,14 @@ def process(from_num, message):
         urls = [w for w in body.split() if w.startswith("http")]
         if urls:
             url = urls[0]
-            video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com","t.me"]
-            is_video_link = any(d in url for d in video_domains)
+            # Video platforms — but only treat FB/IG as video if URL pattern suggests it
+            video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","rumble.com","bitchute.com","t.me","fb.watch"]
+            video_path_hints = ["watch", "video", "reel", "shorts", "clip", "live"]
+            is_fb_ig = any(d in url for d in ["facebook.com","instagram.com"])
+            is_video_link = (
+                any(d in url for d in video_domains) or
+                (is_fb_ig and any(h in url.lower() for h in video_path_hints))
+            )
             if is_video_link:
                 try:
                     send(from_num, "🎬 Downloading video from URL...")
@@ -853,7 +859,31 @@ def process(from_num, message):
                     query = f"Video URL: {url}\n\n{page_text[:400]}" if page_text else f"Video from: {url}"
                     source_type = "url"
             else:
-                send(from_num, "Fetching article..."); query = fetch(url) or body; source_type = "url"
+                send(from_num, "🔍 Analysing post...")
+                page_text = fetch(url) or ""
+                # Try to extract og:image and OCR it for posts with images
+                try:
+                    import re as _re
+                    img_match = _re.search(r'<meta[^>]+(?:property|name)=["']?og:image["']?[^>]+content=["']([^"']+)["']', page_text, _re.I)
+                    if not img_match:
+                        img_match = _re.search(r'<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']?og:image["']?', page_text, _re.I)
+                    if img_match:
+                        img_url = img_match.group(1)
+                        log.info(f"Found og:image: {img_url[:80]}")
+                        img_r = requests.get(img_url, timeout=10)
+                        if img_r.ok and len(img_r.content) > 1000:
+                            ocr_text = ocr_image(img_r.content)
+                            if ocr_text:
+                                page_text = f"{page_text}
+
+IMAGE TEXT:
+{ocr_text}"
+                                send(from_num, "🖼 Found and analysed image in post")
+                                log.info(f"OCR from og:image: {ocr_text[:100]}")
+                except Exception as e:
+                    log.warning(f"og:image OCR failed: {e}")
+                query = page_text or body
+                source_type = "url"
         else:
             query, source_type = body, "text"
     elif msg_type == "image":
