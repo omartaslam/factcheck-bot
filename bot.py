@@ -1094,6 +1094,119 @@ def extract_claims(text):
     return [text]
 
 
+def assess_content_claims(text, source_type):
+    """
+    Analyse content and extract verifiable claims BEFORE asking user to confirm.
+    Returns dict:
+        claims:      list of neutral, self-contained, testable claim strings
+        checkable:   bool — True if there are meaningful claims to verify
+        reason:      str  — why not checkable (empty if checkable)
+        suggestions: list of str — what the user could send instead
+    """
+    if not ANTHROPIC_KEY or not text or len(text.strip()) < 10:
+        return {"claims": [text] if text and text.strip() else [], "checkable": bool(text and text.strip()), "reason": "", "suggestions": []}
+
+    src_label = {"text": "text message", "image": "image", "audio": "voice note",
+                 "video": "video", "url": "post/article", "document": "document"}.get(source_type, "content")
+    prompt = (
+        f"Analyse this {src_label} and extract all independently verifiable factual claims.\n\n"
+        "Return a JSON object with exactly these fields:\n"
+        '  "claims": array of specific, testable factual statements (max 5). Each claim must be self-contained — include the subject and what is asserted. Strip emotional/partisan framing. Empty array if none.\n'
+        '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
+        '  "reason": if checkable=false, one short sentence explaining why (e.g. "appears to be satirical", "contains only opinions and no factual assertions", "content is too unclear to extract a specific claim"). Empty string if checkable=true.\n'
+        '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
+        "Rules:\n"
+        "- Only include assertions that can be verified against real-world evidence\n"
+        "- Exclude opinions, predictions, satire, emotional appeals, rhetorical questions\n"
+        "- If claims exist but evidence is hard to find online, still set checkable=true\n"
+        "- If the content is ambiguous or low-quality but has a plausible claim, include it\n\n"
+        f"CONTENT:\n{text[:3000]}\n\n"
+        'Respond ONLY with valid JSON.'
+    )
+    try:
+        r = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 600,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=25)
+        r.raise_for_status()
+        raw = r.json()["content"][0]["text"].strip()
+        s = raw.find("{"); e = raw.rfind("}") + 1
+        if s >= 0 and e > s:
+            data = json.loads(raw[s:e])
+            claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:5]
+            checkable = bool(data.get("checkable", bool(claims)))
+            if claims:
+                checkable = True  # if we have claims, always checkable
+            reason = str(data.get("reason", "")).strip()
+            suggestions = [str(s).strip() for s in data.get("suggestions", []) if str(s).strip()][:3]
+            log.info(f"assess_content_claims: checkable={checkable}, {len(claims)} claim(s)")
+            return {"claims": claims, "checkable": checkable, "reason": reason, "suggestions": suggestions}
+    except Exception as e:
+        log.warning(f"assess_content_claims failed: {e}")
+    # Fallback: treat as one claim
+    return {"claims": [text[:500].strip()], "checkable": True, "reason": "", "suggestions": []}
+
+
+def claims_confirm_msg(claims, source_type, cost):
+    """Confirmation message that shows enumerated verifiable claims before Y/N."""
+    src = {"text": "Text", "image": "Image", "audio": "Voice Note", "video": "Video",
+           "url": "Post / Article", "document": "Document"}
+    HDR = "*━━━━━━━━━━━━━━━━━━━━*"
+    plural = "claims" if len(claims) > 1 else "claim"
+    claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
+    return (
+        f"{HDR}\n*FACTCHECK PRO*\n_{src.get(source_type, source_type)}_\n{HDR}\n\n"
+        f"*Found {len(claims)} verifiable {plural}:*\n\n{claim_lines}\n\n"
+        f"_Est. cost: ${cost:.4f}_\n\n"
+        f"Reply *Y* to fact-check\nReply *N* to cancel"
+    )
+
+
+def no_claims_msg(reason, source_type, suggestions):
+    """Message sent when no verifiable claims can be extracted — explains why and suggests alternatives."""
+    src_label = {"text": "message", "image": "image", "audio": "voice note",
+                 "video": "video", "url": "post", "document": "document"}.get(source_type, "content")
+    lines = ["⚠️ *No verifiable claims found*\n"]
+    if reason:
+        lines.append(f"This {src_label} {reason}.")
+    else:
+        lines.append(f"I couldn't identify any specific, verifiable facts in this {src_label}.")
+
+    if suggestions:
+        lines.append("\n*To fact-check this, try:*")
+        for sg in suggestions:
+            lines.append(f"• {sg}")
+    else:
+        # Default suggestions by source type
+        if source_type == "video":
+            lines += [
+                "\n*To fact-check this video, try:*",
+                "• Send the original URL (TikTok / YouTube / Facebook / Instagram link)",
+                "• Take a screenshot of the text overlay or caption and send it as an image",
+                "• Copy the claim text and paste it as a WhatsApp message",
+            ]
+        elif source_type == "image":
+            lines += [
+                "\n*To fact-check this image, try:*",
+                "• Copy the text in the image and send it as a message",
+                "• Describe the specific claim you want checked",
+            ]
+        elif source_type == "url":
+            lines += [
+                "\n*To fact-check this post, try:*",
+                "• Copy the relevant text from the post and send it directly",
+                "• Send the direct URL to the original post (not a share/redirect link)",
+            ]
+        else:
+            lines += [
+                "\n*Try sending:*",
+                "• The specific claim as a text message",
+                "• A screenshot of the content containing the claim",
+            ]
+    return "\n".join(lines)
+
+
 def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, system=None):
     """Single Claude API call. Returns text or None. Tracks token cost."""
     body = {"model": model, "max_tokens": max_tokens,
@@ -1393,7 +1506,7 @@ def send_twitter_dm(recipient_id, text):
             log.error("Twitter DM send error: %s", e)
 
 
-def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free"):
+def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     # Show all enabled sources
@@ -1416,20 +1529,23 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         except Exception as e:
             log.error(f"Frame analysis failed: {e}")
 
-    # ── Claim neutralization (text/audio/url only) ────────────────────────
-    if st in ("text", "audio", "url"):
-        send(from_num, "🔍 Identifying claims...")
+    # ── Claim extraction (use pre-extracted claims if available, avoids double Claude call) ──
+    if pre_claims:
+        claims = pre_claims
+        log.info(f"Using {len(claims)} pre-extracted claim(s)")
+    elif st in ("text", "audio", "url"):
         neutral = neutralize_claim(query)
         if neutral != query:
             log.info(f"Neutralized: {neutral[:80]}")
         query = neutral
+        claims = extract_claims(query)
+    elif st == "video":
+        claims = extract_claims(query)
+    else:
+        claims = [query]
 
-    # ── Multi-claim extraction ────────────────────────────────────────────
-    claims = extract_claims(query) if st in ("text", "audio", "url", "video") else [query]
+    # ── Multi-claim header (skip — already shown before Y confirmation) ───
     multi = len(claims) > 1
-    if multi:
-        claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
-        send(from_num, f"📋 Found {len(claims)} claims to check:\n{claim_preview}")
 
     # ── Scrape sources once, shared across all claims ─────────────────────
     # For video/audio, use the first extracted claim as search query (not raw video analysis text)
@@ -1456,7 +1572,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
 
-def run_check_platform(platform, uid, query, st, billing_type, send_fn):
+def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_claims=None):
     """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
     _cost_reset()
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
@@ -1465,18 +1581,21 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn):
     if len(all_src) > 8: src_preview += f" +{len(all_src)-8} more"
     send_fn(f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
 
-    if st in ("text", "audio", "url"):
-        send_fn("🔍 Identifying claims...")
+    if pre_claims:
+        claims = pre_claims
+        log.info(f"Using {len(claims)} pre-extracted claim(s)")
+    elif st in ("text", "audio", "url"):
         neutral = neutralize_claim(query)
         if neutral != query:
             log.info("Neutralized: %s", neutral[:80])
         query = neutral
+        claims = extract_claims(query)
+    elif st == "video":
+        claims = extract_claims(query)
+    else:
+        claims = [query]
 
-    claims = extract_claims(query) if st in ("text", "audio", "url", "video") else [query]
     multi = len(claims) > 1
-    if multi:
-        claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
-        send_fn(f"📋 Found {len(claims)} claims to check:\n{claim_preview}")
 
     search_query = claims[0] if st in ("video", "audio") and claims else query
     g = google_fc(search_query)
@@ -1574,6 +1693,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             threading.Thread(
                 target=run_check_platform,
                 args=(platform, uid, data["query"], data["source_type"], bt, send_fn),
+                kwargs={"pre_claims": data.get("claims")},
                 daemon=True
             ).start()
         elif body_upper in ("NO", "N"):
@@ -1623,10 +1743,24 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
     query = query.strip()[:2000]
     log.info("[%s/%s] Received [%s]: %s", platform, uid, source_type, query[:100])
     cost = estimate_cost(source_type)
-    with pending_lock:
-        pending[pkey] = {"query": query, "source_type": source_type,
-                         "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()}
-    send_fn(confirm_msg(source_type, query, cost))
+
+    # ── Extract claims before confirmation — show user what will be checked ──
+    if source_type in ("text", "audio", "url", "video"):
+        send_fn("🔍 Identifying claims...")
+        assessment = assess_content_claims(query, source_type)
+        if not assessment["checkable"] or not assessment["claims"]:
+            send_fn(no_claims_msg(assessment["reason"], source_type, assessment["suggestions"]))
+            return
+        claims = assessment["claims"]
+        with pending_lock:
+            pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
+                             "cost": cost, "timestamp": t.time(), "claims": claims}
+        send_fn(claims_confirm_msg(claims, source_type, cost))
+    else:
+        with pending_lock:
+            pending[pkey] = {"query": query, "source_type": source_type,
+                             "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()}
+        send_fn(confirm_msg(source_type, query, cost))
 
 def process(from_num, message):
     msg_id = message.get("id",""); msg_time = int(message.get("timestamp",0))
@@ -1668,7 +1802,7 @@ def process(from_num, message):
                     send(from_num, "✓ Subscriber — unlimited access")
                 send(from_num, "Starting fact-check...")
                 threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
-                                 kwargs={"billing_type": bt}, daemon=True).start()
+                                 kwargs={"billing_type": bt, "pre_claims": data.get("claims")}, daemon=True).start()
                 return
             elif body_upper in ("NO","N"):
                 with pending_lock: pending.pop(pkey, None)
@@ -1935,9 +2069,25 @@ def process(from_num, message):
     query = query.strip()[:2000]
     log.info("Received [%s]: %s", source_type, query[:100])
     cost = estimate_cost(source_type)
-    with pending_lock:
-        pending[pkey] = {"query":query,"source_type":source_type,"image_bytes":image_bytes,"cost":cost,"timestamp":t.time()}
-    send(from_num, confirm_msg(source_type, query, cost))
+
+    # ── Extract claims before confirmation — show user what will be checked ──
+    if source_type in ("text", "audio", "url", "video"):
+        send(from_num, "🔍 Identifying claims...")
+        assessment = assess_content_claims(query, source_type)
+        if not assessment["checkable"] or not assessment["claims"]:
+            send(from_num, no_claims_msg(assessment["reason"], source_type, assessment["suggestions"]))
+            return
+        claims = assessment["claims"]
+        with pending_lock:
+            pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
+                             "cost": cost, "timestamp": t.time(), "claims": claims}
+        send(from_num, claims_confirm_msg(claims, source_type, cost))
+    else:
+        # image / document — no claim extraction, show raw preview
+        with pending_lock:
+            pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
+                             "cost": cost, "timestamp": t.time()}
+        send(from_num, confirm_msg(source_type, query, cost))
 
 # ── Web API: database, auth, rate-limiting ───────────────────────────────────
 
