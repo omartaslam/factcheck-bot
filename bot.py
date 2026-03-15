@@ -457,6 +457,35 @@ def analyze_video_frames(frames):
         r.raise_for_status(); return r.json()["content"][0]["text"].strip()
     except Exception as e: log.error("Video frame analysis: %s", e); return ""
 
+def _try_download_url(video_url, label):
+    """Download video bytes from a direct URL. Returns bytes or None."""
+    try:
+        r = requests.get(video_url, timeout=30, stream=True)
+        r.raise_for_status()
+        content = b"".join(r.iter_content(chunk_size=1024*1024))
+        if content:
+            log.info(f"{label}: downloaded {len(content)//1024}KB")
+            return content
+    except Exception as e:
+        log.error(f"{label} download failed: {e}")
+    return None
+
+def _extract_video_url(data):
+    """Extract best video URL and title from vikas5914 API response."""
+    title = data.get("title", "") or data.get("description", "") or ""
+    # Try HD first, then SD, then any video key
+    for key in ("hd", "sd", "video", "url"):
+        val = data.get(key)
+        if isinstance(val, str) and val.startswith("http"):
+            return val, title
+        if isinstance(val, list) and val:
+            return val[0], title
+    # Search nested
+    for v in data.values():
+        if isinstance(v, str) and v.startswith("http") and any(x in v for x in (".mp4", "video", "cdn")):
+            return v, title
+    return None, title
+
 def _cobalt_download(url):
     """
     Platform-specific downloaders:
@@ -1403,8 +1432,10 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         send(from_num, f"📋 Found {len(claims)} claims to check:\n{claim_preview}")
 
     # ── Scrape sources once, shared across all claims ─────────────────────
-    g = google_fc(query)
-    sc, used_sources = scrape_sites(query)
+    # For video/audio, use the first extracted claim as search query (not raw video analysis text)
+    search_query = claims[0] if st in ("video", "audio") and claims else query
+    g = google_fc(search_query)
+    sc, used_sources = scrape_sites(search_query)
     gfc_sources = [x["source"] for x in g if x.get("source")]
     all_used = list(dict.fromkeys(gfc_sources + used_sources))
 
@@ -1447,8 +1478,9 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn):
         claim_preview = "\n".join(f"  {i+1}. {c[:100]}" for i, c in enumerate(claims))
         send_fn(f"📋 Found {len(claims)} claims to check:\n{claim_preview}")
 
-    g = google_fc(query)
-    sc, used_sources = scrape_sites(query)
+    search_query = claims[0] if st in ("video", "audio") and claims else query
+    g = google_fc(search_query)
+    sc, used_sources = scrape_sites(search_query)
     gfc_sources = [x["source"] for x in g if x.get("source")]
     all_used = list(dict.fromkeys(gfc_sources + used_sources))
 
