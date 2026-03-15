@@ -890,45 +890,14 @@ def process(from_num, message):
                                     parts.append(f"Post text: {info['description'][:800]}")
                                 if info.get("uploader"):
                                     parts.append(f"Posted by: {info['uploader']}")
-                                # For link-share posts, try to find the external article URL
-                                # in the post description and fetch its og:image — this is the
-                                # article thumbnail (with headline text) not a FB profile pic.
-                                article_img_url = None
-                                desc = info.get("description", "") or ""
-                                ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
-                                if ext_urls:
-                                    try:
-                                        import html as _html
-                                        art_r = requests.get(ext_urls[0], headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                                        if art_r.ok:
-                                            m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', art_r.text, re.I)
-                                            if not m:
-                                                m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', art_r.text, re.I)
-                                            if m:
-                                                article_img_url = _html.unescape(m.group(1).strip())
-                                                log.info(f"Article og:image found: {article_img_url[:80]}")
-                                    except Exception as ae:
-                                        log.warning(f"Article og:image failed: {ae}")
-
-                                ocr_texts = []
-                                img_sources = ([{"url": article_img_url}] if article_img_url else []) or \
-                                              ([{"url": info["thumbnail"]}] if info.get("thumbnail") else [])
-                                for thumb in img_sources[:1]:
-                                    try:
-                                        img_url = thumb.get("url","")
-                                        if not img_url:
-                                            continue
-                                        img_r = requests.get(img_url, timeout=10, headers={"User-Agent":"Mozilla/5.0"})
-                                        if img_r.ok and len(img_r.content) > 5000:
-                                            ocr = ocr_image(img_r.content)
-                                            if ocr and len(ocr) > 20:
-                                                ocr_texts.append(ocr)
-                                                log.info(f"OCR from post image: {ocr[:80]}")
-                                    except Exception as ie:
-                                        log.warning(f"Image OCR failed: {ie}")
-                                if ocr_texts:
-                                    parts.append("Image text/content:\n" + "\n---\n".join(ocr_texts))
-                                    send(from_num, f"🖼 Analysed {len(ocr_texts)} image(s) in post")
+                                # Log all image-related fields so we can identify the right one
+                                log.info(f"DEBUG thumbnail: {info.get('thumbnail','')[:120]}")
+                                log.info(f"DEBUG url: {info.get('url','')[:120]}")
+                                log.info(f"DEBUG ext: {info.get('ext','')}")
+                                for i, th in enumerate((info.get('thumbnails') or [])[:5]):
+                                    log.info(f"DEBUG thumbs[{i}]: {th.get('url','')[:120]}")
+                                for i, fmt in enumerate((info.get('formats') or [])[:5]):
+                                    log.info(f"DEBUG fmt[{i}] ext={fmt.get('ext')} url={str(fmt.get('url',''))[:100]}")
                                 page_text = "\n\n".join(parts)
                                 log.info(f"FB/IG post extracted: {len(page_text)} chars")
                         if cookies_file and os.path.exists(cookies_file):
