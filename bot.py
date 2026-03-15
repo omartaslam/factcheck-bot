@@ -738,6 +738,56 @@ def _ytdlp_download(url):
             try: os.unlink(cookies_file)
             except: pass
 
+
+def _ytdlp_audio_bytes(url):
+    """
+    Download best audio stream only via yt-dlp — returns (bytes, ext) or (None, '').
+    Works without ffmpeg: yt-dlp saves raw DASH m4a/opus/webm which Whisper accepts.
+    Used as fallback when video file transcription fails (e.g. Facebook CDN fragmented MP4).
+    """
+    cookies_file = None
+    tmpdir = tempfile.mkdtemp()
+    try:
+        cookies_b64 = FB_COOKIES_B64 if "facebook.com" in url or "fb.watch" in url else (
+            IG_COOKIES_B64 if "instagram.com" in url else "")
+        if cookies_b64:
+            cookies_data = base64.b64decode(cookies_b64).decode("utf-8")
+            cookies_file = tempfile.mktemp(suffix=".txt")
+            with open(cookies_file, "w") as cf:
+                cf.write(cookies_data)
+        ydl_opts = {
+            "format": "bestaudio/best",
+            "outtmpl": os.path.join(tmpdir, "audio.%(ext)s"),
+            "quiet": True,
+            "no_warnings": True,
+            "socket_timeout": 30,
+            "http_headers": {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            },
+        }
+        if cookies_file:
+            ydl_opts["cookiefile"] = cookies_file
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        for fname in os.listdir(tmpdir):
+            fp = os.path.join(tmpdir, fname)
+            if os.path.getsize(fp) > 0:
+                ext = os.path.splitext(fname)[1].lstrip(".") or "m4a"
+                with open(fp, "rb") as af:
+                    data = af.read()
+                log.info(f"yt-dlp audio: {len(data)//1024}KB .{ext}")
+                return data, ext
+    except Exception as e:
+        log.error(f"yt-dlp audio download: {e}")
+    finally:
+        if cookies_file and os.path.exists(cookies_file):
+            try: os.unlink(cookies_file)
+            except: pass
+        import shutil
+        try: shutil.rmtree(tmpdir)
+        except: pass
+    return None, ""
+
 def _fb_ig_post_scrape(url):
     """Scrape a specific Facebook/Instagram POST URL to get full post text and post image.
 
@@ -1948,15 +1998,29 @@ def process(from_num, message):
                         except Exception as e:
                             log.error(f"URL video frame analysis: {e}")
                         send(from_num, "🎧 Transcribing audio...")
+                        transcript = ""
                         try:
                             transcript = transcribe(video_bytes, "video/mp4")
-                            if transcript:
-                                parts.append(f"Audio: {transcript}")
-                                send(from_num, "✓ Got transcript")
-                            else:
-                                log.warning("URL video: transcribe() returned empty")
                         except Exception as e:
                             log.error(f"URL video transcription: {e}")
+                        # If video bytes failed, try yt-dlp audio-only stream (works without ffmpeg)
+                        if not transcript:
+                            log.info("Falling back to yt-dlp audio-only download for transcription")
+                            audio_bytes, audio_ext = _ytdlp_audio_bytes(url)
+                            if audio_bytes:
+                                mime_map = {"m4a": "audio/mp4", "mp3": "audio/mpeg",
+                                            "ogg": "audio/ogg", "webm": "audio/webm",
+                                            "opus": "audio/ogg"}
+                                audio_mime = mime_map.get(audio_ext, "audio/mp4")
+                                try:
+                                    transcript = transcribe(audio_bytes, audio_mime)
+                                except Exception as e:
+                                    log.error(f"yt-dlp audio transcription: {e}")
+                        if transcript:
+                            parts.append(f"Audio: {transcript}")
+                            send(from_num, "✓ Got transcript")
+                        else:
+                            log.warning("URL video: all transcription methods failed")
                         # If we got nothing useful from the video, fall back to OG post scrape
                         if not parts and is_fb_ig:
                             send(from_num, "⚠️ Could not analyse video content — extracting post text instead...")
