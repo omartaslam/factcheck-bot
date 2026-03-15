@@ -1260,37 +1260,38 @@ def assess_content_claims(text, source_type):
     src_label = {"text": "text message", "image": "image", "audio": "voice note",
                  "video": "video", "url": "post/article", "document": "document"}.get(source_type, "content")
     prompt = (
-        f"Analyse this {src_label} and extract all independently verifiable factual claims.\n\n"
+        f"Analyse this {src_label} and extract ALL independently verifiable factual claims.\n\n"
         "Return a JSON object with exactly these fields:\n"
-        '  "claims": array of specific, testable factual statements (max 5). Each claim must be self-contained — include the subject and what is asserted. Strip emotional/partisan framing. Empty array if none.\n'
+        '  "claims": array of specific, testable factual statements (max 6). Each claim must be self-contained — include the subject and what is asserted. Strip emotional/partisan framing but keep the core assertion. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
-        '  "reason": if checkable=false, one short sentence explaining why (e.g. "appears to be satirical", "contains only opinions and no factual assertions", "content is too unclear to extract a specific claim"). Empty string if checkable=true.\n'
+        '  "reason": if checkable=false, one short sentence explaining why. Empty string if checkable=true.\n'
         '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
         "Rules:\n"
-        "- Only include assertions that can be verified against real-world evidence\n"
-        "- Exclude opinions, predictions, satire, emotional appeals, rhetorical questions\n"
-        "- If claims exist but evidence is hard to find online, still set checkable=true\n"
-        "- If the content is ambiguous or low-quality but has a plausible claim, include it\n\n"
+        "- Include ALL distinct factual assertions — do not merge separate claims into one\n"
+        "- Include assertions about identity, history, events, quotes, relationships, and statistics\n"
+        "- Include claims that are partially opinion if they contain a verifiable factual core (e.g. 'X said Y at event Z')\n"
+        "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n"
+        "- If evidence is hard to find online, still include the claim\n\n"
         f"CONTENT:\n{text[:3000]}\n\n"
         'Respond ONLY with valid JSON.'
     )
     try:
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 600,
+            json={"model": "claude-sonnet-4-6", "max_tokens": 800,
                   "messages": [{"role": "user", "content": prompt}]},
-            timeout=25)
+            timeout=30)
         r.raise_for_status()
         raw = r.json()["content"][0]["text"].strip()
         s = raw.find("{"); e = raw.rfind("}") + 1
         if s >= 0 and e > s:
             data = json.loads(raw[s:e])
-            claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:5]
+            claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:6]
             checkable = bool(data.get("checkable", bool(claims)))
             if claims:
                 checkable = True  # if we have claims, always checkable
             reason = str(data.get("reason", "")).strip()
-            suggestions = [str(s).strip() for s in data.get("suggestions", []) if str(s).strip()][:3]
+            suggestions = [str(sg).strip() for sg in data.get("suggestions", []) if str(sg).strip()][:3]
             log.info(f"assess_content_claims: checkable={checkable}, {len(claims)} claim(s)")
             return {"claims": claims, "checkable": checkable, "reason": reason, "suggestions": suggestions}
     except Exception as e:
