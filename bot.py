@@ -230,6 +230,12 @@ def download_media(mid):
 
 OCR_PROMPT = "Extract ALL text verbatim from this image. Then in 2 sentences describe what it depicts. Note any signs of manipulation."
 
+_OCR_REFUSALS = ["i'm sorry", "i'm unable", "i cannot", "i can't", "unable to extract", "cannot extract", "can't extract", "no text", "no visible text"]
+
+def _is_ocr_refusal(text):
+    t = text.lower()
+    return any(p in t for p in _OCR_REFUSALS)
+
 def ocr_image(b):
     b64 = base64.b64encode(b).decode()
     # Try Claude first
@@ -242,7 +248,10 @@ def ocr_image(b):
                     {"type":"text","text":OCR_PROMPT}
                 ]}]}, timeout=30)
             r.raise_for_status()
-            return r.json()["content"][0]["text"].strip()
+            result = r.json()["content"][0]["text"].strip()
+            if result and not _is_ocr_refusal(result):
+                return result
+            log.info("OCR Claude: no usable text extracted")
         except Exception as e:
             log.warning("OCR Claude failed (%s), trying OpenAI...", e)
     # Fallback: OpenAI gpt-4o-mini vision
@@ -255,7 +264,10 @@ def ocr_image(b):
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{b64}"}}
                 ]}]}, timeout=30)
             r.raise_for_status()
-            return r.json()["choices"][0]["message"]["content"].strip()
+            result = r.json()["choices"][0]["message"]["content"].strip()
+            if result and not _is_ocr_refusal(result):
+                return result
+            log.info("OCR OpenAI: no usable text extracted (refusal or empty)")
         except Exception as e:
             log.error("OCR OpenAI failed: %s", e)
     return ""
@@ -933,7 +945,7 @@ def process(from_num, message):
             url = urls[0]
             # Video platforms — but only treat FB/IG as video if URL pattern suggests it
             video_domains = ["tiktok.com","youtube.com","youtu.be","twitter.com","x.com","rumble.com","bitchute.com","t.me","fb.watch"]
-            video_path_hints = ["watch", "video", "reel", "shorts", "clip", "live"]
+            video_path_hints = ["watch", "video", "reel", "shorts", "clip", "live", "/share/v/"]
             is_fb_ig = any(d in url for d in ["facebook.com","instagram.com"])
             is_video_link = (
                 any(d in url for d in video_domains) or
@@ -947,12 +959,25 @@ def process(from_num, message):
                         send(from_num, f"✓ Downloaded ({len(video_bytes)//1024}KB)")
                         parts = []
                         if metadata: parts.append(f"Video: {metadata}")
+                        send(from_num, "🎞️ Analysing video frames...")
+                        try:
+                            frames, duration = extract_video_frames(video_bytes, num_frames=3)
+                            if frames:
+                                visual = analyze_video_frames(frames)
+                                if visual:
+                                    parts.append(f"Visual analysis:\n{visual}")
+                                    log.info(f"URL video frame analysis: {len(visual)} chars")
+                        except Exception as e:
+                            log.error(f"URL video frame analysis: {e}")
                         send(from_num, "🎧 Transcribing audio...")
                         try:
                             transcript = transcribe(video_bytes, "video/mp4")
                             if transcript:
                                 parts.append(f"Audio: {transcript}")
                                 send(from_num, "✓ Got transcript")
+                            else:
+                                send(from_num, "⚠️ No speech detected or audio transcription unavailable")
+                                log.warning("URL video: transcribe() returned empty")
                         except Exception as e:
                             send(from_num, f"⚠️ Transcription failed: {str(e)[:100]}")
                             log.error(f"URL video transcription: {e}")
@@ -1067,6 +1092,7 @@ def process(from_num, message):
                     # ── STEP 3: OCR the best image ────────────────────────────────
                     # Try candidates in order: og:image (post-specific) → yt-dlp thumbnail → formats
                     seen_urls = set()
+                    ocr_succeeded = False
                     for img_url in img_candidates:
                         if not img_url or img_url in seen_urls: continue
                         seen_urls.add(img_url)
@@ -1079,9 +1105,12 @@ def process(from_num, message):
                                 parts.append(f"Image text/content:\n{ocr}")
                                 send(from_num, "🖼 Analysed image in post")
                                 log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
+                                ocr_succeeded = True
                                 break
                         except Exception as ie:
                             log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
+                    if img_candidates and not ocr_succeeded:
+                        log.warning(f"FB/IG: OCR failed for all {len(img_candidates)} image candidates")
 
                     if parts:
                         page_text = "\n\n".join(parts)
@@ -1146,6 +1175,9 @@ def process(from_num, message):
                 if transcript:
                     query_parts.append(f"Audio transcript:\n{transcript}")
                     send(from_num, "✓ Transcribed audio")
+                else:
+                    send(from_num, "⚠️ No speech detected or audio transcription unavailable")
+                    log.warning("Direct video: transcribe() returned empty")
             except Exception as te:
                 log.warning(f"Video transcription: {te}")
             query = "\n\n".join(query_parts) if query_parts else ""
