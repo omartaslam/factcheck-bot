@@ -851,7 +851,7 @@ def tavily_search(query, max_results=5):
         r = requests.post(
             "https://api.tavily.com/search",
             json={"api_key": TAVILY_API_KEY, "query": query[:400], "max_results": max_results,
-                  "search_depth": "basic", "include_answer": False},
+                  "search_depth": "basic", "include_answer": False, "days": 7},
             timeout=10
         )
         r.raise_for_status()
@@ -971,6 +971,13 @@ def scrape_sites(query):
     if BRAVE_API_KEY:
         for name, snippet in brave_search(query_flat):
             results.append(f"[{name}]: {snippet}")
+    # General Nitter search — corroborate claim across Twitter/X posts
+    try:
+        nitter_result = _fetch_source("Twitter/X (Nitter)", f"https://nitter.poast.org/search?q={qt}&f=tweets")
+        if nitter_result:
+            results.append(f"[{nitter_result[0]}]: {nitter_result[1]}")
+    except Exception:
+        pass
 
     log.info(f"Scraped {len(results)} sources")
     return "\n\n".join(results), [r.split("]")[0].replace("[","").strip() for r in results]
