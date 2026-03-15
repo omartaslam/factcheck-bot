@@ -1262,16 +1262,17 @@ def assess_content_claims(text, source_type):
     prompt = (
         f"Analyse this {src_label} and extract ALL independently verifiable factual claims.\n\n"
         "Return a JSON object with exactly these fields:\n"
-        '  "claims": array of specific, testable factual statements (max 6). Each claim must be self-contained — include the subject and what is asserted. Strip emotional/partisan framing but keep the core assertion. Empty array if none.\n'
+        '  "claims": array of short, direct factual assertions (max 6). State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
         '  "reason": if checkable=false, one short sentence explaining why. Empty string if checkable=true.\n'
         '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
         "Rules:\n"
-        "- Include ALL distinct factual assertions — do not merge separate claims into one\n"
-        "- Include assertions about identity, history, events, quotes, relationships, and statistics\n"
-        "- Include claims that are partially opinion if they contain a verifiable factual core (e.g. 'X said Y at event Z')\n"
-        "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n"
-        "- If evidence is hard to find online, still include the claim\n\n"
+        "- Keep claims SHORT — 5 to 12 words ideally (e.g. 'Persians are not Arabs', 'Mark Carney called America a mafia state at WEF')\n"
+        "- Use the speaker's own framing where possible, stripped of emotional language\n"
+        "- Do NOT infer or add context not directly stated (e.g. do not add 'Mark Carney is PM of Canada' if that wasn't the claim made)\n"
+        "- Include ALL distinct assertions — do not merge separate claims into one\n"
+        "- Include claims about identity, history, events, quotes, and relationships\n"
+        "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n\n"
         f"CONTENT:\n{text[:3000]}\n\n"
         'Respond ONLY with valid JSON.'
     )
