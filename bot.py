@@ -446,8 +446,8 @@ def extract_video_frames(video_bytes, num_frames=2):
 def analyze_video_frames(frames):
     try:
         if not frames: return ""
-        content = [{"type":"text","text":"You are helping fact-check a video. Do the following:\n1. Transcribe ALL visible text/captions/overlays word for word\n2. Identify the specific factual CLAIMS being made (e.g. 'missiles were fired at X', 'country Y did Z')\n3. Note people, locations, events shown\n4. Flag any signs of manipulation or editing\nBe specific and literal — do not paraphrase claims, quote them exactly."}]
-        for frame_bytes in frames[:2]:
+        content = [{"type":"text","text":"You are helping fact-check a video. For each frame:\n1. Transcribe ALL visible text/captions/overlays WORD FOR WORD\n2. State the specific factual CLAIM being made as a plain sentence (e.g. 'Iran fired missiles at painted US planes')\n3. Note people, locations, events shown\nKeep your response concise. Lead with the claim, not descriptions."}]
+        for frame_bytes in frames[:4]:
             b64 = base64.b64encode(frame_bytes).decode()
             content.append({"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}})
         r = requests.post("https://api.anthropic.com/v1/messages",
@@ -1042,7 +1042,7 @@ def extract_claims(text):
         "Return a JSON array of strings — one string per claim, self-contained and testable. "
         "Maximum 4 claims. If there is only one claim return a single-element array. "
         "Ignore pure opinion, emotion, and non-falsifiable statements.\n\n"
-        f"TEXT:\n{text[:1500]}\n\n"
+        f"TEXT:\n{text[:3000]}\n\n"
         'Respond ONLY with a JSON array, e.g.: ["Claim one", "Claim two"]'
     )
     try:
@@ -1378,7 +1378,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     if st == "video" and video_bytes:
         try:
             send(from_num, "🎞️ Analysing video frames...")
-            frames, duration = extract_video_frames(video_bytes, num_frames=4)
+            frames, duration = extract_video_frames(video_bytes, num_frames=5)
             if frames:
                 visual_analysis = analyze_video_frames(frames)
                 if visual_analysis:
@@ -1668,7 +1668,7 @@ def process(from_num, message):
                         if metadata: parts.append(f"Video: {metadata}")
                         send(from_num, "🎞️ Analysing video frames...")
                         try:
-                            frames, duration = extract_video_frames(video_bytes, num_frames=3)
+                            frames, duration = extract_video_frames(video_bytes, num_frames=5)
                             if frames:
                                 visual = analyze_video_frames(frames)
                                 if visual:
@@ -1870,7 +1870,7 @@ def process(from_num, message):
             if vid_data.get("caption"):
                 query_parts.append(f"Caption: {vid_data['caption']}")
             try:
-                frames, duration = extract_video_frames(video_bytes, num_frames=3)
+                frames, duration = extract_video_frames(video_bytes, num_frames=5)
                 if frames:
                     visual = analyze_video_frames(frames)
                     if visual:
