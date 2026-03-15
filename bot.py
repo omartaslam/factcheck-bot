@@ -918,7 +918,6 @@ def receive():
     return jsonify({"status":"ok"}), 200
 
 if __name__ == "__main__":
-    missing = [k for k,v in {"WHATSAPP_TOKEN":WHATSAPP_TOKEN,"PHONE_NUMBER_ID":PHONE_NUMBER_ID,"GOOGLE_FACT_CHECK_API_KEY":GOOGLE_API_KEY,"ANTHROPIC_API_KEY":ANTHROPIC_KEY}.items() if not v]
-    if missing: raise ValueError(f"Missing: {', '.join(missing)}")
-    log.info("FactCheck Pro v3.2 starting...")
-    app.run(host="0.0.0.0", port=5000, debug=False)
+    port = int(os.getenv("PORT", 5000))
+    log.info("FactCheck Pro v3.2 starting (dev mode)...")
+    app.run(host="0.0.0.0", port=port, debug=False)
