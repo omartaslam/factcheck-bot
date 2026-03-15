@@ -863,8 +863,6 @@ def process(from_num, message):
                 page_text = fetch(url) or ""
                 # Try to extract og:image and OCR it for posts with images
                 try:
-                # Try to extract og:image and OCR it for posts with images
-                try:
                     img_url = None
                     for chunk in page_text.split("og:image"):
                         if "content=" in chunk:
