@@ -1,5 +1,5 @@
 """FactCheck Pro v3.2 - Enhanced Video Analysis"""
-import os, base64, json, logging, tempfile, threading, requests, re, sqlite3, hashlib, secrets
+import os, base64, json, logging, tempfile, threading, requests, re, sqlite3, hashlib, secrets, hmac, random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify, send_from_directory
 from dotenv import load_dotenv
@@ -21,6 +21,46 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY")
 ADMIN_NUMBER = os.getenv("ADMIN_NUMBER", "")  # WhatsApp number to receive credit/error alerts
 DB_PATH = os.getenv("DB_PATH", "/tmp/factcheck.db")  # Set to a Railway Volume path for persistence
+
+# ── Billing / monetisation config ─────────────────────────────────────────────
+FREE_CHECKS_LIMIT   = int(os.getenv("FREE_CHECKS_LIMIT", "3"))   # free checks per WA number
+PROFIT_MARGIN       = float(os.getenv("PROFIT_MARGIN", "2.0"))   # cost multiplier (2.0 = 100% margin)
+STRIPE_SECRET_KEY   = os.getenv("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+TOPUP_5_LINK        = os.getenv("TOPUP_5_LINK", "")              # Stripe Payment Link for $5
+TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Payment Link for $10
+TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
+SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for $9.99/month
+SPONSOR_ADS         = [a.strip() for a in os.getenv("SPONSOR_ADS", "").split("|") if a.strip()]
+
+# Anthropic model pricing: USD per million tokens
+_ANTHROPIC_PRICES = {
+    "claude-sonnet-4-6":         {"in": 3.00,  "out": 15.00},
+    "claude-haiku-4-5-20251001": {"in": 0.25,  "out":  1.25},
+}
+_OPENAI_PRICES = {
+    "gpt-4o":      {"in": 2.50, "out": 10.00},
+    "gpt-4o-mini": {"in": 0.15, "out":  0.60},
+}
+
+def _anthropic_cost_cents(model, in_tok, out_tok):
+    p = _ANTHROPIC_PRICES.get(model, {"in": 3.0, "out": 15.0})
+    raw = (in_tok * p["in"] + out_tok * p["out"]) / 1_000_000
+    return max(1, round(raw * PROFIT_MARGIN * 100))
+
+def _openai_cost_cents(model, in_tok, out_tok):
+    p = _OPENAI_PRICES.get(model, {"in": 2.5, "out": 10.0})
+    raw = (in_tok * p["in"] + out_tok * p["out"]) / 1_000_000
+    return max(1, round(raw * PROFIT_MARGIN * 100))
+
+def _whisper_cost_cents(duration_secs):
+    return max(1, round((duration_secs / 60) * 0.006 * PROFIT_MARGIN * 100))
+
+# Thread-local cost accumulator — tracks per-request API spend
+_cost_local = threading.local()
+def _cost_reset():  _cost_local.cents = 0
+def _cost_add(c):   _cost_local.cents = getattr(_cost_local, "cents", 0) + max(0, c)
+def _cost_get():    return getattr(_cost_local, "cents", 0)
 WHATSAPP_URL = f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages"
 GOOGLE_FC_URL = "https://factchecktools.googleapis.com/v1alpha1/claims:search"
 
@@ -889,7 +929,7 @@ def extract_claims(text):
 
 
 def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, system=None):
-    """Single Claude API call. Returns text or None."""
+    """Single Claude API call. Returns text or None. Tracks token cost."""
     body = {"model": model, "max_tokens": max_tokens,
             "messages": [{"role": "user", "content": prompt}]}
     if system:
@@ -903,7 +943,10 @@ def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, syst
             log.error(f"Anthropic credit error {r.status_code}: {r.text[:200]}")
             return None
         r.raise_for_status()
-        return r.json()["content"][0]["text"].strip()
+        resp = r.json()
+        usage = resp.get("usage", {})
+        _cost_add(_anthropic_cost_cents(model, usage.get("input_tokens", 0), usage.get("output_tokens", 0)))
+        return resp["content"][0]["text"].strip()
     except Exception as e:
         log.warning(f"_claude_call {model}: {e}")
         return None
@@ -968,7 +1011,10 @@ def claude_analyse(claim, google, scraped, st):
                     log.error(f"Anthropic credit error in synthesis: {r.status_code}")
                     break  # skip retry, go straight to OpenAI fallback
                 r.raise_for_status()
-                result = _parse_json_result(r.json()["content"][0]["text"])
+                resp = r.json()
+                usage = resp.get("usage", {})
+                _cost_add(_anthropic_cost_cents("claude-sonnet-4-6", usage.get("input_tokens", 0), usage.get("output_tokens", 0)))
+                result = _parse_json_result(resp["content"][0]["text"])
                 if result:
                     if pro_text: result["_debate_pro"] = pro_text
                     if con_text: result["_debate_con"] = con_text
@@ -993,7 +1039,10 @@ def claude_analyse(claim, google, scraped, st):
                 log.error(f"OpenAI credit error in synthesis: {r.status_code}")
             else:
                 r.raise_for_status()
-                result = _parse_json_result(r.json()["choices"][0]["message"]["content"])
+                resp = r.json()
+                usage = resp.get("usage", {})
+                _cost_add(_openai_cost_cents("gpt-4o", usage.get("prompt_tokens", 0), usage.get("completion_tokens", 0)))
+                result = _parse_json_result(resp["choices"][0]["message"]["content"])
                 if result:
                     log.info("OpenAI synthesis succeeded")
                     return result
@@ -1006,7 +1055,7 @@ def claude_analyse(claim, google, scraped, st):
                         "Snopes — https://www.snopes.com", "FullFact — https://fullfact.org"],
             "confidence": "LOW", "confidence_reason": "AI provider error"}
 
-def fmt_report(claim, a, st, cost, used_sources=None):
+def fmt_report(claim, a, st, cost, used_sources=None, ad=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -1033,6 +1082,8 @@ def fmt_report(claim, a, st, cost, used_sources=None):
         lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
     debate_indicator = "⚖️ pro/con debate" if a.get("_debate_pro") else "single-pass"
     lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2  •  {debate_indicator}_"]
+    if ad:
+        lines += ["", f"💡 *Sponsored:* {ad}"]
     return "\n".join(lines)
 
 def confirm_msg(st, preview, cost):
@@ -1055,7 +1106,9 @@ def send(to, text):
         except Exception as e:
             log.error("Send: %s", e)
 
-def run_check(from_num, query, st, img_bytes, cost, video_bytes=None):
+def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free"):
+    _cost_reset()  # reset per-request cost accumulator
+    show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     # Show all enabled sources
     all_src = enabled_sources()
     src_preview = ", ".join(all_src[:8])
@@ -1102,11 +1155,17 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None):
         if multi:
             send(from_num, f"⚖️ Analysing claim {i+1}/{len(claims)}...")
         a = claude_analyse(claim, g, sc, st)
-        report = fmt_report(claim, a, st, cost, all_used)
+        ad = get_random_ad() if show_ad else None
+        report = fmt_report(claim, a, st, cost, all_used, ad=ad)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
             send(from_num, report)
+
+    # ── Billing: record cost and deduct balance ────────────────────────────
+    actual_cents = max(1, _cost_get())
+    _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
+    log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
 
 def clean_query(q):
     lines = []
@@ -1151,8 +1210,25 @@ def process(from_num, message):
         if has_p and is_yn:
             if body_upper in ("YES","Y"):
                 with pending_lock: data = pending.pop(from_num)
+                # ── Billing gate ───────────────────────────────────────────
+                bt = _wa_billing_type(from_num)
+                if bt == "blocked":
+                    u = _wa_user(from_num)
+                    _send_payment_prompt(from_num, u["balance_cents"])
+                    return
+                if bt == "free":
+                    u = _wa_user(from_num)
+                    remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
+                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
+                    send(from_num, f"✓ Free check — {suffix}")
+                elif bt == "paid":
+                    u = _wa_user(from_num)
+                    send(from_num, f"✓ Balance: ${u['balance_cents']/100:.2f}")
+                elif bt == "subscriber":
+                    send(from_num, "✓ Subscriber — unlimited access")
                 send(from_num, "Starting fact-check...")
-                threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]), daemon=True).start()
+                threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
+                                 kwargs={"billing_type": bt}, daemon=True).start()
                 return
             elif body_upper in ("NO","N"):
                 with pending_lock: pending.pop(from_num, None)
@@ -1438,7 +1514,9 @@ def init_db():
                 email TEXT UNIQUE NOT NULL,
                 password_hash TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
-                tier TEXT NOT NULL DEFAULT 'free'
+                tier TEXT NOT NULL DEFAULT 'free',
+                balance_cents INTEGER NOT NULL DEFAULT 0,
+                stripe_customer_id TEXT
             );
             CREATE TABLE IF NOT EXISTS tokens (
                 token TEXT PRIMARY KEY,
@@ -1453,10 +1531,131 @@ def init_db():
                 results_json TEXT NOT NULL,
                 created_at INTEGER NOT NULL
             );
+            CREATE TABLE IF NOT EXISTS wa_users (
+                wa_id TEXT PRIMARY KEY,
+                free_checks_used INTEGER NOT NULL DEFAULT 0,
+                balance_cents INTEGER NOT NULL DEFAULT 0,
+                tier TEXT NOT NULL DEFAULT 'free',
+                stripe_customer_id TEXT,
+                created_at INTEGER NOT NULL,
+                last_seen INTEGER NOT NULL
+            );
+            CREATE TABLE IF NOT EXISTS transactions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_type TEXT NOT NULL,
+                user_id TEXT NOT NULL,
+                txn_type TEXT NOT NULL,
+                amount_cents INTEGER NOT NULL,
+                description TEXT NOT NULL,
+                stripe_session_id TEXT,
+                created_at INTEGER NOT NULL
+            );
         """)
+        # Migrations for existing deployments
+        for col, defn in [("balance_cents","INTEGER NOT NULL DEFAULT 0"),
+                          ("stripe_customer_id","TEXT")]:
+            try: c.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
+            except Exception: pass
     log.info("DB initialised at %s", DB_PATH)
 
 init_db()
+
+# ── WhatsApp user billing ─────────────────────────────────────────────────────
+
+def _wa_user(wa_id):
+    """Get or create WhatsApp user record. Returns dict."""
+    now = int(t.time())
+    with _db() as c:
+        row = c.execute("SELECT * FROM wa_users WHERE wa_id=?", (wa_id,)).fetchone()
+        if not row:
+            c.execute("INSERT INTO wa_users (wa_id, created_at, last_seen) VALUES (?,?,?)",
+                      (wa_id, now, now))
+            row = c.execute("SELECT * FROM wa_users WHERE wa_id=?", (wa_id,)).fetchone()
+        else:
+            c.execute("UPDATE wa_users SET last_seen=? WHERE wa_id=?", (now, wa_id))
+    return dict(row)
+
+def _wa_billing_type(wa_id):
+    """Returns 'subscriber' | 'free' | 'paid' | 'blocked'."""
+    u = _wa_user(wa_id)
+    if u["tier"] == "subscriber": return "subscriber"
+    if u["free_checks_used"] < FREE_CHECKS_LIMIT: return "free"
+    if u["balance_cents"] > 0: return "paid"
+    return "blocked"
+
+def _wa_deduct(wa_id, cents, description, billing_type):
+    """Record usage and deduct balance for paid checks."""
+    now = int(t.time())
+    if billing_type == "free":
+        with _db() as c:
+            c.execute("UPDATE wa_users SET free_checks_used = free_checks_used + 1 WHERE wa_id=?", (wa_id,))
+            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES ('wa',?,'free',?,?,?)",
+                      (wa_id, cents, description, now))
+    elif billing_type == "paid":
+        with _db() as c:
+            c.execute("UPDATE wa_users SET balance_cents = MAX(0, balance_cents - ?) WHERE wa_id=?", (cents, wa_id))
+            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES ('wa',?,'debit',?,?,?)",
+                      (wa_id, cents, description, now))
+        log.info("Billed WA %s: %d¢ — %s", wa_id, cents, description)
+    elif billing_type == "subscriber":
+        with _db() as c:
+            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES ('wa',?,'subscriber',?,?,?)",
+                      (wa_id, cents, description, now))
+
+def _wa_credit(wa_id, cents, description, stripe_session_id=None):
+    """Credit a WhatsApp user's balance (called from Stripe webhook)."""
+    with _db() as c:
+        c.execute("UPDATE wa_users SET balance_cents = balance_cents + ? WHERE wa_id=?", (cents, wa_id))
+        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('wa',?,'credit',?,?,?,?)",
+                  (wa_id, cents, description, stripe_session_id, int(t.time())))
+    log.info("Credited WA %s: %d¢ — %s", wa_id, cents, description)
+
+def _send_payment_prompt(wa_id, balance_cents):
+    """Send Stripe payment links to a WhatsApp user who has run out of credit."""
+    cid = f"wa_{wa_id}"
+    suffix = f"?client_reference_id={cid}"
+    free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
+    lines = [
+        "💳 *FactCheck Pro — Top Up Required*",
+        "",
+        f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.",
+        f"Current balance: *${balance_cents/100:.2f}*",
+        "",
+        "*Choose a top-up amount:*",
+    ]
+    if TOPUP_5_LINK:  lines.append(f"• *$5*  (~60–100 checks) → {TOPUP_5_LINK}{suffix}")
+    if TOPUP_10_LINK: lines.append(f"• *$10* (~120–200 checks) → {TOPUP_10_LINK}{suffix}")
+    if TOPUP_25_LINK: lines.append(f"• *$25* (~300–500 checks) → {TOPUP_25_LINK}{suffix}")
+    if SUB_LINK:
+        lines += ["", f"*♾ Unlimited* — $9.99/month → {SUB_LINK}{suffix}"]
+    if not any([TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
+        lines += ["", "_Payment system coming soon. Please check back later._"]
+    lines += ["", "_Secure payment by Stripe_"]
+    send(wa_id, "\n".join(lines))
+
+def get_random_ad():
+    """Return a random sponsor ad line, or empty string."""
+    return random.choice(SPONSOR_ADS) if SPONSOR_ADS else ""
+
+# ── Stripe webhook helpers ────────────────────────────────────────────────────
+
+def _verify_stripe_sig(payload_bytes, sig_header):
+    """Return True if the Stripe-Signature header is valid."""
+    if not STRIPE_WEBHOOK_SECRET:
+        return True  # no secret configured → skip verification
+    try:
+        parts = {}
+        for item in sig_header.split(","):
+            k, v = item.split("=", 1)
+            parts.setdefault(k, []).append(v)
+        timestamp = parts.get("t", [""])[0]
+        sigs = parts.get("v1", [])
+        signed = f"{timestamp}.{payload_bytes.decode('utf-8')}"
+        expected = hmac.new(STRIPE_WEBHOOK_SECRET.encode(), signed.encode(), hashlib.sha256).hexdigest()
+        return any(hmac.compare_digest(expected, s) for s in sigs)
+    except Exception as e:
+        log.error("Stripe sig verification error: %s", e)
+        return False
 
 # Anonymous rate-limit: 5 fact-checks per IP per day
 _rate_store = {}  # ip -> {"count": n, "date": "YYYY-MM-DD"}
@@ -1613,6 +1812,125 @@ def api_history():
         rows = c.execute("SELECT id, query, results_json, created_at FROM history WHERE user_id=? ORDER BY created_at DESC LIMIT 20", (uid,)).fetchall()
     return jsonify({"history": [{"id": r["id"], "query": r["query"], "created_at": r["created_at"],
                                   "results": json.loads(r["results_json"])} for r in rows]})
+
+@app.route("/api/billing", methods=["GET"])
+def api_billing():
+    """Web user billing info: balance, tier, transaction history."""
+    uid = _auth_user()
+    if not uid:
+        return jsonify({"error": "Unauthorised"}), 401
+    with _db() as c:
+        user = c.execute("SELECT email, tier, balance_cents FROM users WHERE id=?", (uid,)).fetchone()
+        txns = c.execute("SELECT txn_type, amount_cents, description, created_at FROM transactions WHERE user_type='web' AND user_id=? ORDER BY created_at DESC LIMIT 50", (str(uid),)).fetchall()
+    return jsonify({
+        "email": user["email"], "tier": user["tier"],
+        "balance_cents": user["balance_cents"], "balance": f"${user['balance_cents']/100:.2f}",
+        "transactions": [dict(r) for r in txns]
+    })
+
+@app.route("/api/topup", methods=["POST"])
+def api_topup():
+    """Create a Stripe Checkout Session for web user top-up."""
+    uid = _auth_user()
+    if not uid:
+        return jsonify({"error": "Unauthorised"}), 401
+    if not STRIPE_SECRET_KEY:
+        return jsonify({"error": "Payment system not configured"}), 503
+    data = request.get_json() or {}
+    amount_cents = int(data.get("amount_cents", 500))
+    if amount_cents not in (500, 1000, 2500):
+        return jsonify({"error": "Invalid amount"}), 400
+    cid = f"web_{uid}"
+    try:
+        # Use form-encoded POST (Stripe v1 API style)
+        payload = {
+            "mode": "payment",
+            "line_items[0][price_data][currency]": "usd",
+            "line_items[0][price_data][product_data][name]": "FactCheck Pro Credits",
+            "line_items[0][price_data][unit_amount]": str(amount_cents),
+            "line_items[0][quantity]": "1",
+            "client_reference_id": cid,
+            "success_url": "https://web-production-1f0a4.up.railway.app/web?paid=1",
+            "cancel_url": "https://web-production-1f0a4.up.railway.app/web",
+        }
+        r = requests.post("https://api.stripe.com/v1/checkout/sessions",
+            headers={"Authorization": f"Bearer {STRIPE_SECRET_KEY}",
+                     "Content-Type": "application/x-www-form-urlencoded"},
+            data=payload, timeout=15)
+        r.raise_for_status()
+        return jsonify({"url": r.json().get("url", "")})
+    except Exception as e:
+        log.error("Stripe checkout error: %s", e)
+        return jsonify({"error": "Payment system error"}), 500
+
+@app.route("/webhook/stripe", methods=["POST"])
+def stripe_webhook():
+    """Handle Stripe payment events: credit user balance on successful payment."""
+    payload = request.get_data()
+    sig = request.headers.get("Stripe-Signature", "")
+    if not _verify_stripe_sig(payload, sig):
+        log.warning("Stripe webhook: invalid signature")
+        return jsonify({"error": "Invalid signature"}), 400
+    try:
+        event = json.loads(payload)
+        etype = event.get("type", "")
+        obj = event.get("data", {}).get("object", {})
+        log.info("Stripe event: %s", etype)
+
+        if etype == "checkout.session.completed":
+            cid = obj.get("client_reference_id") or ""
+            mode = obj.get("mode", "")
+            amount = obj.get("amount_total", 0)
+            session_id = obj.get("id", "")
+            customer_id = obj.get("customer", "")
+
+            if cid.startswith("wa_"):
+                # WhatsApp user
+                wa_id = cid[3:]
+                _wa_user(wa_id)  # ensure record exists
+                if mode == "payment":
+                    _wa_credit(wa_id, amount, f"Top-up ${amount/100:.2f}", session_id)
+                    send(wa_id, f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact-checking. Send any claim to get started.")
+                elif mode == "subscription":
+                    with _db() as c:
+                        c.execute("UPDATE wa_users SET tier='subscriber', stripe_customer_id=? WHERE wa_id=?", (customer_id, wa_id))
+                        c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('wa',?,'credit',?,?,?,?)",
+                                  (wa_id, amount, "Subscription activated", session_id, int(t.time())))
+                    send(wa_id, "🎉 *Subscription activated!* You now have unlimited FactCheck Pro access. Send any claim to get started.")
+                    log.info("Subscription activated for WA %s", wa_id)
+
+            elif cid.startswith("web_"):
+                # Web user
+                try:
+                    uid = int(cid[4:])
+                    if mode == "payment":
+                        with _db() as c:
+                            c.execute("UPDATE users SET balance_cents = balance_cents + ?, stripe_customer_id=COALESCE(stripe_customer_id,?) WHERE id=?",
+                                      (amount, customer_id, uid))
+                            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('web',?,'credit',?,?,?,?)",
+                                      (str(uid), amount, f"Top-up ${amount/100:.2f}", session_id, int(t.time())))
+                        log.info("Web user %d credited: %d¢", uid, amount)
+                    elif mode == "subscription":
+                        with _db() as c:
+                            c.execute("UPDATE users SET tier='subscriber', stripe_customer_id=? WHERE id=?", (customer_id, uid))
+                            c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,stripe_session_id,created_at) VALUES ('web',?,'credit',?,?,?,?)",
+                                      (str(uid), amount, "Subscription activated", session_id, int(t.time())))
+                        log.info("Web user %d subscribed", uid)
+                except (ValueError, Exception) as e:
+                    log.error("Web top-up webhook error: %s", e)
+
+        elif etype == "customer.subscription.deleted":
+            customer_id = obj.get("customer", "")
+            if customer_id:
+                with _db() as c:
+                    c.execute("UPDATE wa_users SET tier='free' WHERE stripe_customer_id=?", (customer_id,))
+                    c.execute("UPDATE users SET tier='free' WHERE stripe_customer_id=?", (customer_id,))
+                log.info("Subscription cancelled for customer %s", customer_id)
+
+        return jsonify({"status": "ok"})
+    except Exception as e:
+        log.error("Stripe webhook error: %s", e)
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/", methods=["GET"])
 def health():
