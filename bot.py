@@ -728,7 +728,7 @@ def _extract_video_url(data):
         return True
 
     # Try HD first, then SD, then any video key
-    for key in ("hd", "sd", "video", "url"):
+    for key in ("hd", "sd", "video"):
         val = data.get(key)
         if isinstance(val, str) and _is_video_url(val):
             return val, title
@@ -736,9 +736,32 @@ def _extract_video_url(data):
             for item in val:
                 if _is_video_url(item):
                     return item, title
-    # Search all values for .mp4 URLs — explicitly exclude image extensions
+
+    # Check 'links' dict — vikas5914 returns video URLs under labels like
+    # "Download Low Quality", "Download HD" etc.
+    links = data.get("links")
+    if isinstance(links, dict):
+        # Prefer HD, fall back to any video link
+        for label in ("Download HD", "Download High Quality", "Download Low Quality", "Download"):
+            u = links.get(label)
+            if u and _is_video_url(u):
+                return u, title
+        for u in links.values():
+            if _is_video_url(u):
+                return u, title
+
+    # Check 'media' list
+    media = data.get("media")
+    if isinstance(media, list):
+        for item in media:
+            if isinstance(item, dict):
+                for u in item.values():
+                    if _is_video_url(u):
+                        return u, title
+
+    # Search all string values for video URLs — exclude image extensions
     for v in data.values():
-        if isinstance(v, str) and ".mp4" in v and _is_video_url(v):
+        if isinstance(v, str) and _is_video_url(v) and any(x in v for x in (".mp4", "video-", "fbcdn.net/v/")):
             return v, title
     return None, title
 
