@@ -259,6 +259,10 @@ pending = {}
 pending_lock = threading.Lock()
 PENDING_TTL = 600
 
+# QC testing — capture send() output for specific test numbers instead of hitting Meta API
+_qc_jobs = {}   # from_num -> {"messages": [], "done": False, "error": None, "_input": str}
+_qc_lock = threading.Lock()
+
 SYSTEM = """You are FactCheck Pro — a bias-aware, multi-perspective fact-checker serving investigative journalists, activists, and communities underserved by Western media.
 
 CORE PRINCIPLES:
@@ -2543,6 +2547,12 @@ def _split_message(text, limit=4000):
     return chunks
 
 def send(to, text):
+    # QC test interception — capture messages instead of hitting Meta API
+    if to.startswith("qctest_"):
+        with _qc_lock:
+            if to in _qc_jobs:
+                _qc_jobs[to]["messages"].append(text)
+        return
     # Sanitize: remove null bytes and non-BMP unicode that WhatsApp rejects
     text = text.replace("\x00", "").encode("utf-16", "surrogatepass").decode("utf-16")
     for chunk in _split_message(text):
@@ -4248,6 +4258,115 @@ def receive():
     except (KeyError, IndexError) as e: log.warning(f"Parse error: {e}")
     except Exception as e: log.error(f"Webhook error: {e}")
     return jsonify({"status":"ok"}), 200
+
+# ── Admin QC testing endpoints ────────────────────────────────────────────────
+# Simulates a real WhatsApp message through the full process() → run_check() pipeline
+# but captures send() output instead of hitting Meta's API.
+_QC_ADMIN_TOKEN = os.getenv("ADMIN_TOKEN", "qc-test-fred-2026")
+
+def _qc_worker(from_num, msg_text):
+    """Background thread: runs full WhatsApp flow for QC testing."""
+    import uuid as _uuid
+    try:
+        # Step 1: Send the URL/text message — process() will extract content,
+        # identify claims, and set up pending with Y/N confirmation prompt
+        fake_msg1 = {
+            "id": f"qctest_{_uuid.uuid4().hex}",
+            "timestamp": str(int(t.time())),
+            "type": "text",
+            "from": from_num,
+            "text": {"body": msg_text}
+        }
+        process(from_num, fake_msg1)
+
+        # Step 2: Auto-confirm with Y (replicate user pressing Y)
+        # Wait briefly for pending to be populated
+        for _ in range(20):
+            t.sleep(0.5)
+            pkey = ("whatsapp", from_num)
+            with pending_lock:
+                if pkey in pending:
+                    break
+
+        fake_msg2 = {
+            "id": f"qctest_{_uuid.uuid4().hex}",
+            "timestamp": str(int(t.time())),
+            "type": "text",
+            "from": from_num,
+            "text": {"body": "Y"}
+        }
+        process(from_num, fake_msg2)
+
+        # Step 3: Wait for run_check() to finish (max 3 min)
+        # Detect completion by watching for verdict keywords in last message
+        deadline = t.time() + 180
+        last_count = 0
+        idle_rounds = 0
+        while t.time() < deadline:
+            t.sleep(4)
+            with _qc_lock:
+                msgs = _qc_jobs[from_num]["messages"]
+                cur_count = len(msgs)
+            if cur_count == last_count:
+                idle_rounds += 1
+                # If we already have several messages and nothing new for 20s, assume done
+                if idle_rounds >= 5 and cur_count > 3:
+                    break
+            else:
+                idle_rounds = 0
+                last_count = cur_count
+                # Check if latest message looks like a final verdict
+                with _qc_lock:
+                    last_msg = _qc_jobs[from_num]["messages"][-1] if _qc_jobs[from_num]["messages"] else ""
+                if any(x in last_msg for x in ["VERDICT", "⚖️", "📊", "✅", "❌", "⚠️ *", "Who benefits"]):
+                    t.sleep(6)  # allow any trailing messages to arrive
+                    break
+    except Exception as e:
+        log.error("QC worker error: %s", e)
+        with _qc_lock:
+            _qc_jobs[from_num]["error"] = str(e)
+    finally:
+        with _qc_lock:
+            _qc_jobs[from_num]["done"] = True
+        log.info("QC job done: %s (%d messages)", from_num, len(_qc_jobs[from_num]["messages"]))
+
+@app.route("/admin/qc", methods=["POST"])
+def admin_qc_start():
+    """Start a QC test run. Returns job_id to poll for results."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    msg_text = (data.get("message") or "").strip()
+    if not msg_text:
+        return jsonify({"error": "No message provided"}), 400
+
+    import uuid as _uuid
+    job_id = _uuid.uuid4().hex[:12]
+    from_num = f"qctest_{job_id}"
+    with _qc_lock:
+        _qc_jobs[from_num] = {"messages": [], "done": False, "error": None, "_input": msg_text}
+
+    threading.Thread(target=_qc_worker, args=(from_num, msg_text), daemon=True).start()
+    log.info("QC job started: %s — %s", job_id, msg_text[:80])
+    return jsonify({"job_id": job_id, "from_num": from_num, "status": "processing"})
+
+@app.route("/admin/qc/<job_id>", methods=["GET"])
+def admin_qc_status(job_id):
+    """Poll QC job status and retrieve captured messages."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    from_num = f"qctest_{job_id}"
+    with _qc_lock:
+        job = _qc_jobs.get(from_num)
+    if not job:
+        return jsonify({"error": "Job not found"}), 404
+    return jsonify({
+        "job_id": job_id,
+        "done": job["done"],
+        "error": job["error"],
+        "message_count": len(job["messages"]),
+        "messages": job["messages"]
+    })
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
