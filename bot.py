@@ -1805,12 +1805,14 @@ def no_claims_msg(reason, source_type, suggestions):
     else:
         lines.append(f"I couldn't identify any specific, verifiable facts in this {src_label}.")
 
-    if suggestions:
+    # Only show suggestions for non-URL types — for URL posts, Claude's suggestions
+    # are often unhelpful (e.g. "share the video" when user already shared a URL)
+    if source_type not in ("url",) and suggestions:
         lines.append("\n*To fact-check this, try:*")
         for sg in suggestions:
             lines.append(f"• {sg}")
-    else:
-        # Default suggestions by source type
+    elif source_type not in ("url",):
+        # Default suggestions for non-URL types
         if source_type == "video":
             lines += [
                 "\n*To fact-check this video, try:*",
@@ -1823,12 +1825,6 @@ def no_claims_msg(reason, source_type, suggestions):
                 "\n*To fact-check this image, try:*",
                 "• Copy the text in the image and send it as a message",
                 "• Describe the specific claim you want checked",
-            ]
-        elif source_type == "url":
-            lines += [
-                "\n*To fact-check this post, try:*",
-                "• Copy the relevant text from the post and send it directly",
-                "• Send the direct URL to the original post (not a share/redirect link)",
             ]
         else:
             lines += [
@@ -2610,6 +2606,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
                 ai_score = hive.get("ai_generated", 0)
                 df_score = hive.get("deepfake", 0)
                 generator = hive.get("generator", "")
+                log.info(f"No-claims Hive check: ai={ai_score:.2f} deepfake={df_score:.2f}")
                 if ai_score > 0.5 or df_score > 0.5:
                     ai_line = ""
                     if ai_score > 0.5:
@@ -2998,6 +2995,7 @@ def process(from_num, message):
                 ai_score = hive.get("ai_generated", 0)
                 df_score = hive.get("deepfake", 0)
                 generator = hive.get("generator", "")
+                log.info(f"No-claims Hive check: ai={ai_score:.2f} deepfake={df_score:.2f}")
                 if ai_score > 0.5 or df_score > 0.5:
                     ai_line = ""
                     if ai_score > 0.5:
@@ -3006,7 +3004,6 @@ def process(from_num, message):
                     if df_score > 0.5:
                         ai_line += f"\n🎭 *Deepfake detected: {int(df_score*100)}%*"
                     msg = f"⚠️ *AI-Generated Content Detected*\n\n{ai_line}\n\n" + msg
-                    log.info(f"No-claims but AI flagged: ai={ai_score:.2f} deepfake={df_score:.2f}")
             send(from_num, msg)
             return
         claims = assessment["claims"]
