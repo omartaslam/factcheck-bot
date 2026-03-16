@@ -2342,14 +2342,30 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None):
             parts.append(f"Reverse image search: found in {len(real_rev)} other sources ({domains})")
         hive = osint.get("hive") or osint.get("hive_url") or {}
         if isinstance(hive, dict):
-            if hive.get("ai_generated", 0) > 0.5:
-                parts.append(f"AI-generated detection: {int(hive['ai_generated']*100)}% probability")
-            if hive.get("deepfake", 0) > 0.5:
-                parts.append(f"Deepfake detection: {int(hive['deepfake']*100)}% probability")
+            ai_score = hive.get("ai_generated", 0)
+            df_score = hive.get("deepfake", 0)
+            if ai_score > 0.5:
+                parts.append(f"AI-generated detection: {int(ai_score*100)}% probability — treat as potentially synthetic")
+            elif ai_score is not None and st in ("video", "image"):
+                parts.append(f"AI/deepfake check passed: {int((1-ai_score)*100)}% probability genuine — treat submitted media as authentic primary evidence")
+            if df_score > 0.5:
+                parts.append(f"Deepfake detection: {int(df_score*100)}% probability — treat as potentially manipulated")
+        elif st in ("video", "image") and osint.get("hive") is None and osint.get("hive_url") is None:
+            # Hive not run — note that media authenticity is unverified
+            parts.append("Media authenticity: not verified (Hive check not available)")
         if osint.get("wayback"):
             parts.append(f"Wayback Machine earliest archive: {osint['wayback']}")
         if parts:
             osint_note = "\n\nOSINT VERIFICATION:\n" + "\n".join(f"• {p}" for p in parts)
+            # If media is confirmed genuine, explicitly instruct Claude to treat it as primary evidence
+            if st in ("video", "image") and any("genuine" in p or "authentic" in p for p in parts):
+                osint_note += (
+                    "\n\nIMPORTANT: The submitted media has passed authenticity checks. "
+                    "Treat it as primary evidence — what is shown/said in the video or image "
+                    "is direct evidence of the claim, regardless of whether external fact-checkers "
+                    "have indexed the event. Do not rate as UNVERIFIABLE solely because fact-checkers "
+                    "haven't covered it yet if the media itself demonstrates the claim."
+                )
 
     evidence = (
         f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\n"
@@ -2509,23 +2525,17 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:2]] + [""]
     if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{a['who_benefits'][:200]}_", ""]
     if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:150], ""]
-    # Derive truth score from rating — do not trust Claude's lenz_score directly
-    # as it tends to cluster around 5 regardless of verdict.
+    # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
         "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
         "MOSTLY FALSE": 3, "FALSE": 1, "PANTS ON FIRE": 0,
     }
-    s = _rating_score.get(rating)
-    if s is None:
-        # For UNVERIFIABLE/MISLEADING/NEEDS CONTEXT use Claude's score if provided
-        try:
-            s = int(a.get("lenz_score"))
-            s = max(0, min(10, s))
-        except (ValueError, TypeError):
-            s = None
-    if s is not None:
+    if rating in _rating_score:
+        s = _rating_score[rating]
         filled = "█" * s + "░" * (10 - s)
         lines += [f"*TRUTH SCORE*  `{filled}` {s}/10", ""]
+    elif rating in ("UNVERIFIABLE", "MISLEADING", "NEEDS CONTEXT"):
+        lines += [f"*TRUTH SCORE*  `░░░░░░░░░░` ?/10  _(insufficient evidence to score)_", ""]
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
@@ -3194,18 +3204,34 @@ def process(from_num, message):
                             send(from_num, "❌ Could not extract any content from this URL. Please paste the claim as text or send a screenshot.")
                             return
                     elif metadata:
-                        send(from_num, "⚠️ Video download not available for this platform — analysing post text instead...")
-                        query = f"Social media post: {metadata}\n\nURL: {url}"
-                        source_type = "url"
+                        # Video download failed but we have metadata — try yt-dlp audio before falling back
+                        send(from_num, "⚙️ Extracting audio from video...")
+                        audio_bytes_fb, audio_ext_fb = _ytdlp_audio_bytes(url)
+                        if audio_bytes_fb:
+                            mime_map = {"m4a": "audio/mp4", "mp3": "audio/mpeg", "ogg": "audio/ogg", "webm": "audio/webm", "opus": "audio/ogg"}
+                            try:
+                                transcript_fb = transcribe(audio_bytes_fb, mime_map.get(audio_ext_fb, "audio/mp4"))
+                                if transcript_fb:
+                                    send(from_num, "✓ Audio extracted and transcribed")
+                                    query = f"Social media post: {metadata}\n\nAudio transcript:\n{transcript_fb}"
+                                    source_type = "video"
+                                else:
+                                    send(from_num, "⚠️ Could not transcribe audio — fact-checking post text only.\n_Note: the video content itself has not been verified._")
+                                    query = f"Social media post: {metadata}\n\nURL: {url}"
+                                    source_type = "url"
+                            except Exception as e:
+                                log.error(f"yt-dlp audio transcription fallback: {e}")
+                                send(from_num, "⚠️ Could not access video content — fact-checking post text only.\n_Note: the video content itself has not been verified._")
+                                query = f"Social media post: {metadata}\n\nURL: {url}"
+                                source_type = "url"
+                        else:
+                            send(from_num, "⚠️ Could not access video content — fact-checking post text only.\n_Note: the video content itself has not been verified._")
+                            query = f"Social media post: {metadata}\n\nURL: {url}"
+                            source_type = "url"
                     else:
-                        # Last resort: just use the URL itself as context
-                        send(from_num, "⚠️ Could not access video content. Fact-checking based on URL context...")
-                        page_text = fetch(url) or ""
-                        query = f"Video URL: {url}\n\n{page_text[:600]}" if page_text else f"Video from: {url}"
-                        if not query.strip() or query.strip() == f"Video from: {url}":
-                            send(from_num, "❌ Could not extract any content from this URL. Please paste the claim as text or send a screenshot.")
-                            return
-                        source_type = "url"
+                        # No video bytes and no metadata — cannot fact-check the video
+                        send(from_num, "❌ Could not access this video. To fact-check it, please describe the claim in text or paste a direct quote.")
+                        return
                 except Exception as e:
                     send(from_num, f"❌ Video error: {str(e)[:200]}\n\nTrying page scrape instead...")
                     page_text = fetch(url) or ""
