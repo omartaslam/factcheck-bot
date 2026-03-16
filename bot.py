@@ -1027,6 +1027,20 @@ def _fb_ig_post_scrape(url):
                         if val and key not in result:
                             result[key] = val
                         break
+            # Also look for the linked article URL — Facebook article shares embed
+            # the source URL in the HTML (og:url or data-uri attrs pointing outside FB)
+            if "article_url" not in result:
+                for art_pat in [
+                    r'<meta[^>]+property=["\']og:url["\'][^>]+content=["\']([^"\']+)["\']',
+                    r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:url["\']',
+                ]:
+                    m = re.search(art_pat, html, re.I)
+                    if m:
+                        candidate = _html_mod.unescape(m.group(1).strip())
+                        if candidate.startswith("http") and "facebook.com" not in candidate and "instagram.com" not in candidate:
+                            result["article_url"] = candidate
+                            log.info(f"FB/IG linked article URL: {candidate[:80]}")
+                        break
             if result.get("description") or result.get("image_url"):
                 log.info(f"FB/IG externalhit ({ua.split('/')[0]}): desc={bool(result.get('description'))} img={bool(result.get('image_url'))}")
                 return result
@@ -3396,6 +3410,29 @@ def process(from_num, message):
                         if fb_og.get("description"):
                             parts.append(f"Post text: {fb_og['description'][:1200]}")
                             send(from_num, f"✓ Post text extracted ({len(fb_og['description'])} chars)")
+                            # FB og:description is truncated — look for external article URLs
+                            # in the description text and scrape the full article
+                            _og_ext_urls = re.findall(
+                                r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+',
+                                fb_og['description'])
+                            if _og_ext_urls and "Article text:" not in "\n".join(parts):
+                                try:
+                                    art_text = fetch(_og_ext_urls[0])
+                                    if art_text and len(art_text) > 100:
+                                        parts.append(f"Article text:\n{art_text[:3000]}")
+                                        log.info(f"OG-desc article scraped: {len(art_text)} chars")
+                                except Exception as _ae:
+                                    log.warning(f"OG-desc article scrape failed: {_ae}")
+                        # Scrape the linked article if FB gave us the source URL
+                        if fb_og.get("article_url") and "Article text:" not in "\n".join(parts):
+                            try:
+                                art_text = fetch(fb_og["article_url"])
+                                if art_text and len(art_text) > 100:
+                                    parts.append(f"Article text:\n{art_text[:3000]}")
+                                    send(from_num, f"📰 Linked article scraped ({len(art_text)} chars)")
+                                    log.info(f"article_url scraped: {len(art_text)} chars from {fb_og['article_url'][:80]}")
+                            except Exception as _ae:
+                                log.warning(f"article_url scrape failed: {_ae}")
                         if fb_og.get("title") and not parts:
                             parts.append(f"Title: {fb_og['title']}")
                         if fb_og.get("image_url") and fb_og["image_url"].startswith("http"):
@@ -3458,6 +3495,16 @@ def process(from_num, message):
                                                     log.info(f"Article og:image fallback: {art_img[:80]}")
                                         except Exception as ae:
                                             log.warning(f"Article og:image failed: {ae}")
+                                    # Also scrape full article text — FB post captions are truncated
+                                    # by og:description (~150 chars); the linked article has the full text
+                                    if ext_urls and "Article text:" not in "\n".join(parts):
+                                        try:
+                                            art_text = fetch(ext_urls[0])
+                                            if art_text and len(art_text) > 100:
+                                                parts.append(f"Article text:\n{art_text[:3000]}")
+                                                log.info(f"Linked article scraped: {len(art_text)} chars from {ext_urls[0][:80]}")
+                                        except Exception as ae:
+                                            log.warning(f"Linked article scrape failed: {ae}")
                             if cookies_file and os.path.exists(cookies_file):
                                 os.unlink(cookies_file)
                         except Exception as e:
