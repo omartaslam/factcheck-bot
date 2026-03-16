@@ -4318,7 +4318,7 @@ def _qc_worker(from_num, msg_text):
                 # Check if latest message looks like a final verdict
                 with _qc_lock:
                     last_msg = _qc_jobs[from_num]["messages"][-1] if _qc_jobs[from_num]["messages"] else ""
-                if any(x in last_msg for x in ["VERDICT", "⚖️", "📊", "✅", "❌", "⚠️ *", "Who benefits"]):
+                if "FactCheck Pro v3.3" in last_msg or "FactCheck Pro v3.2" in last_msg:
                     t.sleep(6)  # allow any trailing messages to arrive
                     break
     except Exception as e:
