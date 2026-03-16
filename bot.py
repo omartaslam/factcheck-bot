@@ -1062,34 +1062,45 @@ def tineye_search_url(image_url):
         log.warning(f"TinEye URL: {e}")
     return []
 
-def hive_ai_check(image_bytes):
-    """Check for AI-generated/deepfake content via Hive Moderation.
-    Returns dict: {ai_generated: 0.0-1.0, deepfake: 0.0-1.0} or {}."""
+def hive_ai_check(image_bytes=None, image_url=None):
+    """Check for AI-generated/deepfake content via Hive V3 API.
+    Returns dict: {ai_generated: 0.0-1.0, deepfake: 0.0-1.0, generator: str} or {}."""
     if not HIVE_API_KEY:
         return {}
-    results = {}
-    def _call(endpoint, key):
-        try:
-            r = requests.post(
-                f"https://api.thehive.ai/api/v2/task/sync/{endpoint}",
-                headers={"authorization": f"token {HIVE_API_KEY}"},
-                files={"media": ("img.jpg", image_bytes, "image/jpeg")},
-                timeout=20
-            )
-            if r.ok:
-                classes = (r.json().get("status", [{}])[0]
-                           .get("response", {}).get("output", [{}])[0]
-                           .get("classes", []))
-                for cls in classes:
-                    if cls.get("class") in ("ai_generated", "yes"):
-                        results[key] = round(cls.get("score", 0), 3)
-                        return
-        except Exception as e:
-            log.debug(f"Hive {endpoint}: {e}")
-    with ThreadPoolExecutor(max_workers=2) as ex:
-        ex.submit(_call, "ai_generated_detection", "ai_generated")
-        ex.submit(_call, "face_manipulation_detection", "deepfake")
-    return results
+    try:
+        url = "https://api.thehive.ai/api/v3/hive/ai-generated-and-deepfake-content-detection"
+        hdrs = {"authorization": f"Bearer {HIVE_API_KEY}"}
+        if image_url:
+            r = requests.post(url, headers=hdrs,
+                              json={"input": [{"media_url": image_url}]},
+                              timeout=25)
+        else:
+            import base64 as _b64
+            b64 = _b64.b64encode(image_bytes).decode()
+            r = requests.post(url, headers=hdrs,
+                              json={"input": [{"media_base64": b64}]},
+                              timeout=25)
+        if not r.ok:
+            log.debug(f"Hive: {r.status_code} {r.text[:100]}")
+            return {}
+        classes = r.json().get("output", [{}])[0].get("classes", [])
+        results = {}
+        generators = []
+        for cls in classes:
+            name, val = cls.get("class", ""), cls.get("value", 0)
+            if name == "ai_generated":
+                results["ai_generated"] = round(val, 3)
+            elif name == "deepfake":
+                results["deepfake"] = round(val, 3)
+            elif not name.startswith("not_") and name not in ("ai_generated", "deepfake", "none") and val > 0.1:
+                generators.append((name, round(val, 3)))
+        if generators:
+            generators.sort(key=lambda x: -x[1])
+            results["generator"] = generators[0][0]
+        return results
+    except Exception as e:
+        log.warning(f"Hive: {e}")
+        return {}
 
 def run_osint(image_bytes=None, source_url=None, og_image_url=None):
     """Run all applicable OSINT checks in parallel. Returns findings dict."""
@@ -1099,7 +1110,7 @@ def run_osint(image_bytes=None, source_url=None, og_image_url=None):
         if image_bytes:
             tasks["exif"]    = ex.submit(extract_exif_info, image_bytes)
             tasks["tineye"]  = ex.submit(tineye_search, image_bytes)
-            tasks["hive"]    = ex.submit(hive_ai_check, image_bytes)
+            tasks["hive"]    = ex.submit(hive_ai_check, image_bytes, None)
         if og_image_url:
             tasks["tineye_url"] = ex.submit(tineye_search_url, og_image_url)
             if not image_bytes:
@@ -1121,14 +1132,8 @@ def run_osint(image_bytes=None, source_url=None, og_image_url=None):
     return findings
 
 def _hive_from_url(image_url):
-    """Download image from URL and run Hive check."""
-    try:
-        r = requests.get(image_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
-        if r.ok and len(r.content) > 500:
-            return hive_ai_check(r.content)
-    except Exception:
-        pass
-    return {}
+    """Run Hive check directly by URL (V3 accepts media_url natively)."""
+    return hive_ai_check(image_url=image_url)
 
 def fmt_osint(findings):
     """Format OSINT findings as a WhatsApp-friendly section. Returns lines list."""
@@ -1176,7 +1181,9 @@ def fmt_osint(findings):
         if ai_score is not None:
             pct = int(ai_score * 100)
             icon = "🤖" if ai_score > 0.7 else ("⚠️" if ai_score > 0.4 else "✅")
-            lines.append(f"{icon} _AI-generated probability: {pct}%_")
+            generator = hive.get("generator", "")
+            gen_label = f" _(likely {generator})_" if generator else ""
+            lines.append(f"{icon} _AI-generated probability: {pct}%{gen_label}_")
             added = True
         if df_score is not None:
             pct = int(df_score * 100)
