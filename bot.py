@@ -1390,15 +1390,23 @@ def fmt_osint(findings):
         df_score = hive.get("deepfake")
         if ai_score is not None:
             pct = int(ai_score * 100)
-            icon = "🤖" if ai_score > 0.7 else ("⚠️" if ai_score > 0.4 else "✅")
-            generator = hive.get("generator", "")
-            gen_label = f" _(likely {generator})_" if generator else ""
-            lines.append(f"{icon} _AI-generated probability: {pct}%{gen_label}_")
+            if ai_score > 0.7:
+                generator = hive.get("generator", "")
+                gen_label = f" _(likely {generator})_" if generator else ""
+                lines.append(f"🤖 _AI-generated: {pct}% probability{gen_label}_")
+            elif ai_score > 0.4:
+                lines.append(f"⚠️ _AI-generated: {pct}% probability — treat with caution_")
+            else:
+                lines.append(f"✅ _Authenticity verified: {100-pct}% probability genuine — not AI-generated or manipulated_")
             added = True
         if df_score is not None:
             pct = int(df_score * 100)
-            icon = "🎭" if df_score > 0.7 else ("⚠️" if df_score > 0.4 else "✅")
-            lines.append(f"{icon} _Deepfake probability: {pct}%_")
+            if df_score > 0.7:
+                lines.append(f"🎭 _Deepfake: {pct}% probability_")
+            elif df_score > 0.4:
+                lines.append(f"⚠️ _Deepfake: {pct}% probability — treat with caution_")
+            else:
+                lines.append(f"✅ _No deepfake detected ({pct}% probability)_")
             added = True
 
     # Wayback Machine
