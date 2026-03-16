@@ -1024,58 +1024,40 @@ def wayback_earliest(url):
 
 def tineye_search(image_bytes):
     """Reverse image search via TinEye. Returns list of match dicts (url, domain, crawl_date)."""
-    if not (TINEYE_API_KEY and TINEYE_API_SECRET):
+    if not TINEYE_API_SECRET:
         return []
     try:
-        import hmac as _hmac, hashlib as _hashlib, random as _rnd, string as _str
-        nonce = "".join(_rnd.choices(_str.ascii_lowercase + _str.digits, k=8))
-        date  = str(int(t.time()))
-        boundary = "TinEyeBoundary"
-        body = (
-            f"--{boundary}\r\nContent-Disposition: form-data; "
-            f'name="image"; filename="img.jpg"\r\nContent-Type: image/jpeg\r\n\r\n'
-        ).encode() + image_bytes + f"\r\n--{boundary}--\r\n".encode()
-        content_type = f"multipart/form-data; boundary={boundary}"
-        hmac_msg = f"POST\n{content_type}\n{date}\nx-tineye-nonce:{nonce}\n/rest/search/"
-        sig = _hmac.new(
-            TINEYE_API_SECRET.encode(), hmac_msg.encode(), _hashlib.sha256
-        ).hexdigest()
-        url = (f"https://api.tineye.com/rest/search/"
-               f"?api_key={TINEYE_API_KEY}&date={date}&nonce={nonce}&signature={sig}")
-        r = requests.post(url, data=body,
-                          headers={"Content-Type": content_type}, timeout=20)
+        r = requests.post(
+            "https://api.tineye.com/rest/search/",
+            headers={"X-API-KEY": TINEYE_API_SECRET},
+            files={"image": ("img.jpg", image_bytes, "image/jpeg")},
+            timeout=20
+        )
         if r.ok:
             matches = r.json().get("results", {}).get("matches", [])
-            return [{"url": m.get("backlinks", [{}])[0].get("url",""),
-                     "domain": m.get("domain",""),
-                     "crawl_date": m.get("image_count","")} for m in matches[:6]]
+            return [{"url": m.get("backlinks", [{}])[0].get("url", ""),
+                     "domain": m.get("domain", ""),
+                     "crawl_date": m.get("crawl_date", "")} for m in matches[:6]]
     except Exception as e:
         log.warning(f"TinEye: {e}")
     return []
 
 def tineye_search_url(image_url):
-    """TinEye reverse search by image URL (simpler than file upload)."""
-    if not (TINEYE_API_KEY and TINEYE_API_SECRET):
+    """TinEye reverse search by image URL."""
+    if not TINEYE_API_SECRET:
         return []
     try:
-        import hmac as _hmac, hashlib as _hashlib, random as _rnd, string as _str
-        nonce = "".join(_rnd.choices(_str.ascii_lowercase + _str.digits, k=8))
-        date  = str(int(t.time()))
-        hmac_msg = f"GET\n\n{date}\nx-tineye-nonce:{nonce}\n/rest/search/"
-        sig = _hmac.new(
-            TINEYE_API_SECRET.encode(), hmac_msg.encode(), _hashlib.sha256
-        ).hexdigest()
         r = requests.get(
             "https://api.tineye.com/rest/search/",
-            params={"api_key": TINEYE_API_KEY, "date": date, "nonce": nonce,
-                    "signature": sig, "url": image_url},
+            headers={"X-API-KEY": TINEYE_API_SECRET},
+            params={"url": image_url},
             timeout=15
         )
         if r.ok:
             matches = r.json().get("results", {}).get("matches", [])
-            return [{"url": m.get("backlinks", [{}])[0].get("url",""),
-                     "domain": m.get("domain",""),
-                     "crawl_date": m.get("crawl_date","")} for m in matches[:6]]
+            return [{"url": m.get("backlinks", [{}])[0].get("url", ""),
+                     "domain": m.get("domain", ""),
+                     "crawl_date": m.get("crawl_date", "")} for m in matches[:6]]
     except Exception as e:
         log.warning(f"TinEye URL: {e}")
     return []
@@ -1090,7 +1072,7 @@ def hive_ai_check(image_bytes):
         try:
             r = requests.post(
                 f"https://api.thehive.ai/api/v2/task/sync/{endpoint}",
-                headers={"token": HIVE_API_KEY},
+                headers={"authorization": f"token {HIVE_API_KEY}"},
                 files={"media": ("img.jpg", image_bytes, "image/jpeg")},
                 timeout=20
             )
