@@ -3466,9 +3466,17 @@ def process(from_num, message):
                                     if title and title not in ("Facebook","Instagram") and not parts:
                                         parts.append(f"Title: {title}")
                                     desc = info.get("description","") or ""
-                                    if desc and "Post text:" not in "\n".join(parts):
-                                        parts.append(f"Post text: {desc[:1200]}")
-                                        send(from_num, f"✓ Post text extracted ({len(desc)} chars)")
+                                    if desc:
+                                        # Replace truncated og:description with yt-dlp's
+                                        # full description if it's longer
+                                        existing = next((p for p in parts if p.startswith("Post text:")), None)
+                                        existing_len = len(existing.replace("Post text: ","",1)) if existing else 0
+                                        if len(desc) > existing_len:
+                                            if existing:
+                                                parts.remove(existing)
+                                            parts.insert(0, f"Post text: {desc[:1200]}")
+                                            send(from_num, f"✓ Post text extracted ({len(desc)} chars)")
+                                            log.info(f"yt-dlp desc replaced og:desc: {len(desc)} > {existing_len} chars")
                                     if info.get("uploader"):
                                         parts.append(f"Posted by: {info['uploader']}")
                                     log.info(f"yt-dlp: title={title[:50]} desc={bool(desc)} thumb={bool(info.get('thumbnail'))}")
