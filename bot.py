@@ -3218,6 +3218,7 @@ def process(from_num, message):
                             post_date = fb_og["post_date"]
                         if fb_og.get("description"):
                             parts.append(f"Post text: {fb_og['description'][:1200]}")
+                            send(from_num, f"✓ Post text extracted ({len(fb_og['description'])} chars)")
                         if fb_og.get("title") and not parts:
                             parts.append(f"Title: {fb_og['title']}")
                         if fb_og.get("image_url") and fb_og["image_url"].startswith("http"):
@@ -3253,6 +3254,7 @@ def process(from_num, message):
                                     desc = info.get("description","") or ""
                                     if desc and "Post text:" not in "\n".join(parts):
                                         parts.append(f"Post text: {desc[:1200]}")
+                                        send(from_num, f"✓ Post text extracted ({len(desc)} chars)")
                                     if info.get("uploader"):
                                         parts.append(f"Posted by: {info['uploader']}")
                                     log.info(f"yt-dlp: title={title[:50]} desc={bool(desc)} thumb={bool(info.get('thumbnail'))}")
@@ -3297,7 +3299,7 @@ def process(from_num, message):
                                 ocr = ocr_image(img_r.content)
                                 if ocr and len(ocr) > 20:
                                     parts.append(f"Image text/content:\n{ocr}")
-                                    send(from_num, f"🖼 Checking thumbnail image for AI generation and claims...")
+                                    send(from_num, f"🖼 Post image analysed — extracted text ({len(img_r.content)//1024}KB image, {len(ocr)} chars of text)")
                                     log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
                                     image_bytes = img_r.content  # save for OSINT/AI detection
                                     ocr_succeeded = True
@@ -3306,6 +3308,7 @@ def process(from_num, message):
                                 log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
                         if img_candidates and not ocr_succeeded:
                             log.warning(f"FB/IG: OCR failed for all {len(img_candidates)} image candidates")
+                            send(from_num, "⚠️ Could not read text from post image")
 
                         if parts:
                             page_text = "\n\n".join(parts)
