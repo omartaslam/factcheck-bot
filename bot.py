@@ -2509,14 +2509,23 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:2]] + [""]
     if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{a['who_benefits'][:200]}_", ""]
     if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:150], ""]
-    score = a.get("lenz_score")
-    if score is not None:
+    # Derive truth score from rating — do not trust Claude's lenz_score directly
+    # as it tends to cluster around 5 regardless of verdict.
+    _rating_score = {
+        "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
+        "MOSTLY FALSE": 3, "FALSE": 1, "PANTS ON FIRE": 0,
+    }
+    s = _rating_score.get(rating)
+    if s is None:
+        # For UNVERIFIABLE/MISLEADING/NEEDS CONTEXT use Claude's score if provided
         try:
-            s = int(score)
-            filled = "█" * s + "░" * (10 - s)
-            lines += [f"*TRUTH SCORE*  `{filled}` {s}/10", ""]
+            s = int(a.get("lenz_score"))
+            s = max(0, min(10, s))
         except (ValueError, TypeError):
-            pass
+            s = None
+    if s is not None:
+        filled = "█" * s + "░" * (10 - s)
+        lines += [f"*TRUTH SCORE*  `{filled}` {s}/10", ""]
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
