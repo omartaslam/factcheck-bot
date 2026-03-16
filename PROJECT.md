@@ -1,6 +1,6 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-16
+> **Last updated:** 2026-03-16 (session 2)
 > **Version:** v3.3 BETA
 > **Status:** Live on Railway — beta-ready, OSINT pipeline integrated, 65 sources
 
@@ -48,7 +48,7 @@ WhatsApp Business API
 
 **Deployment:** Railway (PaaS), auto-deploy from GitHub `main` branch
 **Process manager:** Gunicorn, 4 workers, `--timeout 120`
-**Build config:** `nixpacks.toml` (apt packages: ffmpeg, libsm6, libxext6, libxrender-dev)
+**Build config:** `Dockerfile` (python:3.11-slim + apt: ffmpeg, libsm6, libxext6, libxrender-dev). nixpacks.toml kept but Railway now uses Dockerfile.
 
 ---
 
@@ -65,7 +65,7 @@ WhatsApp Business API
 | Video frame extraction | cv2 (OpenCV) + ffmpeg fallback |
 | Real-time search | Tavily API |
 | Fact-check API | Google Fact Check Tools API |
-| OSINT — reverse image | TinEye HMAC API (`TINEYE_API_KEY`) |
+| OSINT — reverse image | Google Cloud Vision web detection (`GOOGLE_VISION_KEY`) — primary; TinEye kept as fallback |
 | OSINT — AI/deepfake | Hive Moderation API (`HIVE_API_KEY`) |
 | OSINT — EXIF | Pillow / piexif |
 | OSINT — Wayback | Wayback Machine CDX API (free, no key needed) |
@@ -128,9 +128,10 @@ All logic is in `bot.py`. There is no separate config file — all configuration
 
 | Variable | Description | Status |
 |---|---|---|
-| `TINEYE_API_KEY` | TinEye reverse image search API key | ❌ Not set (get from tineye.com/services) |
-| `TINEYE_API_SECRET` | TinEye HMAC signing secret | ❌ Not set |
-| `HIVE_API_KEY` | Hive Moderation API key for AI/deepfake detection | ❌ Not set (get from thehive.ai) |
+| `GOOGLE_VISION_KEY` | Google Cloud Vision web detection — primary reverse image search (~$0.0015/search, 1000 free/month) | ✅ Set |
+| `REVERSE_IMAGE_ENGINE` | `"google"` \| `"tineye"` \| `"off"` — auto-selects based on keys present | auto |
+| `TINEYE_API_SECRET` | TinEye reverse image search — fallback, set `REVERSE_IMAGE_ENGINE=tineye` to use | ❌ No credits (buy at tineye.com/services) |
+| `HIVE_API_KEY` | Hive V3 API — AI-generated + deepfake detection | ✅ Set |
 
 EXIF and Wayback Machine checks run without any API key.
 
@@ -303,9 +304,10 @@ Runs in parallel with source scraping via `ThreadPoolExecutor`. Zero added laten
 |---|---|---|
 | `extract_exif_info(image_bytes)` | Date taken, GPS, camera, edit software from EXIF | No |
 | `wayback_earliest(url)` | Earliest Wayback Machine archive date (CDX API) | No |
-| `tineye_search(image_bytes)` | Reverse image search — find where image appears online | Yes (`TINEYE_API_KEY` + `TINEYE_API_SECRET`) |
-| `tineye_search_url(image_url)` | Same but from URL instead of bytes | Yes |
-| `hive_ai_check(image_bytes)` | AI-generated probability + deepfake probability | Yes (`HIVE_API_KEY`) |
+| `_google_vision_web(image_bytes/url)` | Google Vision web detection — exact copies, pages, best-guess labels | Yes (`GOOGLE_VISION_KEY`) |
+| `tineye_search(image_bytes)` | TinEye reverse image search — kept as fallback | Yes (`TINEYE_API_SECRET`) |
+| `_reverse_image_search(...)` | Router — calls Google Vision or TinEye based on `REVERSE_IMAGE_ENGINE` | — |
+| `hive_ai_check(image_bytes/url)` | AI-generated probability + deepfake probability (Hive V3 API) | Yes (`HIVE_API_KEY`) |
 | `run_osint(image_bytes, source_url)` | Parallel orchestrator — runs all applicable checks | — |
 | `fmt_osint(findings)` | Formats findings as WhatsApp-friendly report section | — |
 
@@ -314,8 +316,11 @@ Runs in parallel with source scraping via `ThreadPoolExecutor`. Zero added laten
 ```
 🔬 *OSINT VERIFICATION*
 📷 EXIF: Taken 2024-08-15, Camera: iPhone 14 Pro, Software: Adobe Lightroom
-🔍 TinEye: 47 matches — first seen 2023-11-02 (domain: example.com)
-🤖 AI-generated probability: 94% ⚠️
+🏷️ Image shows: Strait of Hormuz, military vessel, Persian Gulf
+🔍 Image appears on 4 web page(s)
+   • BBC News — Iran threatens to close Strait
+   • reuters.com
+🤖 AI-generated probability: 94% _(likely stable_diffusion)_
 🎭 Deepfake probability: 12%
 🕰️ Wayback Machine: First archived 2024-01-10
 ```
@@ -349,7 +354,9 @@ _fb_ig_post_scrape() → OG metadata from Facebook externalhit headers
 assess_content_claims(text) → Sonnet claim extraction
 ```
 
-**Known issue:** ffmpeg is in `nixpacks.toml` `aptPkgs` but not found in Railway PATH during testing. Video frame analysis falls through to yt-dlp audio + OG scrape fallback. This works for most content.
+**Fragmented MP4 fix:** `_repair_mp4()` remuxes DASH/streaming downloads (which produce "moov atom not found") via `ffmpeg -c copy -movflags faststart`. Called automatically before audio extraction and frame extraction.
+
+**ffmpeg:** Now installed via `Dockerfile` (Railpack was ignoring nixpacks.toml). Confirmed working on Railway.
 
 ---
 
@@ -363,6 +370,7 @@ Uses `claude-sonnet-4-6`.
 - Do NOT infer context not explicitly stated
 - Do NOT add background info unless explicitly stated in content
 - Max 6 claims per check
+- For current-affairs claims, appends "as of Month YYYY" (uses post_date if available, else current UTC month)
 
 ---
 
@@ -415,6 +423,7 @@ Evidence fed to Claude is grouped into labelled categories:
 ### Report fields
 - **PERSPECTIVES** — `🌐 Western:` / `🕌 Regional:` / `⚖️ Consensus:` — shows where sources diverge by geopolitical view
 - **CONTESTED LANGUAGE** — flags disputed terminology with all framings (e.g. "terrorist/militant/resistance fighter")
+- **WHO BENEFITS?** — who stands to gain from the claim being believed/shared (state actor, party, outlet, movement). Empty for benign claims.
 
 ---
 
@@ -517,21 +526,21 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 ## 19. Outstanding Tasks (priority order)
 
 ### Immediate
-1. **Get TinEye API keys** — sign up at tineye.com/services → set `TINEYE_API_KEY` + `TINEYE_API_SECRET` in Railway → reverse image search fully live
-2. **Get Hive API key** — sign up at thehive.ai → set `HIVE_API_KEY` in Railway → AI/deepfake detection fully live
-3. **Set FREE_CHECKS_LIMIT for beta** — change from 9999 to 5-10 in Railway when ready to open to testers
-4. **Share beta link** — `wa.me/447863795638` — ready to share now
+1. **Set FREE_CHECKS_LIMIT for beta** — change from 9999 to 5-10 in Railway when ready to open to testers
+2. **Share beta link** — `wa.me/447863795638` — ready to share now
+3. **Stripe setup** — create Payment Links, set all Stripe env vars, reset `FREE_CHECKS_LIMIT=3` for launch
 
 ### High Priority
-5. **Stripe setup** — create Payment Links, set all Stripe env vars, reset `FREE_CHECKS_LIMIT=3` for launch
-6. **Test PERSPECTIVES + CONTESTED LANGUAGE** — send real Middle East URLs to live bot, verify output
-7. **Low credit / API key alert to user** — notify user (not just admin) when free checks exhausted; also notify admin when Anthropic/OpenAI credits are low or zero
+4. **Claim selection** — let users pick which claims to verify instead of Y/N for all. Free: 1 at a time; paid: multiple. Reply with claim number(s).
+5. **User feedback system** — reply FEEDBACK or 👍/👎 after a check. Store in DB. Use patterns to refine prompts.
+6. **WhatsApp message reactions + threaded replies** — react to user's original message with verdict emoji (✅❌⚠️📌❓), send full report as reply-to. WhatsApp Cloud API supports both.
+7. **Test PERSPECTIVES + CONTESTED LANGUAGE** — send real Middle East URLs to live bot, verify output
+8. **Low credit / API key alert to user** — notify user when free checks exhausted; admin alert when Anthropic/OpenAI credits low
 
 ### Medium Priority
-8. **TikTok text overlay OCR** — switch `analyze_video_frames` to Sonnet or add pytesseract for styled text overlays
-9. **ffmpeg on Railway** — declared in nixpacks.toml but not in PATH; video frames failing (yt-dlp audio fallback works but frames would be better)
-10. **"Who benefits?" meta field** — add to Claude synthesis prompt and JSON schema for geopolitical framing analysis
-11. **More accurate usage calculation** — audit cost tracking completeness (verify all Sonnet calls including `assess_content_claims` are captured)
+9. **TikTok text overlay OCR** — switch `analyze_video_frames` to Sonnet or add pytesseract for styled text overlays
+10. **More accurate usage calculation** — audit cost tracking completeness
+11. **TinEye credits** — buy bundle at tineye.com/services, set `REVERSE_IMAGE_ENGINE=tineye` to activate
 
 ### Lower Priority / Future
 12. **Messenger/Telegram** — set tokens when ready to expand platforms
@@ -597,6 +606,10 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 ## 21. Recent Git History
 
 ```
+a799382  feat: Google Vision web detection as primary reverse image search, TinEye kept as fallback
+6bb00a4  feat: add 'Who benefits?' field to fact-check reports
+2d8c271  feat: add temporal context to claims for current-affairs posts ("as of March 2026")
+8420444  fix: repair fragmented MP4 (moov atom), require frames/audio for video success
 dc3fcb9  test: add source preview unit tests, fix AFP name + SOURCES CITED assertion
 46d729b  feat: topic-aware source preview — show relevant sources per post
 31c58fc  fix: rotate source preview with balanced per-category mix + AFP name fix
@@ -605,8 +618,4 @@ dc3fcb9  test: add source preview unit tests, fix AFP name + SOURCES CITED asser
 8435f8e  feat: OSINT verification — reverse image, EXIF, Wayback Machine, AI/deepfake detection
 7f9455e  feat: add 11 Global South fact-checkers — Misbar, Africa Check, Alt News, etc.
 d3a66bd  feat: beta launch — welcome message, HELP command, BETA label, last-check warning
-7e2b17f  fix: add missing _try_download_url/_extract_video_url + use claim as search query
-ad7ca3c  fix: improve video claim extraction — more frames, concise prompt, larger text window
-743e35a  feat: multi-perspective fact-checking — remove Western media bias
-7145008  feat: post date extraction and staleness warnings in fact-check reports
 ```
