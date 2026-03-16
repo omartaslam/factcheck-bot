@@ -31,6 +31,7 @@ TOPUP_5_LINK        = os.getenv("TOPUP_5_LINK", "")              # Stripe Paymen
 TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Payment Link for $10
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
 SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for $9.99/month subscription
+BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
 
 # ── Multi-platform config ──────────────────────────────────────────────────────
 MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page Access Token (Messenger + Instagram DMs)
@@ -1709,10 +1710,43 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
     debate_indicator = "⚖️ pro/con debate" if a.get("_debate_pro") else "single-pass"
-    lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  FactCheck Pro v3.2  •  {debate_indicator}_"]
+    version = "FactCheck Pro v3.3 BETA" if BETA_MODE else "FactCheck Pro v3.3"
+    lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  {version}  •  {debate_indicator}_"]
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
     return "\n".join(lines)
+
+def _welcome_msg():
+    free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
+    beta_line = "\n_🚧 BETA — feedback welcome! Reply HELP for info._" if BETA_MODE else ""
+    return (
+        "*Welcome to FactCheck Pro! 🔍*\n\n"
+        "I verify claims, news, and social media posts with multi-perspective, "
+        "bias-aware analysis — including Western, regional, and Middle Eastern sources.\n\n"
+        "*Send me any of these:*\n"
+        "• A URL (Facebook, TikTok, YouTube, news article)\n"
+        "• A video, image, or voice note\n"
+        "• A text claim or quote\n\n"
+        f"You have *{FREE_CHECKS_LIMIT} free {free_word}* to try it out."
+        + beta_line
+    )
+
+HELP_MSG = (
+    "*FactCheck Pro — Help* 🔍\n\n"
+    "*What I can check:*\n"
+    "• URLs (Facebook, TikTok, YouTube, news articles)\n"
+    "• Videos and images\n"
+    "• Voice notes / audio\n"
+    "• Text claims or quotes\n\n"
+    "*Commands:*\n"
+    "• *Y* — confirm a fact-check\n"
+    "• *N* — cancel\n"
+    "• *HELP* — show this message\n\n"
+    "*About:*\n"
+    "Multi-perspective analysis using Western, Middle Eastern, and independent sources. "
+    "Identifies bias, contested language, and geopolitical framing differences.\n\n"
+    "_Powered by FactCheck Pro — built for journalists, activists & curious minds._"
+)
 
 def confirm_msg(st, preview, cost):
     src = {"text":"Text","image":"Image","audio":"Voice Note","video":"Video","url":"Article","document":"Document"}
@@ -2130,6 +2164,10 @@ def process(from_num, message):
             to_keep = set(list(processed_ids)[MAX_PROCESSED_IDS//2:])
             processed_ids.clear(); processed_ids.update(to_keep)
     expire_pending()
+    # ── First-time user: send welcome and let them proceed ────────────────────
+    if _is_new_wa_user(from_num):
+        send(from_num, _welcome_msg())
+        # Fall through so they can also process content if sent with first message
     pkey = ("whatsapp", from_num)
     msg_type = message.get("type")
     if msg_type == "video":
@@ -2137,6 +2175,10 @@ def process(from_num, message):
         log.info("=== VIDEO MESSAGE RECEIVED ===")
     if msg_type == "text":
         body = message["text"]["body"].strip(); body_upper = body.upper()
+        # ── HELP command ──────────────────────────────────────────────────
+        if body_upper in ("HELP", "?", "START", "INFO"):
+            send(from_num, HELP_MSG)
+            return
         is_yn = body_upper in ("YES","Y","NO","N") or (len(body) < 10 and body_upper in ("YES","Y","NO","N"))
         with pending_lock: has_p = pkey in pending; data = pending.get(pkey)
         if has_p and is_yn:
@@ -2151,8 +2193,13 @@ def process(from_num, message):
                 if bt == "free":
                     u = _wa_user(from_num)
                     remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
-                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
+                    if remaining <= 0:
+                        suffix = "last free check"
+                    else:
+                        suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
                     send(from_num, f"✓ Free check — {suffix}")
+                    if remaining == 0:
+                        send(from_num, "ℹ️ _This is your last free check. Reply HELP for info on continuing after this._")
                 elif bt == "paid":
                     u = _wa_user(from_num)
                     send(from_num, f"✓ Balance: ${u['balance_cents']/100:.2f}")
@@ -2579,6 +2626,15 @@ def _wa_credit(wa_id, cents, description, stripe_session_id=None):
 def _send_payment_prompt(wa_id, balance_cents):
     _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
 
+def _is_new_wa_user(wa_id):
+    """Return True if this WhatsApp number has never sent a message before."""
+    with _db() as c:
+        row = c.execute(
+            "SELECT 1 FROM platform_users WHERE platform='whatsapp' AND platform_id=?",
+            (str(wa_id),)
+        ).fetchone()
+    return row is None
+
 def get_random_ad():
     """Return a random sponsor ad line, or empty string."""
     return random.choice(SPONSOR_ADS) if SPONSOR_ADS else ""
@@ -2649,7 +2705,8 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
     if SUB_LINK:
         lines += ["", f"*♾ Unlimited* — $9.99/month → {SUB_LINK}{suffix}"]
     if not any([TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
-        lines += ["", "_Payment system coming soon._"]
+        beta_note = "\n_We're in BETA — paid plans launching soon. Watch this space!_" if BETA_MODE else ""
+        lines += ["", f"_Payment system coming soon._{beta_note}"]
     lines += ["", "_Secure payment by Stripe_"]
     send_fn("\n".join(lines))
 
