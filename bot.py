@@ -550,6 +550,22 @@ def _is_useless_title(title):
     """Return True if the title is just a platform name and carries no information."""
     return not title or title.strip().lower() in _PLATFORM_TITLES
 
+def _is_video_bytes(data):
+    """Return True if bytes look like a video container (MP4, WebM, AVI, MKV).
+    Used to distinguish actual video downloads from images returned by social APIs."""
+    if not data or len(data) < 12:
+        return False
+    # MP4/MOV: box type at offset 4 is a known video atom
+    if data[4:8] in (b'ftyp', b'moov', b'mdat', b'free', b'wide', b'pnot', b'skip'):
+        return True
+    # WebM / MKV: EBML header
+    if data[:4] == b'\x1a\x45\xdf\xa3':
+        return True
+    # AVI: RIFF....AVI
+    if data[:4] == b'RIFF' and data[8:11] == b'AVI':
+        return True
+    return False
+
 def _parse_post_date(raw):
     """Normalise various date formats to 'YYYY-MM-DD'. Returns '' on failure."""
     if not raw:
@@ -2957,12 +2973,12 @@ def process(from_num, message):
                     # ── STEP 0: Try video download first ─────────────────────────
                     # FB/IG share links (/share/xxx/) often contain video even though
                     # they don't look like video URLs. Try downloading before falling
-                    # back to og:image scrape. Be explicit with the user throughout.
-                    send(from_num, "🎬 Checking for video content...")
+                    # back to og:image scrape.
                     try:
                         vid_bytes_try, vid_meta_try, vid_date_try = download_video_url(url)
-                        if vid_bytes_try:
-                            send(from_num, f"✓ Video found ({len(vid_bytes_try)//1024}KB) — extracting frames and audio...")
+                        if vid_bytes_try and _is_video_bytes(vid_bytes_try):
+                            # Confirmed video — extract frames and audio
+                            send(from_num, f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — extracting frames and audio...")
                             if vid_date_try:
                                 post_date = vid_date_try
                             vid_parts = []
@@ -2992,12 +3008,25 @@ def process(from_num, message):
                                 log.info(f"FB/IG video download succeeded: {len(page_text)} chars")
                             else:
                                 log.info(f"FB/IG video downloaded but no frames/audio — falling back to post image")
-                                send(from_num, "⚠️ Downloaded video but couldn't extract frames or audio — checking post image instead...")
+                        elif vid_bytes_try:
+                            # API returned bytes but they're an image, not a video — OCR directly
+                            log.info(f"FB/IG download returned image bytes ({len(vid_bytes_try)//1024}KB) — routing to image OCR")
+                            if vid_date_try:
+                                post_date = vid_date_try
+                            if vid_meta_try and not _is_useless_title(vid_meta_try):
+                                parts.append(f"Post text: {vid_meta_try}")
+                            ocr = ocr_image(vid_bytes_try)
+                            if ocr and len(ocr) > 20:
+                                parts.append(f"Image text/content:\n{ocr}")
+                                image_bytes = vid_bytes_try
+                                log.info(f"OCR from downloaded image: {ocr[:80]}")
+                            else:
+                                # Keep bytes as an image candidate for OSINT even if OCR found nothing
+                                image_bytes = vid_bytes_try
                         else:
-                            send(from_num, "⚠️ No downloadable video found — checking post image instead...")
+                            log.info("FB/IG: no downloadable content found — proceeding to post scrape")
                     except Exception as vde:
                         log.warning(f"FB/IG video download attempt failed: {vde}")
-                        send(from_num, "⚠️ Couldn't download video — checking post image instead...")
 
                     if not _fb_video_done:
                         # ── STEP 1: facebookexternalhit scrape ───────────────────────
