@@ -2006,10 +2006,13 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
-    if used_sources:
-        lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:6]] + [""]
-    elif a.get("sources"):
-        lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
+    # Show what Claude actually cited — these vary per claim based on evidence found.
+    # Fall back to scraped source names only if Claude returned no citations.
+    if a.get("sources"):
+        src_count = f" _(searched {len(used_sources)})_" if used_sources else ""
+        lines += [f"*SOURCES CITED*{src_count}"] + [f"• {s}" for s in a["sources"][:6]] + [""]
+    elif used_sources:
+        lines += ["*SOURCES SEARCHED*"] + [f"• {s}" for s in used_sources[:6]] + [""]
     osint_lines = fmt_osint(osint or {})
     if osint_lines:
         lines += osint_lines

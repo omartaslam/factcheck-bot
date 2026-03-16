@@ -1,8 +1,15 @@
 .env
 __pycache__/
 *.pyc
+*.bak
 bot.py-v*
 v1/
 v2/
+v3/
+venv/
 *.zip
-update.sh
+*.sh
+cookies*.txt
+resume
+"next steps*"
+"NEXT STEPS*"
