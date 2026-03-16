@@ -3213,6 +3213,18 @@ def process(from_num, message):
                                     log.error(f"yt-dlp audio transcription: {e}")
                         if transcript:
                             parts.append(f"Audio: {transcript}")
+                        # For FB/IG — always include post caption alongside video analysis.
+                        # The caption often contains claims not visible in the video itself
+                        # (e.g. describing what the video shows, adding context or spin).
+                        if is_fb_ig:
+                            try:
+                                fb_og = _fb_ig_post_scrape(url)
+                                caption = fb_og.get("description", "").strip()
+                                if caption and len(caption) > 20:
+                                    parts.append(f"Post caption: {caption[:1200]}")
+                                    log.info(f"FB/IG caption added: {caption[:80]}")
+                            except Exception as e:
+                                log.warning(f"FB/IG caption scrape: {e}")
                         # Only confirm "Video found" once we have actual video content
                         has_video_content = any(p.startswith(("Visual analysis:", "Audio:")) for p in parts)
                         if has_video_content:
