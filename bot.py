@@ -2790,117 +2790,150 @@ def process(from_num, message):
                 if "facebook.com" in url or "instagram.com" in url:
                     parts = []
                     img_candidates = []  # ordered list of image URLs to try for OCR
+                    _fb_video_done = False  # set True if video download gives us content
 
-                    # ── STEP 1: facebookexternalhit scrape ───────────────────────
-                    # FB/IG serve post-specific og:image and full og:description to
-                    # their own link-preview crawlers. This is the most reliable way
-                    # to get the actual post image (not the page profile picture) and
-                    # the full post text without needing cookies or authentication.
-                    fb_og = _fb_ig_post_scrape(url)
-                    if fb_og.get("post_date"):
-                        post_date = fb_og["post_date"]
-                    if fb_og.get("description"):
-                        parts.append(f"Post text: {fb_og['description'][:1200]}")
-                    if fb_og.get("title") and not parts:
-                        parts.append(f"Title: {fb_og['title']}")
-                    if fb_og.get("image_url") and fb_og["image_url"].startswith("http"):
-                        # Only use og:image from post-specific URLs (not page profile pictures)
-                        if fb_og.get("is_post", True):
-                            img_candidates.append(fb_og["image_url"])
-                            log.info(f"FB/IG post og:image: {fb_og['image_url'][:80]}")
-                        else:
-                            log.info(f"FB/IG page URL — skipping profile og:image")
-
-                    # ── STEP 2: yt-dlp metadata (uploader, and additional text) ──
+                    # ── STEP 0: Try video download first ─────────────────────────
+                    # FB/IG share links (/share/xxx/) often contain video even though
+                    # they don't look like video URLs. Try downloading before falling
+                    # back to og:image scrape. Be explicit with the user throughout.
+                    send(from_num, "🎬 Checking for video content...")
                     try:
-                        cookies_b64 = FB_COOKIES_B64 if "facebook.com" in url else IG_COOKIES_B64
-                        cookies_file = None
-                        if cookies_b64:
-                            import base64 as _b64
-                            cookies_data = _b64.b64decode(cookies_b64).decode("utf-8")
-                            cookies_file = tempfile.mktemp(suffix=".txt")
-                            with open(cookies_file, "w") as cf:
-                                cf.write(cookies_data)
-                        ydl_opts = {
-                            "quiet": True, "no_warnings": True, "skip_download": True,
-                            "socket_timeout": 15,
-                            "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
-                        }
-                        if cookies_file:
-                            ydl_opts["cookiefile"] = cookies_file
-                        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                            info = ydl.extract_info(url, download=False)
-                            if info:
-                                # Add title only if we don't have description from Step 1
-                                title = info.get("title","")
-                                if title and title not in ("Facebook","Instagram") and not parts:
-                                    parts.append(f"Title: {title}")
-                                # Add description if Step 1 didn't get it
-                                desc = info.get("description","") or ""
-                                if desc and "Post text:" not in "\n".join(parts):
-                                    parts.append(f"Post text: {desc[:1200]}")
-                                if info.get("uploader"):
-                                    parts.append(f"Posted by: {info['uploader']}")
-                                log.info(f"yt-dlp: title={title[:50]} desc={bool(desc)} thumb={bool(info.get('thumbnail'))}")
-                                # Add yt-dlp thumbnail as fallback image candidate
-                                if info.get("thumbnail"):
-                                    img_candidates.append(info["thumbnail"])
-                                # Also add direct image URLs from yt-dlp
-                                raw_url = info.get("url","")
-                                if raw_url and any(raw_url.lower().endswith(x) for x in (".jpg",".jpeg",".png",".webp")):
-                                    img_candidates.append(raw_url)
-                                for fmt in (info.get("formats") or []):
-                                    if fmt.get("ext") in ("jpg","jpeg","png","webp") and fmt.get("url"):
-                                        img_candidates.append(fmt["url"])
-                                # For link-share posts: if description has external article URL,
-                                # append its og:image as a further fallback
-                                ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
-                                if ext_urls:
-                                    try:
-                                        import html as _html
-                                        art_r = requests.get(ext_urls[0], headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-                                        if art_r.ok:
-                                            m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', art_r.text, re.I)
-                                            if not m:
-                                                m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', art_r.text, re.I)
-                                            if m:
-                                                art_img = _html.unescape(m.group(1).strip())
-                                                img_candidates.append(art_img)
-                                                log.info(f"Article og:image fallback: {art_img[:80]}")
-                                    except Exception as ae:
-                                        log.warning(f"Article og:image failed: {ae}")
-                        if cookies_file and os.path.exists(cookies_file):
-                            os.unlink(cookies_file)
-                    except Exception as e:
-                        log.warning(f"yt-dlp info extraction failed: {e}")
+                        vid_bytes_try, vid_meta_try, vid_date_try = download_video_url(url)
+                        if vid_bytes_try:
+                            send(from_num, f"✓ Video found ({len(vid_bytes_try)//1024}KB) — extracting frames and audio...")
+                            if vid_date_try:
+                                post_date = vid_date_try
+                            vid_parts = []
+                            if vid_meta_try and not _is_useless_title(vid_meta_try):
+                                vid_parts.append(f"Video: {vid_meta_try}")
+                            try:
+                                frames, _ = extract_video_frames(vid_bytes_try, num_frames=5)
+                                if frames:
+                                    visual = analyze_video_frames(frames)
+                                    if visual:
+                                        vid_parts.append(f"Visual analysis:\n{visual}")
+                            except Exception as vfe:
+                                log.error(f"FB/IG video frame analysis: {vfe}")
+                            send(from_num, "🎧 Transcribing audio...")
+                            try:
+                                transcript = transcribe(vid_bytes_try, "video/mp4")
+                                if transcript:
+                                    vid_parts.append(f"Audio: {transcript}")
+                            except Exception as vte:
+                                log.warning(f"FB/IG video transcription: {vte}")
+                            if vid_parts:
+                                page_text = "\n\n".join(vid_parts)
+                                source_type = "video"
+                                video_bytes = vid_bytes_try
+                                _fb_video_done = True
+                                log.info(f"FB/IG video download succeeded: {len(page_text)} chars")
+                            else:
+                                send(from_num, "⚠️ Downloaded video but couldn't extract content — checking post image instead...")
+                        else:
+                            send(from_num, "⚠️ No downloadable video found — checking post image instead...")
+                    except Exception as vde:
+                        log.warning(f"FB/IG video download attempt failed: {vde}")
+                        send(from_num, "⚠️ Couldn't download video — checking post image instead...")
 
-                    # ── STEP 3: OCR the best image ────────────────────────────────
-                    # Try candidates in order: og:image (post-specific) → yt-dlp thumbnail → formats
-                    seen_urls = set()
-                    ocr_succeeded = False
-                    for img_url in img_candidates:
-                        if not img_url or img_url in seen_urls: continue
-                        seen_urls.add(img_url)
+                    if not _fb_video_done:
+                        # ── STEP 1: facebookexternalhit scrape ───────────────────────
+                        fb_og = _fb_ig_post_scrape(url)
+                        if fb_og.get("post_date"):
+                            post_date = fb_og["post_date"]
+                        if fb_og.get("description"):
+                            parts.append(f"Post text: {fb_og['description'][:1200]}")
+                        if fb_og.get("title") and not parts:
+                            parts.append(f"Title: {fb_og['title']}")
+                        if fb_og.get("image_url") and fb_og["image_url"].startswith("http"):
+                            if fb_og.get("is_post", True):
+                                img_candidates.append(fb_og["image_url"])
+                                log.info(f"FB/IG post og:image: {fb_og['image_url'][:80]}")
+                            else:
+                                log.info(f"FB/IG page URL — skipping profile og:image")
+
+                        # ── STEP 2: yt-dlp metadata (uploader, and additional text) ──
                         try:
-                            img_r = requests.get(img_url, timeout=12,
-                                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
-                            if not img_r.ok or len(img_r.content) < 500: continue
-                            ocr = ocr_image(img_r.content)
-                            if ocr and len(ocr) > 20:
-                                parts.append(f"Image text/content:\n{ocr}")
-                                send(from_num, "🖼 Analysed image in post")
-                                log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
-                                image_bytes = img_r.content  # save for OSINT/AI detection
-                                ocr_succeeded = True
-                                break
-                        except Exception as ie:
-                            log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
-                    if img_candidates and not ocr_succeeded:
-                        log.warning(f"FB/IG: OCR failed for all {len(img_candidates)} image candidates")
+                            cookies_b64 = FB_COOKIES_B64 if "facebook.com" in url else IG_COOKIES_B64
+                            cookies_file = None
+                            if cookies_b64:
+                                import base64 as _b64
+                                cookies_data = _b64.b64decode(cookies_b64).decode("utf-8")
+                                cookies_file = tempfile.mktemp(suffix=".txt")
+                                with open(cookies_file, "w") as cf:
+                                    cf.write(cookies_data)
+                            ydl_opts = {
+                                "quiet": True, "no_warnings": True, "skip_download": True,
+                                "socket_timeout": 15,
+                                "http_headers": {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+                            }
+                            if cookies_file:
+                                ydl_opts["cookiefile"] = cookies_file
+                            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                                info = ydl.extract_info(url, download=False)
+                                if info:
+                                    title = info.get("title","")
+                                    if title and title not in ("Facebook","Instagram") and not parts:
+                                        parts.append(f"Title: {title}")
+                                    desc = info.get("description","") or ""
+                                    if desc and "Post text:" not in "\n".join(parts):
+                                        parts.append(f"Post text: {desc[:1200]}")
+                                    if info.get("uploader"):
+                                        parts.append(f"Posted by: {info['uploader']}")
+                                    log.info(f"yt-dlp: title={title[:50]} desc={bool(desc)} thumb={bool(info.get('thumbnail'))}")
+                                    if info.get("thumbnail"):
+                                        img_candidates.append(info["thumbnail"])
+                                    raw_url = info.get("url","")
+                                    if raw_url and any(raw_url.lower().endswith(x) for x in (".jpg",".jpeg",".png",".webp")):
+                                        img_candidates.append(raw_url)
+                                    for fmt in (info.get("formats") or []):
+                                        if fmt.get("ext") in ("jpg","jpeg","png","webp") and fmt.get("url"):
+                                            img_candidates.append(fmt["url"])
+                                    ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
+                                    if ext_urls:
+                                        try:
+                                            import html as _html
+                                            art_r = requests.get(ext_urls[0], headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+                                            if art_r.ok:
+                                                m = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', art_r.text, re.I)
+                                                if not m:
+                                                    m = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', art_r.text, re.I)
+                                                if m:
+                                                    art_img = _html.unescape(m.group(1).strip())
+                                                    img_candidates.append(art_img)
+                                                    log.info(f"Article og:image fallback: {art_img[:80]}")
+                                        except Exception as ae:
+                                            log.warning(f"Article og:image failed: {ae}")
+                            if cookies_file and os.path.exists(cookies_file):
+                                os.unlink(cookies_file)
+                        except Exception as e:
+                            log.warning(f"yt-dlp info extraction failed: {e}")
 
-                    if parts:
-                        page_text = "\n\n".join(parts)
-                        log.info(f"FB/IG extracted: {len(page_text)} chars, {len(img_candidates)} img candidates")
+                        # ── STEP 3: OCR the best image ────────────────────────────
+                        seen_urls = set()
+                        ocr_succeeded = False
+                        for img_url in img_candidates:
+                            if not img_url or img_url in seen_urls: continue
+                            seen_urls.add(img_url)
+                            try:
+                                img_r = requests.get(img_url, timeout=12,
+                                    headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"})
+                                if not img_r.ok or len(img_r.content) < 500: continue
+                                ocr = ocr_image(img_r.content)
+                                if ocr and len(ocr) > 20:
+                                    parts.append(f"Image text/content:\n{ocr}")
+                                    send(from_num, f"🖼 Checking thumbnail image for AI generation and claims...")
+                                    log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
+                                    image_bytes = img_r.content  # save for OSINT/AI detection
+                                    ocr_succeeded = True
+                                    break
+                            except Exception as ie:
+                                log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
+                        if img_candidates and not ocr_succeeded:
+                            log.warning(f"FB/IG: OCR failed for all {len(img_candidates)} image candidates")
+
+                        if parts:
+                            page_text = "\n\n".join(parts)
+                            log.info(f"FB/IG extracted: {len(page_text)} chars, {len(img_candidates)} img candidates")
 
                 if not page_text:
                     page_text = fetch(url) or ""
