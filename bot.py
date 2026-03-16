@@ -3045,9 +3045,9 @@ def process(from_num, message):
                     send(from_num, "🔍 Fetching content...")
                     video_bytes, metadata, post_date = download_video_url(url)
                     if video_bytes and _is_video_bytes(video_bytes):
-                        send(from_num, f"🎬 Video found ({len(video_bytes)//1024}KB) — extracting frames and audio...")
+                        # Silently attempt extraction — only tell user "Video found" if
+                        # we actually get frames or audio out of it
                         parts = []
-                        # Only add title if it's not just the platform name
                         if metadata and not _is_useless_title(metadata):
                             parts.append(f"Video: {metadata}")
                         try:
@@ -3061,13 +3061,11 @@ def process(from_num, message):
                                 log.warning("URL video: 0 frames extracted (cv2+ffmpeg both failed)")
                         except Exception as e:
                             log.error(f"URL video frame analysis: {e}")
-                        send(from_num, "🎧 Transcribing audio...")
                         transcript = ""
                         try:
                             transcript = transcribe(video_bytes, "video/mp4")
                         except Exception as e:
                             log.error(f"URL video transcription: {e}")
-                        # If video bytes failed, try yt-dlp audio-only stream (works without ffmpeg)
                         if not transcript:
                             log.info("Falling back to yt-dlp audio-only download for transcription")
                             audio_bytes, audio_ext = _ytdlp_audio_bytes(url)
@@ -3082,9 +3080,10 @@ def process(from_num, message):
                                     log.error(f"yt-dlp audio transcription: {e}")
                         if transcript:
                             parts.append(f"Audio: {transcript}")
-                            send(from_num, "✓ Got transcript")
-                        else:
-                            log.warning("URL video: all transcription methods failed")
+                        # Only confirm "Video found" once we have actual video content
+                        has_video_content = any(p.startswith(("Visual analysis:", "Audio:")) for p in parts)
+                        if has_video_content:
+                            send(from_num, f"🎬 Video found ({len(video_bytes)//1024}KB) — analysed frames and audio")
                         # If we got nothing useful from the video, fall back to OG post scrape
                         if not parts and is_fb_ig:
                             send(from_num, "⚠️ Could not analyse video content — extracting post text instead...")
@@ -3159,8 +3158,9 @@ def process(from_num, message):
                     try:
                         vid_bytes_try, vid_meta_try, vid_date_try = download_video_url(url)
                         if vid_bytes_try and _is_video_bytes(vid_bytes_try):
-                            # Confirmed video — extract frames and audio
-                            send(from_num, f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — extracting frames and audio...")
+                            # Bytes look like a video container — silently attempt extraction
+                            # before telling the user anything (avoids false "Video found" for
+                            # static images packaged as MP4 by Facebook's CDN)
                             if vid_date_try:
                                 post_date = vid_date_try
                             vid_parts = []
@@ -3174,7 +3174,6 @@ def process(from_num, message):
                                         vid_parts.append(f"Visual analysis:\n{visual}")
                             except Exception as vfe:
                                 log.error(f"FB/IG video frame analysis: {vfe}")
-                            send(from_num, "🎧 Transcribing audio...")
                             try:
                                 transcript = transcribe(vid_bytes_try, "video/mp4")
                                 if transcript:
@@ -3182,14 +3181,16 @@ def process(from_num, message):
                             except Exception as vte:
                                 log.warning(f"FB/IG video transcription: {vte}")
                             has_av = any(p.startswith(("Visual analysis:", "Audio:")) for p in vid_parts)
-                            if vid_parts and has_av:
+                            if has_av:
+                                # Only now confirm to the user — actual video content confirmed
+                                send(from_num, f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — analysed frames and audio")
                                 page_text = "\n\n".join(vid_parts)
                                 source_type = "video"
                                 video_bytes = vid_bytes_try
                                 _fb_video_done = True
                                 log.info(f"FB/IG video download succeeded: {len(page_text)} chars")
                             else:
-                                log.info(f"FB/IG video downloaded but no frames/audio — falling back to post image")
+                                log.info(f"FB/IG: MP4 bytes but no extractable frames/audio — treating as image post")
                         elif vid_bytes_try:
                             # API returned bytes but they're an image, not a video — OCR directly
                             log.info(f"FB/IG download returned image bytes ({len(vid_bytes_try)//1024}KB) — routing to image OCR")
