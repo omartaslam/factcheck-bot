@@ -301,7 +301,42 @@ def _():
     assert "Snopes" in srcs
     assert "Misbar" in srcs
     assert "Africa Check" in srcs
+    assert "AFP Fact Check" in srcs, "AFP should be 'AFP Fact Check' to match _SOURCE_PERSPECTIVE key"
     return True, f"{len(srcs)} sources enabled"
+
+@test("source_preview — no topic gives balanced category mix", category="sources", live=False)
+def _():
+    total, preview = bot._source_preview_msg("")
+    assert total > 50, f"Expected >50 total, got {total}"
+    assert "+{} more".format(total - 8) in preview or len(preview.split(",")) <= 8
+    # Should contain at least one from each major region
+    parts = preview.split(", ")
+    assert len(parts) >= 6, f"Expected >=6 sources in preview, got {len(parts)}: {preview}"
+    return True, preview
+
+@test("source_preview — Africa topic prioritises Africa Check, PesaCheck", category="sources", live=False)
+def _():
+    _, preview = bot._source_preview_msg("Nigerian government claims vaccination rates have reached 80% in Africa")
+    assert "Africa Check" in preview or "PesaCheck" in preview or "Dubawa" in preview, \
+        f"Africa topic should show African fact-checkers, got: {preview}"
+    return True, preview
+
+@test("source_preview — Palestine topic prioritises Al Jazeera, 972 Magazine", category="sources", live=False)
+def _():
+    _, preview = bot._source_preview_msg("Israeli forces entered Gaza and shelled a hospital in Palestine")
+    mideast = {"Al Jazeera", "972 Magazine", "Electronic Intifada", "Middle East Eye",
+               "B'Tselem", "Mondoweiss", "Misbar", "Haaretz", "Middle East Monitor"}
+    found = [s for s in mideast if s in preview]
+    assert len(found) >= 2, f"Palestine topic should show >=2 ME sources, got: {preview}"
+    return True, f"{found} → {preview}"
+
+@test("source_preview — US politics topic prioritises PolitiFact, FactCheck.org", category="sources", live=False)
+def _():
+    _, preview = bot._source_preview_msg("Trump claims Democrats rigged the US election and Congress is corrupt")
+    us = {"FactCheck.org", "PolitiFact", "Snopes"}
+    found = [s for s in us if s in preview]
+    assert len(found) >= 1, f"US politics topic should show US fact-checkers, got: {preview}"
+    return True, f"{found} → {preview}"
 
 @test("HELP command — returns help message", category="commands", live=False)
 def _():
@@ -416,7 +451,7 @@ def _():
     report = bot.fmt_report("Test claim", fake_analysis, "text", 0.002)
     for section in ["VERDICT", "CLAIM", "ANALYSIS", "KEY FACTS", "PERSPECTIVES",
                     "CONTESTED LANGUAGE", "BACKGROUND", "RED FLAGS",
-                    "CONFIDENCE", "SOURCES", "FactCheck Pro"]:
+                    "CONFIDENCE", "SOURCES CITED", "FactCheck Pro"]:
         assert section in report, f"Missing section: {section}\nReport:\n{report[:500]}"
     return True, f"All sections present ({len(report)} chars)"
 
