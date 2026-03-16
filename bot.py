@@ -717,16 +717,28 @@ def _try_download_url(video_url, label):
 def _extract_video_url(data):
     """Extract best video URL and title from vikas5914 API response."""
     title = data.get("title", "") or data.get("description", "") or ""
+    _img_exts = (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")
+
+    def _is_video_url(u):
+        if not isinstance(u, str) or not u.startswith("http"):
+            return False
+        ul = u.lower().split("?")[0]  # strip query params for ext check
+        if any(ul.endswith(e) for e in _img_exts):
+            return False  # skip thumbnail/image URLs
+        return True
+
     # Try HD first, then SD, then any video key
     for key in ("hd", "sd", "video", "url"):
         val = data.get(key)
-        if isinstance(val, str) and val.startswith("http"):
+        if isinstance(val, str) and _is_video_url(val):
             return val, title
-        if isinstance(val, list) and val:
-            return val[0], title
-    # Search nested
+        if isinstance(val, list):
+            for item in val:
+                if _is_video_url(item):
+                    return item, title
+    # Search all values for .mp4 URLs — explicitly exclude image extensions
     for v in data.values():
-        if isinstance(v, str) and v.startswith("http") and any(x in v for x in (".mp4", "video", "cdn")):
+        if isinstance(v, str) and ".mp4" in v and _is_video_url(v):
             return v, title
     return None, title
 
