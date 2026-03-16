@@ -146,8 +146,11 @@ SRC_RAPPLER          = os.getenv("SRC_RAPPLER",          "true").lower() == "tru
 SRC_CHEQUEADO        = os.getenv("SRC_CHEQUEADO",        "true").lower() == "true"  # Chequeado — Latin America
 SRC_LOGICALLY        = os.getenv("SRC_LOGICALLY",        "true").lower() == "true"  # Logically Facts — global independent
 # OSINT / verification APIs
-TINEYE_API_KEY       = os.getenv("TINEYE_API_KEY",  "")   # TinEye reverse image search — public key
-TINEYE_API_SECRET    = os.getenv("TINEYE_API_SECRET","")   # TinEye private/secret key for HMAC auth
+TINEYE_API_KEY       = os.getenv("TINEYE_API_KEY",  "")   # TinEye reverse image search — public key (legacy)
+TINEYE_API_SECRET    = os.getenv("TINEYE_API_SECRET","")   # TinEye private/secret key
+GOOGLE_VISION_KEY    = os.getenv("GOOGLE_VISION_KEY","")   # Google Cloud Vision API — web detection (reverse image search)
+# REVERSE_IMAGE_ENGINE: "google" (default if key set) | "tineye" | "off"
+REVERSE_IMAGE_ENGINE = os.getenv("REVERSE_IMAGE_ENGINE", "google" if os.getenv("GOOGLE_VISION_KEY","") else ("tineye" if os.getenv("TINEYE_API_SECRET","") else "off"))
 HIVE_API_KEY         = os.getenv("HIVE_API_KEY",    "")   # Hive Moderation — AI/deepfake detection
 # Real-time search APIs
 TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
@@ -1112,6 +1115,63 @@ def tineye_search_url(image_url):
         log.warning(f"TinEye URL: {e}")
     return []
 
+def _google_vision_web(image_bytes=None, image_url=None):
+    """Google Cloud Vision web detection — finds where an image appears on the web.
+    Returns list of match dicts (url, domain, title) + best_guess_labels list."""
+    if not GOOGLE_VISION_KEY:
+        return []
+    import base64 as _b64
+    try:
+        if image_bytes:
+            content = _b64.b64encode(image_bytes).decode()
+            body = {"requests": [{"image": {"content": content},
+                                  "features": [{"type": "WEB_DETECTION", "maxResults": 10}]}]}
+        else:
+            body = {"requests": [{"image": {"source": {"imageUri": image_url}},
+                                  "features": [{"type": "WEB_DETECTION", "maxResults": 10}]}]}
+        r = requests.post(
+            f"https://vision.googleapis.com/v1/images:annotate?key={GOOGLE_VISION_KEY}",
+            json=body, timeout=20)
+        if not r.ok:
+            log.warning(f"Google Vision: {r.status_code} {r.text[:100]}")
+            return []
+        web = r.json().get("responses", [{}])[0].get("webDetection", {})
+        matches = []
+        # Full matching images (exact copies)
+        for m in web.get("fullMatchingImages", [])[:3]:
+            url = m.get("url", "")
+            if url:
+                from urllib.parse import urlparse
+                matches.append({"url": url, "domain": urlparse(url).netloc, "match_type": "exact"})
+        # Pages with matching images
+        for p in web.get("pagesWithMatchingImages", [])[:4]:
+            url = p.get("url", "")
+            title = p.get("pageTitle", "")
+            if url:
+                from urllib.parse import urlparse
+                matches.append({"url": url, "domain": urlparse(url).netloc,
+                                "title": title[:100], "match_type": "page"})
+        # Best guess labels (what the image shows)
+        labels = [e.get("label","") for e in web.get("bestGuessLabels", []) if e.get("label")]
+        if labels:
+            matches.insert(0, {"_labels": labels})  # prepend label metadata
+        log.info(f"Google Vision: {len(matches)} results, labels={labels}")
+        return matches
+    except Exception as e:
+        log.warning(f"Google Vision: {e}")
+        return []
+
+def _reverse_image_search(image_bytes=None, image_url=None):
+    """Route reverse image search to Google Vision or TinEye based on REVERSE_IMAGE_ENGINE."""
+    if REVERSE_IMAGE_ENGINE == "google":
+        return _google_vision_web(image_bytes=image_bytes, image_url=image_url)
+    elif REVERSE_IMAGE_ENGINE == "tineye":
+        if image_bytes:
+            return tineye_search(image_bytes)
+        elif image_url:
+            return tineye_search_url(image_url)
+    return []
+
 def hive_ai_check(image_bytes=None, image_url=None):
     """Check for AI-generated/deepfake content via Hive V3 API.
     Returns dict: {ai_generated: 0.0-1.0, deepfake: 0.0-1.0, generator: str} or {}."""
@@ -1158,13 +1218,13 @@ def run_osint(image_bytes=None, source_url=None, og_image_url=None):
     tasks = {}
     with ThreadPoolExecutor(max_workers=4) as ex:
         if image_bytes:
-            tasks["exif"]    = ex.submit(extract_exif_info, image_bytes)
-            tasks["tineye"]  = ex.submit(tineye_search, image_bytes)
-            tasks["hive"]    = ex.submit(hive_ai_check, image_bytes, None)
+            tasks["exif"]   = ex.submit(extract_exif_info, image_bytes)
+            tasks["revimg"] = ex.submit(_reverse_image_search, image_bytes, None)
+            tasks["hive"]   = ex.submit(hive_ai_check, image_bytes, None)
         if og_image_url:
-            tasks["tineye_url"] = ex.submit(tineye_search_url, og_image_url)
             if not image_bytes:
-                tasks["hive_url"] = ex.submit(lambda: _hive_from_url(og_image_url))
+                tasks["revimg_url"] = ex.submit(_reverse_image_search, None, og_image_url)
+                tasks["hive_url"]   = ex.submit(lambda: _hive_from_url(og_image_url))
         if source_url:
             tasks["wayback"] = ex.submit(wayback_earliest, source_url)
 
@@ -1174,10 +1234,10 @@ def run_osint(image_bytes=None, source_url=None, og_image_url=None):
         except Exception as e:
             log.debug(f"OSINT {key}: {e}")
 
-    # Merge tineye results
-    tineye_matches = findings.get("tineye") or findings.get("tineye_url") or []
-    if tineye_matches:
-        findings["tineye_matches"] = tineye_matches
+    # Normalise reverse image results under one key
+    rev_matches = findings.get("revimg") or findings.get("revimg_url") or []
+    if rev_matches:
+        findings["rev_matches"] = rev_matches
 
     return findings
 
@@ -1210,16 +1270,42 @@ def fmt_osint(findings):
             lines.append("📍 _GPS coordinates embedded in image_")
             added = True
 
-    # TinEye reverse image results
-    matches = findings.get("tineye_matches", [])
-    if matches:
-        lines.append(f"🔍 _Reverse image: found in {len(matches)} other source(s)_")
-        for m in matches[:3]:
-            domain = m.get("domain","")
-            if domain:
-                lines.append(f"   • {domain}")
-        added = True
-    elif "tineye" in findings or "tineye_url" in findings:
+    # Reverse image search results (Google Vision or TinEye)
+    rev = findings.get("rev_matches") or findings.get("tineye_matches", [])
+    ran_revimg = "revimg" in findings or "revimg_url" in findings or "tineye" in findings or "tineye_url" in findings
+    if rev:
+        # Extract Google Vision best-guess labels if present
+        labels = []
+        real_matches = []
+        for m in rev:
+            if "_labels" in m:
+                labels = m["_labels"]
+            else:
+                real_matches.append(m)
+        if labels:
+            lines.append(f"🏷️ _Image shows: {', '.join(labels[:3])}_")
+            added = True
+        exact = [m for m in real_matches if m.get("match_type") == "exact"]
+        pages = [m for m in real_matches if m.get("match_type") != "exact"]
+        if exact:
+            lines.append(f"🔍 _Reverse image: {len(exact)} exact copy/copies found online_")
+            for m in exact[:2]:
+                lines.append(f"   • {m.get('domain','')}")
+            added = True
+        if pages:
+            lines.append(f"🔍 _Image appears on {len(pages)} web page(s)_")
+            for m in pages[:3]:
+                title = m.get("title","") or m.get("domain","")
+                lines.append(f"   • {title[:60]}")
+            added = True
+        if not exact and not pages and not labels:
+            # TinEye-style plain matches
+            lines.append(f"🔍 _Reverse image: found in {len(rev)} other source(s)_")
+            for m in rev[:3]:
+                if m.get("domain"):
+                    lines.append(f"   • {m['domain']}")
+            added = True
+    elif ran_revimg:
         lines.append("🔍 _Reverse image: no matches found (image appears original)_")
         added = True
 
@@ -2026,10 +2112,14 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None):
             parts.append(f"EXIF date: {exif.get('DateTimeOriginal') or exif.get('DateTime')}")
         if exif.get("Software") and any(k in exif["Software"].lower() for k in ("photoshop","gimp","edit")):
             parts.append(f"Image edited with: {exif['Software']}")
-        matches = osint.get("tineye_matches", [])
-        if matches:
-            domains = ", ".join(m.get("domain","") for m in matches[:3] if m.get("domain"))
-            parts.append(f"Reverse image search: found in {len(matches)} other sources ({domains})")
+        rev = osint.get("rev_matches") or osint.get("tineye_matches", [])
+        real_rev = [m for m in rev if "_labels" not in m]
+        labels = next((m["_labels"] for m in rev if "_labels" in m), [])
+        if labels:
+            parts.append(f"Image content (Google Vision): {', '.join(labels[:3])}")
+        if real_rev:
+            domains = ", ".join(m.get("domain","") for m in real_rev[:3] if m.get("domain"))
+            parts.append(f"Reverse image search: found in {len(real_rev)} other sources ({domains})")
         hive = osint.get("hive") or osint.get("hive_url") or {}
         if isinstance(hive, dict):
             if hive.get("ai_generated", 0) > 0.5:
