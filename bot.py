@@ -133,6 +133,18 @@ SRC_RESPSTATECRAFT   = os.getenv("SRC_RESPSTATECRAFT",   "true").lower() == "tru
 SRC_ANADOLU          = os.getenv("SRC_ANADOLU",          "true").lower() == "true"  # Anadolu Agency (Turkey)
 SRC_ALMONITOR        = os.getenv("SRC_ALMONITOR",        "true").lower() == "true"  # Al-Monitor (ME analysis)
 SRC_DAWN             = os.getenv("SRC_DAWN",             "true").lower() == "true"  # DAWN (US foreign policy critique)
+# Global South / non-Western fact-checkers
+SRC_MISBAR           = os.getenv("SRC_MISBAR",           "true").lower() == "true"  # Misbar — MENA Arabic/English fact-checker
+SRC_FATABYYANO       = os.getenv("SRC_FATABYYANO",       "true").lower() == "true"  # Fatabyyano — Jordan, Arabic fact-checker
+SRC_VERIFYSY         = os.getenv("SRC_VERIFYSY",         "true").lower() == "true"  # Verify-Sy — Syria misinformation
+SRC_AFRICACHECK      = os.getenv("SRC_AFRICACHECK",      "true").lower() == "true"  # Africa Check — Sub-Saharan Africa
+SRC_PESACHECK        = os.getenv("SRC_PESACHECK",        "true").lower() == "true"  # PesaCheck — East Africa
+SRC_DUBAWA           = os.getenv("SRC_DUBAWA",           "true").lower() == "true"  # Dubawa — West Africa
+SRC_ALTNEWS          = os.getenv("SRC_ALTNEWS",          "true").lower() == "true"  # Alt News — India (counters Hindu nationalist misinfo)
+SRC_BOOMLIVE         = os.getenv("SRC_BOOMLIVE",         "true").lower() == "true"  # Boom Live — India/South Asia
+SRC_RAPPLER          = os.getenv("SRC_RAPPLER",          "true").lower() == "true"  # Rappler — Philippines/SE Asia
+SRC_CHEQUEADO        = os.getenv("SRC_CHEQUEADO",        "true").lower() == "true"  # Chequeado — Latin America
+SRC_LOGICALLY        = os.getenv("SRC_LOGICALLY",        "true").lower() == "true"  # Logically Facts — global independent
 # Real-time search APIs
 TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
 BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")    # TODO: Brave Search API — 2000/month when free tier available
@@ -1048,6 +1060,17 @@ def enabled_sources():
     if SRC_ANADOLU:         sources.append("Anadolu Agency")
     if SRC_ALMONITOR:       sources.append("Al-Monitor")
     if SRC_DAWN:            sources.append("DAWN")
+    if SRC_MISBAR:          sources.append("Misbar")
+    if SRC_FATABYYANO:      sources.append("Fatabyyano")
+    if SRC_VERIFYSY:        sources.append("Verify-Sy")
+    if SRC_AFRICACHECK:     sources.append("Africa Check")
+    if SRC_PESACHECK:       sources.append("PesaCheck")
+    if SRC_DUBAWA:          sources.append("Dubawa")
+    if SRC_ALTNEWS:         sources.append("Alt News")
+    if SRC_BOOMLIVE:        sources.append("Boom Live")
+    if SRC_RAPPLER:         sources.append("Rappler")
+    if SRC_CHEQUEADO:       sources.append("Chequeado")
+    if SRC_LOGICALLY:       sources.append("Logically Facts")
     if TAVILY_API_KEY:      sources.append("Tavily Search (live)")
     if BRAVE_API_KEY:       sources.append("Brave Search (live)")
     for name, _ in parse_custom_sources():
@@ -1159,6 +1182,18 @@ def scrape_sites(query):
     if SRC_ANADOLU:        fast.append(("Anadolu Agency",         f"https://www.aa.com.tr/en/search/?q={qt}"))
     if SRC_ALMONITOR:      fast.append(("Al-Monitor",             f"https://www.al-monitor.com/search#q={qt}"))
     if SRC_DAWN:           fast.append(("DAWN",                   f"https://dawnmena.org/?s={q}"))
+    # Global South / non-Western fact-checkers
+    if SRC_MISBAR:         fast.append(("Misbar",                 f"https://misbar.com/en/search?q={qt}"))
+    if SRC_FATABYYANO:     fast.append(("Fatabyyano",             f"https://fatabyyano.net/?s={q}"))
+    if SRC_VERIFYSY:       fast.append(("Verify-Sy",              f"https://verify-sy.com/?s={q}"))
+    if SRC_AFRICACHECK:    fast.append(("Africa Check",           f"https://africacheck.org/?s={q}"))
+    if SRC_PESACHECK:      fast.append(("PesaCheck",              f"https://pesacheck.org/?s={q}"))
+    if SRC_DUBAWA:         fast.append(("Dubawa",                 f"https://dubawa.org/?s={q}"))
+    if SRC_ALTNEWS:        fast.append(("Alt News",               f"https://www.altnews.in/?s={q}"))
+    if SRC_BOOMLIVE:       fast.append(("Boom Live",              f"https://www.boomlive.in/fact-check?page-type=search&q={qt}"))
+    if SRC_RAPPLER:        fast.append(("Rappler",                f"https://www.rappler.com/section/fact-check/?s={q}"))
+    if SRC_CHEQUEADO:      fast.append(("Chequeado",              f"https://chequeado.com/?s={q}"))
+    if SRC_LOGICALLY:      fast.append(("Logically Facts",        f"https://www.logically.ai/factchecks?query={qt}"))
 
     # SLOW TIER — personalities, substacks, nitter, YouTube (parallel, 5s timeout)
     slow = []
@@ -1475,6 +1510,17 @@ _SOURCE_PERSPECTIVE = {
     "FactCheck.org":     "FACT-CHECK ORGS",
     "PolitiFact":        "FACT-CHECK ORGS",
     "AFP Fact Check":    "FACT-CHECK ORGS",
+    "Misbar":            "FACT-CHECK ORGS",
+    "Fatabyyano":        "FACT-CHECK ORGS",
+    "Verify-Sy":         "FACT-CHECK ORGS",
+    "Africa Check":      "FACT-CHECK ORGS",
+    "PesaCheck":         "FACT-CHECK ORGS",
+    "Dubawa":            "FACT-CHECK ORGS",
+    "Alt News":          "FACT-CHECK ORGS",
+    "Boom Live":         "FACT-CHECK ORGS",
+    "Rappler":           "FACT-CHECK ORGS",
+    "Chequeado":         "FACT-CHECK ORGS",
+    "Logically Facts":   "FACT-CHECK ORGS",
     # Human rights / international law
     "Human Rights Watch":    "HUMAN RIGHTS & INTL LAW",
     "Amnesty International": "HUMAN RIGHTS & INTL LAW",
