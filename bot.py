@@ -1686,12 +1686,11 @@ def tavily_search(query, max_results=8, post_date=None):
     if not TAVILY_API_KEY:
         return []
     try:
-        # Add year to query if post_date available and year not already present
-        dated_query = query
-        if post_date and len(post_date) >= 4:
-            year = post_date[:4]
-            if year not in query:
-                dated_query = f"{query} {year}"
+        # Always anchor query with a year — use post_date year if known, otherwise current year.
+        # Critical: Claude's cutoff is Aug 2025, so without a year Tavily may surface older events.
+        import datetime as _dt_tav
+        year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_tav.date.today().year)
+        dated_query = query if year in query else f"{query} {year}"
 
         r = requests.post(
             "https://api.tavily.com/search",
@@ -2286,14 +2285,19 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None):
 
     import datetime as _dt
     today_str = _dt.date.today().isoformat()
-    temporal_note = ""
+    # Always tell Claude today's date — its knowledge cutoff is Aug 2025 so it cannot
+    # independently know the year for events like "the 2026 Oscars".
+    temporal_note = (
+        f"\n\nTODAY'S DATE: {today_str}. "
+        "Your knowledge cutoff is August 2025 — for any events after that date, "
+        "rely entirely on the source evidence above, not your training data."
+    )
     if post_date:
         age = _post_age_label(post_date)
         if age:
             friendly, days, age_str = age
-            temporal_note = (
-                f"\n\nTEMPORAL CONTEXT: This content was originally posted on {friendly} ({age_str}). "
-                f"Today is {today_str}. "
+            temporal_note += (
+                f" This content was originally posted on {friendly} ({age_str}). "
                 + ("Consider whether any claims may have been superseded, confirmed, or refuted since then. "
                    "Note if the claim was accurate at the time but circumstances have since changed."
                    if days > 30 else "This is recent content.")
