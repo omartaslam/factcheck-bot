@@ -415,9 +415,41 @@ def ocr_image(b):
             log.error("OCR OpenAI failed: %s", e)
     return ""
 
+def _repair_mp4(video_bytes):
+    """Try to remux a fragmented/broken MP4 into a streamable one via ffmpeg -c copy.
+    Fixes 'moov atom not found' errors from DASH/streaming downloads. Returns fixed
+    bytes or None if repair fails."""
+    import subprocess
+    in_path = out_path = None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
+            f.write(video_bytes); in_path = f.name
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as f:
+            out_path = f.name
+        r = subprocess.run(
+            ["ffmpeg", "-y", "-i", in_path, "-c", "copy", "-movflags", "faststart", out_path],
+            capture_output=True, timeout=30)
+        if r.returncode == 0 and os.path.getsize(out_path) > 1000:
+            with open(out_path, "rb") as f:
+                fixed = f.read()
+            log.info(f"MP4 repair: {len(video_bytes)//1024}KB → {len(fixed)//1024}KB")
+            return fixed
+    except Exception as e:
+        log.debug(f"MP4 repair failed: {e}")
+    finally:
+        for p in (in_path, out_path):
+            if p and os.path.exists(p):
+                try: os.unlink(p)
+                except: pass
+    return None
+
 def _extract_audio_mp3(video_bytes):
     """Use ffmpeg to extract audio track from video bytes → MP3 bytes. Returns None on failure."""
     import subprocess
+    # Try repairing fragmented MP4 first
+    repaired = _repair_mp4(video_bytes)
+    if repaired:
+        video_bytes = repaired
     video_path = mp3_path = None
     try:
         with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as vf:
@@ -578,6 +610,24 @@ def extract_video_frames(video_bytes, num_frames=2):
 
         # ── ffmpeg fallback if cv2 got nothing ───────────────────────────
         if not frames:
+            # First try repairing the MP4 (fixes 'moov atom not found' from DASH downloads)
+            repaired = _repair_mp4(video_bytes)
+            if repaired:
+                with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as rf:
+                    rf.write(repaired); video_path = rf.name
+                cap2 = cv2.VideoCapture(video_path)
+                if cap2.isOpened():
+                    total = int(cap2.get(cv2.CAP_PROP_FRAME_COUNT))
+                    if total > 0:
+                        for idx in [int(total * p) for p in [0.1, 0.35, 0.6, 0.8, 0.95]][:num_frames]:
+                            cap2.set(cv2.CAP_PROP_POS_FRAMES, idx)
+                            ok, frame = cap2.read()
+                            if ok:
+                                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                img = Image.fromarray(frame_rgb)
+                                buf = io.BytesIO(); img.save(buf, format="JPEG", quality=70)
+                                frames.append(buf.getvalue())
+                cap2.release()
             log.info("cv2 got 0 frames — trying ffmpeg fallback")
             try:
                 # Extract frames at fixed offsets without needing ffprobe
@@ -2821,14 +2871,16 @@ def process(from_num, message):
                                     vid_parts.append(f"Audio: {transcript}")
                             except Exception as vte:
                                 log.warning(f"FB/IG video transcription: {vte}")
-                            if vid_parts:
+                            has_av = any(p.startswith(("Visual analysis:", "Audio:")) for p in vid_parts)
+                            if vid_parts and has_av:
                                 page_text = "\n\n".join(vid_parts)
                                 source_type = "video"
                                 video_bytes = vid_bytes_try
                                 _fb_video_done = True
                                 log.info(f"FB/IG video download succeeded: {len(page_text)} chars")
                             else:
-                                send(from_num, "⚠️ Downloaded video but couldn't extract content — checking post image instead...")
+                                log.info(f"FB/IG video downloaded but no frames/audio — falling back to post image")
+                                send(from_num, "⚠️ Downloaded video but couldn't extract frames or audio — checking post image instead...")
                         else:
                             send(from_num, "⚠️ No downloadable video found — checking post image instead...")
                     except Exception as vde:
