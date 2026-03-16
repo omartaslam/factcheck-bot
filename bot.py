@@ -1708,6 +1708,7 @@ ANALYSE_JSON_SCHEMA = (
     '"contested_language":["term used — note the dispute and alternative framings, e.g. \'terrorist / militant / resistance fighter — contested depending on political standpoint\'"],'
     '"context":"structural or historical background needed to understand the claim",'
     '"red_flags":["propaganda technique or bias flag1","flag2"],'
+    '"who_benefits":"Who stands to gain if this claim is believed/shared — state actor, political party, outlet, movement, etc. One concise sentence. Empty string if genuinely unclear or claim is benign.",'
     '"media_bias":"note any source concentration bias (e.g. only Western sources found) or empty",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
     '"confidence":"HIGH|MEDIUM|LOW",'
@@ -2101,6 +2102,9 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None):
         "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus.\n"
         "- Fill 'contested_language' only if the claim or evidence uses terminology that is genuinely disputed across communities "
         "(e.g. how groups are labelled, how events are described). Leave empty array [] if language is uncontested.\n"
+        "- Fill 'who_benefits': identify who gains from this claim being believed or spread — state actor, political party, media outlet, movement, or interest group. "
+        "Be specific (e.g. 'Iranian state media — amplifies military deterrence narrative') not generic ('the government'). "
+        "Leave empty string if the claim is mundane/benign with no clear political beneficiary.\n"
         "- If only Western sources were found, set confidence to LOW or MEDIUM and note the source gap in 'media_bias'.\n"
         "- Your verdict must reflect the actual state of evidence — including uncertainty and geopolitical dispute — "
         "not default to the Western official position.\n\n"
@@ -2188,6 +2192,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         lines += ["*CONTESTED LANGUAGE*"] + [f"• {t[:160]}" for t in cl[:2]] + [""]
     if a.get("context"): lines += ["*BACKGROUND*", a["context"][:280], ""]
     if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:2]] + [""]
+    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{a['who_benefits'][:200]}_", ""]
     if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:150], ""]
     score = a.get("lenz_score")
     if score is not None:
