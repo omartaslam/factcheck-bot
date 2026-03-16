@@ -832,7 +832,7 @@ def _cobalt_download(url):
                 )
                 r.raise_for_status()
                 data = r.json()
-                log.info(f"vikas5914 Facebook response: {str(data)[:300]}")
+                log.info(f"vikas5914 Facebook response keys: {list(data.keys())} | full: {str(data)[:800]}")
                 # Accept response with or without explicit "success" field —
                 # some API versions omit it but still return valid video URLs
                 video_url, title = _extract_video_url(data)
