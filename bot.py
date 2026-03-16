@@ -2110,7 +2110,7 @@ def extract_claims(text):
     try:
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
+            json={"model": "claude-sonnet-4-6", "max_tokens": 400,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=20)
         r.raise_for_status()
