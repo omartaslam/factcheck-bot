@@ -795,9 +795,19 @@ def _cobalt_download(url):
     # Facebook — use vikas5914 /facebook endpoint (no cookies needed)
     # Handles share/r/, share/v/, reel/, video/ and fb.watch URLs
     if "facebook.com" in url or "fb.watch" in url:
-        # Resolve short/share URLs to canonical form if needed
-        # vikas5914 handles share links directly — pass as-is
-        for _attempt_url in [url]:
+        # Resolve share/r/ and fb.watch short links to canonical URL first —
+        # vikas5914 handles reel/video URLs better than opaque share links
+        resolved_url = url
+        if "/share/" in url or "fb.watch" in url:
+            try:
+                rr = requests.head(url, allow_redirects=True, timeout=10,
+                                   headers={"User-Agent": "Mozilla/5.0"})
+                if rr.url and rr.url != url:
+                    resolved_url = rr.url
+                    log.info(f"Resolved FB share URL: {url[:60]} → {resolved_url[:60]}")
+            except Exception as e:
+                log.warning(f"FB URL resolve failed: {e}")
+        for _attempt_url in list(dict.fromkeys([resolved_url, url])):
             try:
                 host = "fastest-social-video-and-image-downloader.p.rapidapi.com"
                 headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
