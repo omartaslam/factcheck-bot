@@ -597,16 +597,16 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 ## 21. Recent Git History
 
 ```
+dc3fcb9  test: add source preview unit tests, fix AFP name + SOURCES CITED assertion
+46d729b  feat: topic-aware source preview — show relevant sources per post
+31c58fc  fix: rotate source preview with balanced per-category mix + AFP name fix
+157cf4e  fix: show Claude-cited sources per claim + repo cleanup (deleted 15 obsolete files)
 5a9537e  test: comprehensive integration test suite — 60+ tests covering all message types
 8435f8e  feat: OSINT verification — reverse image, EXIF, Wayback Machine, AI/deepfake detection
 7f9455e  feat: add 11 Global South fact-checkers — Misbar, Africa Check, Alt News, etc.
 d3a66bd  feat: beta launch — welcome message, HELP command, BETA label, last-check warning
 7e2b17f  fix: add missing _try_download_url/_extract_video_url + use claim as search query
 ad7ca3c  fix: improve video claim extraction — more frames, concise prompt, larger text window
-e93b8b0  fix: improve video claim extraction from TikTok/social media posts
-6955fc6  feat: Tavily recency filter (7 days) + general Nitter social media search
-1cecd69  fix: extract tweet text via fxtwitter API for X/Twitter text+image posts
-907f6fb  fix: split messages at line breaks, trim report to fit one WhatsApp message
 743e35a  feat: multi-perspective fact-checking — remove Western media bias
 7145008  feat: post date extraction and staleness warnings in fact-check reports
 ```
