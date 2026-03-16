@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-16 (session 2)
+> **Last updated:** 2026-03-16 (session 3)
 > **Version:** v3.3 BETA
-> **Status:** Live on Railway — beta-ready, OSINT pipeline integrated, 65 sources
+> **Status:** Live on Railway — beta-ready, quality improvements shipped, real-time search upgraded
 
 ---
 
@@ -63,7 +63,8 @@ WhatsApp Business API
 | Audio transcription | OpenAI Whisper (`whisper-1`) |
 | Video download | yt-dlp + vikas5914 RapidAPI |
 | Video frame extraction | cv2 (OpenCV) + ffmpeg fallback |
-| Real-time search | Tavily API |
+| Real-time search | Tavily API (advanced depth) + Brave Search API |
+| Real-time AI search | Perplexity Sonar (code ready, activate with `PERPLEXITY_API_KEY`) |
 | Fact-check API | Google Fact Check Tools API |
 | OSINT — reverse image | Google Cloud Vision web detection (`GOOGLE_VISION_KEY`) — primary; TinEye kept as fallback |
 | OSINT — AI/deepfake | Hive Moderation API (`HIVE_API_KEY`) |
@@ -120,9 +121,11 @@ All logic is in `bot.py`. There is no separate config file — all configuration
 
 ### Real-time Search
 
-| Variable | Description |
-|---|---|
-| `TAVILY_API_KEY` | Tavily search API — free 1000/month |
+| Variable | Description | Status |
+|---|---|---|
+| `TAVILY_API_KEY` | Tavily advanced search — free 1000/month basic, advanced depth used | ✅ Set |
+| `BRAVE_API_KEY` | Brave Search API — $5 free credit/month (~1000 queries) | ✅ Set |
+| `PERPLEXITY_API_KEY` | Perplexity Sonar — real-time AI search, bridges Claude Aug-2025 cutoff (~$0.005/query, no free tier) | ❌ Hold for post-beta |
 
 ### OSINT (Optional — fully functional without these, features just disabled)
 
@@ -414,11 +417,12 @@ Key design goal: remove Western media bias and serve investigative journalists, 
 ### Source grouping by perspective
 
 Evidence fed to Claude is grouped into labelled categories:
+- `LIVE WEB SEARCH` — Perplexity Sonar, Tavily Summary, Tavily Search (shown first — most current)
 - `FACT-CHECK ORGS` — Snopes, FullFact, PolitiFact, AFP, Misbar, Africa Check, Alt News, Rappler, etc.
 - `HUMAN RIGHTS & INTL LAW` — HRW, Amnesty, B'Tselem, UN News, Bellingcat
 - `REGIONAL / MIDDLE EAST` — Al Jazeera, MEE, MEMO, 972 Magazine, Electronic Intifada, Mondoweiss, Anadolu, Al-Monitor, DAWN, Arab News, Haaretz, Yeni Safak
 - `INDEPENDENT / ALTERNATIVE` — Grayzone, Intercept, Democracy Now, Novara, Canary, MintPress, Responsible Statecraft
-- `WESTERN MAINSTREAM` — BBC, Reuters, AP, Guardian, CNN, Times of Israel
+- `WESTERN MAINSTREAM` — BBC, Reuters, AP, Guardian, CNN, NYT, WaPo, Hollywood Reporter, Rolling Stone, EL PAÍS, etc. (40+ outlets)
 
 ### Report fields
 - **PERSPECTIVES** — `🌐 Western:` / `🕌 Regional:` / `⚖️ Consensus:` — shows where sources diverge by geopolitical view
@@ -606,16 +610,30 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 ## 21. Recent Git History
 
 ```
-a799382  feat: Google Vision web detection as primary reverse image search, TinEye kept as fallback
+c9ceb4d  fix: transparent status messages for FB/IG post text and image extraction
+8afe851  fix: never say 'Video found' until frames/audio confirmed
+b9d8efc  feat: add Perplexity Sonar real-time search (activate with PERPLEXITY_API_KEY)
+93996ad  fix: always tell Claude today's date + anchor Tavily queries with current year
+319a89c  feat: Tavily advanced depth, real publication names, 40+ outlets in _SOURCE_PERSPECTIVE
+f113c75  fix: apply _is_video_bytes check to all URL download paths
+804118b  fix: detect content type before claiming 'Video found' for FB/IG posts
+a799382  feat: Google Vision web detection as primary reverse image search
 6bb00a4  feat: add 'Who benefits?' field to fact-check reports
-2d8c271  feat: add temporal context to claims for current-affairs posts ("as of March 2026")
+2d8c271  feat: add temporal context to claims for current-affairs posts
 8420444  fix: repair fragmented MP4 (moov atom), require frames/audio for video success
-dc3fcb9  test: add source preview unit tests, fix AFP name + SOURCES CITED assertion
-46d729b  feat: topic-aware source preview — show relevant sources per post
-31c58fc  fix: rotate source preview with balanced per-category mix + AFP name fix
-157cf4e  fix: show Claude-cited sources per claim + repo cleanup (deleted 15 obsolete files)
-5a9537e  test: comprehensive integration test suite — 60+ tests covering all message types
-8435f8e  feat: OSINT verification — reverse image, EXIF, Wayback Machine, AI/deepfake detection
-7f9455e  feat: add 11 Global South fact-checkers — Misbar, Africa Check, Alt News, etc.
 d3a66bd  feat: beta launch — welcome message, HELP command, BETA label, last-check warning
+```
+
+## 22. Deploy Procedure
+
+Always do **both** steps:
+```bash
+git add bot.py && git commit -m "fix/feat: description" && git push origin main
+```
+Then trigger Railway deploy via API (applies staged env var changes):
+```bash
+curl -s -X POST https://backboard.railway.app/graphql/v2 \
+  -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
+  -H "Content-Type: application/json" \
+  -d '{"query":"mutation { serviceInstanceDeploy(serviceId: \"3ae3bd52-301e-4003-b2cd-291436c7af2d\", environmentId: \"ebb5147d-8292-4b55-bd76-6a2c1b3e6564\") }"}'
 ```
