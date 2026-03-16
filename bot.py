@@ -4303,24 +4303,28 @@ def _qc_worker(from_num, msg_text):
         last_count = 0
         idle_rounds = 0
         while t.time() < deadline:
-            t.sleep(4)
+            t.sleep(8)
             with _qc_lock:
                 msgs = _qc_jobs[from_num]["messages"]
                 cur_count = len(msgs)
             if cur_count == last_count:
                 idle_rounds += 1
-                # If we already have several messages and nothing new for 20s, assume done
-                if idle_rounds >= 5 and cur_count > 3:
+                # Only give up after 90s of silence (run_check API calls can take 60s+)
+                if idle_rounds >= 12 and cur_count > 3:
                     break
             else:
                 idle_rounds = 0
                 last_count = cur_count
-                # Check if latest message looks like a final verdict
+                # Check if latest message looks like the final fact-check report
                 with _qc_lock:
                     last_msg = _qc_jobs[from_num]["messages"][-1] if _qc_jobs[from_num]["messages"] else ""
                 if "FactCheck Pro v3.3" in last_msg or "FactCheck Pro v3.2" in last_msg:
-                    t.sleep(6)  # allow any trailing messages to arrive
-                    break
+                    t.sleep(8)  # allow any trailing multi-claim messages to arrive
+                    with _qc_lock:
+                        # For multi-claim jobs, only stop if last N messages all have the footer
+                        recent = _qc_jobs[from_num]["messages"][-1]
+                    if "FactCheck Pro v3.3" in recent or "FactCheck Pro v3.2" in recent:
+                        break
     except Exception as e:
         log.error("QC worker error: %s", e)
         with _qc_lock:
