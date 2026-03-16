@@ -3542,6 +3542,30 @@ def process(from_num, message):
                             log.warning(f"FB/IG: OCR failed for all {len(img_candidates)} image candidates")
                             send(from_num, "⚠️ Could not read text from post image")
 
+                        # ── STEP 4: Tavily article lookup when post text is short ──
+                        # FB og:description is capped at ~150 chars; yt-dlp often fails
+                        # on share URLs. Use Tavily to find and fetch the source article.
+                        post_text_part = next((p for p in parts if p.startswith("Post text:")), "")
+                        post_text_len = len(post_text_part.replace("Post text: ", "", 1))
+                        if post_text_len < 300 and "Article text:" not in "\n".join(parts) and TAVILY_KEY:
+                            try:
+                                search_query = post_text_part.replace("Post text: ", "", 1)[:200]
+                                tv = requests.post("https://api.tavily.com/search",
+                                    json={"api_key": TAVILY_KEY, "query": search_query,
+                                          "search_depth": "basic", "max_results": 3,
+                                          "include_raw_content": True},
+                                    timeout=15)
+                                if tv.ok:
+                                    for res in tv.json().get("results", []):
+                                        raw = res.get("raw_content") or res.get("content") or ""
+                                        src_url = res.get("url", "")
+                                        if raw and len(raw) > 300 and "facebook.com" not in src_url:
+                                            parts.append(f"Source article ({src_url}):\n{raw[:3000]}")
+                                            log.info(f"Tavily article found: {len(raw)} chars from {src_url[:80]}")
+                                            break
+                            except Exception as te:
+                                log.warning(f"Tavily article lookup failed: {te}")
+
                         if parts:
                             page_text = "\n\n".join(parts)
                             log.info(f"FB/IG extracted: {len(page_text)} chars, {len(img_candidates)} img candidates")
