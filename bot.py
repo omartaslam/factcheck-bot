@@ -1629,31 +1629,96 @@ def brave_search(query, count=5):
         return []
 
 
-def tavily_search(query, max_results=5):
+_DOMAIN_TO_SOURCE = {
+    # Wire services
+    "reuters.com": "Reuters", "apnews.com": "AP News", "afp.com": "AFP",
+    "bloomberg.com": "Bloomberg", "axios.com": "Axios",
+    # Western mainstream news
+    "bbc.com": "BBC", "bbc.co.uk": "BBC",
+    "theguardian.com": "The Guardian", "guardian.com": "The Guardian",
+    "nytimes.com": "New York Times", "washingtonpost.com": "Washington Post",
+    "independent.co.uk": "The Independent", "telegraph.co.uk": "The Telegraph",
+    "cnn.com": "CNN", "nbcnews.com": "NBC News", "cbsnews.com": "CBS News",
+    "abcnews.go.com": "ABC News", "foxnews.com": "Fox News",
+    "huffpost.com": "HuffPost", "newsweek.com": "Newsweek",
+    "time.com": "Time", "politico.com": "Politico", "thehill.com": "The Hill",
+    "npr.org": "NPR", "pbs.org": "PBS NewsHour",
+    "msn.com": "MSN News", "yahoo.com": "Yahoo News",
+    # European / Spanish-language
+    "elpais.com": "EL PAÍS", "lemonde.fr": "Le Monde",
+    "spiegel.de": "Der Spiegel", "euronews.com": "Euronews",
+    # Entertainment / culture
+    "hollywoodreporter.com": "The Hollywood Reporter",
+    "rollingstone.com": "Rolling Stone", "variety.com": "Variety",
+    "deadline.com": "Deadline", "people.com": "People",
+    "ew.com": "Entertainment Weekly", "indiewire.com": "IndieWire",
+    # Fact-checkers
+    "snopes.com": "Snopes", "factcheck.org": "FactCheck.org",
+    "politifact.com": "PolitiFact", "fullfact.org": "FullFact",
+    # Middle East / regional
+    "aljazeera.com": "Al Jazeera", "middleeasteye.net": "Middle East Eye",
+    "haaretz.com": "Haaretz", "arabnews.com": "Arab News",
+    "anadoluagency.com": "Anadolu Agency", "aa.com.tr": "Anadolu Agency",
+    # Independent / alt
+    "theintercept.com": "The Intercept", "democracynow.org": "Democracy Now",
+    "novaramedia.com": "Novara Media",
+}
+
+def _url_to_source_name(url):
+    """Return a readable publication name from a URL, falling back to the domain."""
+    try:
+        from urllib.parse import urlparse
+        domain = urlparse(url).netloc.lower().replace("www.", "")
+        if domain in _DOMAIN_TO_SOURCE:
+            return _DOMAIN_TO_SOURCE[domain]
+        # Try matching on second-level domain (e.g. "rollingstone.co.uk" → "rollingstone")
+        base = domain.split(".")[0]
+        for k, v in _DOMAIN_TO_SOURCE.items():
+            if k.startswith(base + "."):
+                return v
+        # Generic: capitalise domain root
+        return base.replace("-", " ").title()
+    except Exception:
+        return "Tavily Search"
+
+def tavily_search(query, max_results=8, post_date=None):
     """Query Tavily Search API for real-time results. Returns list of (name, snippet) tuples."""
     if not TAVILY_API_KEY:
         return []
     try:
+        # Add year to query if post_date available and year not already present
+        dated_query = query
+        if post_date and len(post_date) >= 4:
+            year = post_date[:4]
+            if year not in query:
+                dated_query = f"{query} {year}"
+
         r = requests.post(
             "https://api.tavily.com/search",
-            json={"api_key": TAVILY_API_KEY, "query": query[:400], "max_results": max_results,
-                  "search_depth": "basic", "include_answer": False, "days": 7},
-            timeout=10
+            json={"api_key": TAVILY_API_KEY, "query": dated_query[:400], "max_results": max_results,
+                  "search_depth": "advanced", "include_answer": True},
+            timeout=15
         )
         r.raise_for_status()
+        data = r.json()
         results = []
-        for item in r.json().get("results", []):
+        # Synthesised answer from Tavily — very useful for recency and breadth
+        answer = (data.get("answer") or "").strip()
+        if answer:
+            results.append(("Tavily Summary", answer[:600]))
+        for item in data.get("results", []):
             title = item.get("title", "")
             content = item.get("content", "")
             url = item.get("url", "")
+            source_name = _url_to_source_name(url)
             snippet = f"{title} — {content} ({url})"
-            results.append(("Tavily Search", snippet[:400]))
+            results.append((source_name, snippet[:500]))
         return results
     except Exception as e:
         log.warning("Tavily Search failed: %s", e)
         return []
 
-def scrape_sites(query):
+def scrape_sites(query, post_date=None):
     # Collapse newlines to spaces so search URLs don't contain %0A (causes 403/404)
     query_flat = " ".join(query.split())
     q = quote_plus(query_flat[:100])
@@ -1767,7 +1832,7 @@ def scrape_sites(query):
 
     # Real-time web search
     if TAVILY_API_KEY:
-        for name, snippet in tavily_search(query_flat):
+        for name, snippet in tavily_search(query_flat, post_date=post_date):
             results.append(f"[{name}]: {snippet}")
     if BRAVE_API_KEY:
         for name, snippet in brave_search(query_flat):
@@ -2087,6 +2152,40 @@ _SOURCE_PERSPECTIVE = {
     "Palestine Solidarity":   "INDEPENDENT / ALTERNATIVE",
     "Double Down News":       "INDEPENDENT / ALTERNATIVE",
     "Double Down News (YouTube)": "INDEPENDENT / ALTERNATIVE",
+    # Western mainstream — general news
+    "New York Times":      "WESTERN MAINSTREAM",
+    "Washington Post":     "WESTERN MAINSTREAM",
+    "BBC":                 "WESTERN MAINSTREAM",
+    "NBC News":            "WESTERN MAINSTREAM",
+    "CBS News":            "WESTERN MAINSTREAM",
+    "ABC News":            "WESTERN MAINSTREAM",
+    "Fox News":            "WESTERN MAINSTREAM",
+    "The Independent":     "WESTERN MAINSTREAM",
+    "The Telegraph":       "WESTERN MAINSTREAM",
+    "HuffPost":            "WESTERN MAINSTREAM",
+    "Newsweek":            "WESTERN MAINSTREAM",
+    "Time":                "WESTERN MAINSTREAM",
+    "Politico":            "WESTERN MAINSTREAM",
+    "The Hill":            "WESTERN MAINSTREAM",
+    # Western mainstream — entertainment / culture
+    "The Hollywood Reporter": "WESTERN MAINSTREAM",
+    "Rolling Stone":          "WESTERN MAINSTREAM",
+    "Rolling Stone UK":       "WESTERN MAINSTREAM",
+    "Variety":                "WESTERN MAINSTREAM",
+    "Deadline":               "WESTERN MAINSTREAM",
+    "People":                 "WESTERN MAINSTREAM",
+    "Entertainment Weekly":   "WESTERN MAINSTREAM",
+    "IndieWire":              "WESTERN MAINSTREAM",
+    # European / Spanish-language mainstream
+    "EL PAÍS":             "WESTERN MAINSTREAM",
+    "El País":             "WESTERN MAINSTREAM",
+    "Le Monde":            "WESTERN MAINSTREAM",
+    "Der Spiegel":         "WESTERN MAINSTREAM",
+    "Euronews":            "WESTERN MAINSTREAM",
+    # Wire services
+    "Associated Press":    "WESTERN MAINSTREAM",
+    "AFP":                 "WESTERN MAINSTREAM",
+    "Bloomberg":           "WESTERN MAINSTREAM",
 }
 
 _PERSPECTIVE_ORDER = [
@@ -2587,7 +2686,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         if multi:
             send(from_num, f"⚖️ Analysing claim {i+1}/{len(claims)}...")
         g = google_fc(claim)
-        sc, used_sources = scrape_sites(claim)
+        sc, used_sources = scrape_sites(claim, post_date=post_date)
         gfc_sources = [x["source"] for x in g if x.get("source")]
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
         all_used_combined = list(dict.fromkeys(all_used_combined + all_used))
@@ -2633,7 +2732,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         if multi:
             send_fn(f"⚖️ Analysing claim {i+1}/{len(claims)}...")
         g = google_fc(claim)
-        sc, used_sources = scrape_sites(claim)
+        sc, used_sources = scrape_sites(claim, post_date=post_date)
         gfc_sources = [x["source"] for x in g if x.get("source")]
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
         a = claude_analyse(claim, g, sc, st, post_date=post_date)
