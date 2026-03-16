@@ -156,6 +156,7 @@ HIVE_API_KEY         = os.getenv("HIVE_API_KEY",    "")   # Hive Moderation — 
 TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
 BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")    # TODO: Brave Search API — 2000/month when free tier available
 PERPLEXITY_API_KEY   = os.getenv("PERPLEXITY_API_KEY", "")  # perplexity.ai Sonar — real-time web search AI, bridges Claude's Aug-2025 knowledge cutoff
+YOUTUBE_API_KEY      = os.getenv("YOUTUBE_API_KEY", "")    # YouTube Data API v3 — search official channel videos (10k units/day free)
 # Custom sources — add any source without code changes
 # Format in Railway: "Name|https://site.com/search?q={q},Name2|https://site2.com/?s={q}"
 # Use {q} for URL-encoded query, {qt} for URL-encoded short query
@@ -1635,6 +1636,49 @@ def brave_search(query, count=5):
         return []
 
 
+def youtube_search(query, max_results=4):
+    """Search YouTube Data API v3 for relevant videos from credible sources.
+    Targets official news channels and verified organisations.
+    Free tier: 10,000 units/day; each search costs ~100 units.
+    Activate via YOUTUBE_API_KEY env var (Google Cloud Console).
+    Returns list of (name, snippet) tuples."""
+    if not YOUTUBE_API_KEY:
+        return []
+    # Append 'official' hint to bias results toward verified channels
+    search_query = f"{query} official statement"[:150]
+    try:
+        r = requests.get(
+            "https://www.googleapis.com/youtube/v3/search",
+            params={
+                "key": YOUTUBE_API_KEY,
+                "q": search_query,
+                "part": "snippet",
+                "type": "video",
+                "order": "relevance",
+                "maxResults": max_results,
+                "relevanceLanguage": "en",
+                "safeSearch": "moderate",
+            },
+            timeout=10,
+        )
+        r.raise_for_status()
+        results = []
+        for item in r.json().get("items", []):
+            sn = item.get("snippet", {})
+            channel = sn.get("channelTitle", "YouTube")
+            title = sn.get("title", "")
+            description = sn.get("description", "")[:200]
+            vid_id = item.get("id", {}).get("videoId", "")
+            url = f"https://www.youtube.com/watch?v={vid_id}" if vid_id else ""
+            snippet = f"{title} — {description} ({url})"
+            results.append((f"YouTube / {channel}", snippet[:450]))
+        log.info(f"YouTube: {len(results)} results for query")
+        return results
+    except Exception as e:
+        log.warning("YouTube search failed: %s", e)
+        return []
+
+
 def perplexity_search(query, post_date=None):
     """Query Perplexity Sonar (real-time web search AI) for current-events grounding.
     Bridges Claude's Aug-2025 knowledge cutoff. Returns list of (name, snippet) tuples.
@@ -1711,6 +1755,8 @@ _DOMAIN_TO_SOURCE = {
     # Independent / alt
     "theintercept.com": "The Intercept", "democracynow.org": "Democracy Now",
     "novaramedia.com": "Novara Media",
+    # Video platforms
+    "youtube.com": "YouTube", "youtu.be": "YouTube",
 }
 
 def _url_to_source_name(url):
@@ -1887,6 +1933,9 @@ def scrape_sites(query, post_date=None):
             results.append(f"[{name}]: {snippet}")
     if PERPLEXITY_API_KEY:
         for name, snippet in perplexity_search(query_flat, post_date=post_date):
+            results.append(f"[{name}]: {snippet}")
+    if YOUTUBE_API_KEY:
+        for name, snippet in youtube_search(query_flat):
             results.append(f"[{name}]: {snippet}")
     # General Nitter search — corroborate claim across Twitter/X posts
     try:
