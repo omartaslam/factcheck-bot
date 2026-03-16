@@ -792,29 +792,36 @@ def _cobalt_download(url):
         except Exception as e:
             log.error(f"vikas5914 Twitter failed: {e}")
 
-    # Facebook — use vikas5914 /facebook endpoint
+    # Facebook — use vikas5914 /facebook endpoint (no cookies needed)
+    # Handles share/r/, share/v/, reel/, video/ and fb.watch URLs
     if "facebook.com" in url or "fb.watch" in url:
-        try:
-            host = "fastest-social-video-and-image-downloader.p.rapidapi.com"
-            headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
-            log.info(f"Trying vikas5914 Facebook downloader for: {url}")
-            r = requests.get(
-                f"https://{host}/facebook",
-                headers=headers,
-                params={"url": url},
-                timeout=20
-            )
-            r.raise_for_status()
-            data = r.json()
-            log.info(f"vikas5914 Facebook response: {str(data)[:200]}")
-            if data.get("success"):
+        # Resolve short/share URLs to canonical form if needed
+        # vikas5914 handles share links directly — pass as-is
+        for _attempt_url in [url]:
+            try:
+                host = "fastest-social-video-and-image-downloader.p.rapidapi.com"
+                headers = {"x-rapidapi-key": RAPIDAPI_KEY, "x-rapidapi-host": host}
+                log.info(f"Trying vikas5914 Facebook downloader for: {_attempt_url}")
+                r = requests.get(
+                    f"https://{host}/facebook",
+                    headers=headers,
+                    params={"url": _attempt_url},
+                    timeout=25
+                )
+                r.raise_for_status()
+                data = r.json()
+                log.info(f"vikas5914 Facebook response: {str(data)[:300]}")
+                # Accept response with or without explicit "success" field —
+                # some API versions omit it but still return valid video URLs
                 video_url, title = _extract_video_url(data)
                 if video_url:
                     content = _try_download_url(video_url, "vikas5914-Facebook")
                     if content:
                         return content, title, ""
-        except Exception as e:
-            log.error(f"vikas5914 Facebook failed: {e}")
+                else:
+                    log.warning(f"vikas5914 Facebook: no video URL in response — {str(data)[:200]}")
+            except Exception as e:
+                log.error(f"vikas5914 Facebook failed: {e}")
 
     # Instagram & everything else — fall through to yt-dlp
     return None, "", ""
