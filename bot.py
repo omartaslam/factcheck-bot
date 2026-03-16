@@ -1314,23 +1314,115 @@ def enabled_sources():
         sources.append(f"{name} (custom)")
     return sources
 
-def _source_preview_msg():
-    """Return (total_count, preview_string) with a balanced rotating mix of sources.
+# Topic → priority sources. Each entry: (set_of_keywords, [ordered_source_names]).
+# Keywords matched case-insensitively against the combined query+claims text.
+_TOPIC_SOURCE_MAP = [
+    # Africa
+    ({"africa", "african", "kenya", "nigeria", "ghana", "ethiopia", "somalia",
+      "sudan", "south africa", "zimbabwe", "tanzania", "uganda", "rwanda",
+      "cameroon", "senegal", "mozambique", "zambia", "malawi", "botswana",
+      "namibia", "ivory coast", "côte d'ivoire", "liberia", "sierra leone",
+      "guinea", "niger", "mali", "burkina", "congo", "angola"},
+     ["Africa Check", "PesaCheck", "Dubawa", "Logically Facts"]),
 
-    Picks 2 fact-checkers, 2 regional/Middle East, 1 Western mainstream,
-    1 human-rights, 1 independent, 1 wildcard — shuffled each call so the
-    preview rotates and reflects the actual diversity of sources used.
+    # Palestine / Israel
+    ({"palestine", "palestinian", "israel", "israeli", "gaza", "west bank",
+      "hamas", "idf", "hezbollah", "al-aqsa", "jerusalem", "netanyahu",
+      "occupation", "settler", "intifada", "zionist", "ceasefire", "rafah",
+      "apartheid", "nakba", "iof"},
+     ["Al Jazeera", "Middle East Eye", "972 Magazine", "Electronic Intifada",
+      "B'Tselem", "Mondoweiss", "Middle East Monitor", "Misbar", "Haaretz"]),
+
+    # Wider Middle East / Muslim world
+    ({"iran", "iraq", "syria", "lebanon", "jordan", "saudi", "yemen", "bahrain",
+      "qatar", "kuwait", "oman", "uae", "dubai", "riyadh", "tehran", "baghdad",
+      "damascus", "beirut", "middle east", "mena", "muslim", "islamic", "islam",
+      "mosque", "shia", "sunni", "quran", "isis", "isil", "daesh", "caliphate",
+      "arab", "arabic"},
+     ["Al Jazeera", "Middle East Eye", "Anadolu Agency", "Arab News",
+      "Al-Monitor", "The New Arab", "Yeni Safak", "DAWN",
+      "Fatabyyano", "Misbar", "Verify-Sy"]),
+
+    # Turkey
+    ({"turkey", "turkish", "erdogan", "ankara", "istanbul", "kurdish", "pkk"},
+     ["Anadolu Agency", "Al-Monitor", "Yeni Safak", "Middle East Eye"]),
+
+    # India / South Asia
+    ({"india", "indian", "pakistan", "pakistani", "bangladesh", "modi", "bjp",
+      "hindu", "kashmir", "delhi", "mumbai", "hindutva", "south asia",
+      "sri lanka", "nepal"},
+     ["Alt News", "Boom Live", "Logically Facts"]),
+
+    # Philippines / Southeast Asia
+    ({"philippines", "filipino", "marcos", "duterte", "manila", "southeast asia",
+      "myanmar", "burma", "thailand", "indonesia", "malaysia", "vietnam",
+      "cambodia", "laos", "singapore"},
+     ["Rappler", "Boom Live", "Alt News"]),
+
+    # Latin America
+    ({"latin america", "argentina", "brazil", "venezuela", "colombia", "mexico",
+      "chile", "peru", "bolivia", "ecuador", "uruguay", "paraguay",
+      "central america", "cuba", "haiti", "dominican"},
+     ["Chequeado", "Rappler"]),
+
+    # Ukraine / Russia
+    ({"ukraine", "ukrainian", "russia", "russian", "putin", "zelensky", "nato",
+      "kremlin", "moscow", "kyiv", "donbas", "crimea", "wagner", "novichok"},
+     ["Bellingcat", "Reuters", "AP News", "BBC News", "The Intercept"]),
+
+    # US politics
+    ({"trump", "biden", "republican", "democrat", "congress", "senate",
+      "white house", "maga", "election fraud", "january 6", "cia", "fbi",
+      "pentagon", "immigration", "border wall", "obamacare"},
+     ["FactCheck.org", "PolitiFact", "Snopes", "AP News"]),
+
+    # UK politics
+    ({"uk", "britain", "england", "labour", "tory", "conservative", "parliament",
+      "boris", "sunak", "starmer", "keir", "nhs", "brexit", "scotland",
+      "wales", "northern ireland"},
+     ["FullFact", "BBC News", "The Guardian", "Novara Media", "The Canary"]),
+
+    # Human rights / war crimes
+    ({"genocide", "war crime", "ethnic cleansing", "occupation", "refugee",
+      "displaced", "civilian casualties", "airstrike", "massacre", "torture",
+      "arbitrary detention", "extrajudicial"},
+     ["Human Rights Watch", "Amnesty International", "UN News", "Bellingcat",
+      "B'Tselem"]),
+
+    # Disinfo / AI / media manipulation
+    ({"deepfake", "ai generated", "artificial intelligence", "misinformation",
+      "disinformation", "propaganda", "fake news", "manipulated", "edited video",
+      "synthetic media"},
+     ["Bellingcat", "Logically Facts", "Snopes", "Africa Check"]),
+]
+
+
+def _source_preview_msg(topic_text=""):
+    """Return (total_count, preview_string) with topic-relevant + balanced rotating mix.
+
+    Up to 4 slots are reserved for sources directly relevant to the detected topic
+    (e.g. Africa Check for African content, Al Jazeera for Middle East content).
+    Remaining slots filled with a balanced per-category mix, shuffled for rotation.
     """
     all_src = enabled_sources()
     total = len(all_src)
+    all_src_set = set(all_src)
+    ql = topic_text.lower()
 
-    # Group by perspective category
+    # Step 1: collect topic-priority sources (preserve order, deduplicate)
+    priority = []
+    for keywords, sources in _TOPIC_SOURCE_MAP:
+        if any(kw in ql for kw in keywords):
+            for s in sources:
+                if s in all_src_set and s not in priority:
+                    priority.append(s)
+
+    # Step 2: balanced category fill for remaining slots
     by_cat = {}
     for s in all_src:
         cat = _SOURCE_PERSPECTIVE.get(s, "OTHER")
         by_cat.setdefault(cat, []).append(s)
 
-    # Targets: (category, n_to_pick)
     targets = [
         ("FACT-CHECK ORGS",           2),
         ("REGIONAL / MIDDLE EAST",    2),
@@ -1339,19 +1431,26 @@ def _source_preview_msg():
         ("INDEPENDENT / ALTERNATIVE", 1),
     ]
 
-    chosen = []
+    chosen = list(priority[:4])  # up to 4 topic-priority slots
     for cat, n in targets:
-        pool = by_cat.get(cat, [])
+        pool = [s for s in by_cat.get(cat, []) if s not in chosen]
         if pool:
             chosen.extend(random.sample(pool, min(n, len(pool))))
+        if len(chosen) >= 8:
+            break
 
-    # Fill last slot from anything not yet chosen
+    # Wildcard fill
     others = [s for s in all_src if s not in chosen]
     if others and len(chosen) < 8:
         chosen.extend(random.sample(others, min(8 - len(chosen), len(others))))
 
-    random.shuffle(chosen)
-    preview = ", ".join(chosen[:8])
+    # Priority sources shown first; rest shuffled for variety
+    prio_shown = [s for s in chosen if s in set(priority[:4])]
+    rest = [s for s in chosen if s not in set(prio_shown)]
+    random.shuffle(rest)
+    final = (prio_shown + rest)[:8]
+
+    preview = ", ".join(final)
     if total > 8:
         preview += f" +{total - 8} more"
     return total, preview
@@ -2263,7 +2362,8 @@ def send_twitter_dm(recipient_id, text):
 def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None, source_url=""):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
-    total_src, src_preview = _source_preview_msg()
+    topic_text = query + (" " + " ".join(pre_claims) if pre_claims else "")
+    total_src, src_preview = _source_preview_msg(topic_text)
     send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
 
     # ── OSINT checks — run in background thread while sources scrape ────────
@@ -2345,7 +2445,8 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
     """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
     _cost_reset()
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
-    total_src, src_preview = _source_preview_msg()
+    topic_text = query + (" " + " ".join(pre_claims) if pre_claims else "")
+    total_src, src_preview = _source_preview_msg(topic_text)
     send_fn(f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
 
     if pre_claims:
