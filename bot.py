@@ -3547,11 +3547,11 @@ def process(from_num, message):
                         # on share URLs. Use Tavily to find and fetch the source article.
                         post_text_part = next((p for p in parts if p.startswith("Post text:")), "")
                         post_text_len = len(post_text_part.replace("Post text: ", "", 1))
-                        if post_text_len < 300 and "Article text:" not in "\n".join(parts) and TAVILY_KEY:
+                        if post_text_len < 300 and "Article text:" not in "\n".join(parts) and TAVILY_API_KEY:
                             try:
                                 search_query = post_text_part.replace("Post text: ", "", 1)[:200]
                                 tv = requests.post("https://api.tavily.com/search",
-                                    json={"api_key": TAVILY_KEY, "query": search_query,
+                                    json={"api_key": TAVILY_API_KEY, "query": search_query,
                                           "search_depth": "basic", "max_results": 3,
                                           "include_raw_content": True},
                                     timeout=15)
