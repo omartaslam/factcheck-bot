@@ -2886,15 +2886,14 @@ def process(from_num, message):
             )
             if is_video_link:
                 try:
-                    send(from_num, "🎬 Downloading video from URL...")
+                    send(from_num, "🔍 Fetching content...")
                     video_bytes, metadata, post_date = download_video_url(url)
-                    if video_bytes:
-                        send(from_num, f"✓ Downloaded ({len(video_bytes)//1024}KB)")
+                    if video_bytes and _is_video_bytes(video_bytes):
+                        send(from_num, f"🎬 Video found ({len(video_bytes)//1024}KB) — extracting frames and audio...")
                         parts = []
                         # Only add title if it's not just the platform name
                         if metadata and not _is_useless_title(metadata):
                             parts.append(f"Video: {metadata}")
-                        send(from_num, "🎞️ Analysing video frames...")
                         try:
                             frames, duration = extract_video_frames(video_bytes, num_frames=5)
                             if frames:
@@ -2943,6 +2942,33 @@ def process(from_num, message):
                             source_type = "video" if any("Visual analysis" in p or "Audio:" in p for p in parts) else "url"
                         else:
                             send(from_num, "❌ Could not extract any content from this video. Please paste the claim as text or send a screenshot.")
+                            return
+                    elif video_bytes:
+                        # Downloaded bytes but not a video (e.g. Twitter image post) — OCR as image
+                        log.info(f"video_link path: downloaded non-video bytes ({len(video_bytes)//1024}KB) — routing to image OCR")
+                        parts = []
+                        if metadata and not _is_useless_title(metadata):
+                            parts.append(f"Post text: {metadata}")
+                        ocr = ocr_image(video_bytes)
+                        if ocr and len(ocr) > 20:
+                            parts.append(f"Image text/content:\n{ocr}")
+                            image_bytes = video_bytes
+                            log.info(f"OCR from downloaded image: {ocr[:80]}")
+                        else:
+                            image_bytes = video_bytes
+                        if parts:
+                            query = "\n\n".join(parts)
+                            source_type = "image" if image_bytes else "url"
+                        elif is_fb_ig:
+                            fb_og = _fb_ig_post_scrape(url)
+                            if fb_og.get("description"):
+                                query = f"Post text: {fb_og['description'][:1200]}"
+                                source_type = "url"
+                            else:
+                                send(from_num, "❌ Could not extract any content from this post. Please paste the claim as text or send a screenshot.")
+                                return
+                        else:
+                            send(from_num, "❌ Could not extract any content from this URL. Please paste the claim as text or send a screenshot.")
                             return
                     elif metadata:
                         send(from_num, "⚠️ Video download not available for this platform — analysing post text instead...")
