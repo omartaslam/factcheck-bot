@@ -2604,7 +2604,21 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
         send_fn("🔍 Identifying claims...")
         assessment = assess_content_claims(query, source_type)
         if not assessment["checkable"] or not assessment["claims"]:
-            send_fn(no_claims_msg(assessment["reason"], source_type, assessment["suggestions"]))
+            msg = no_claims_msg(assessment["reason"], source_type, assessment["suggestions"])
+            if image_bytes and HIVE_API_KEY:
+                hive = hive_ai_check(image_bytes=image_bytes)
+                ai_score = hive.get("ai_generated", 0)
+                df_score = hive.get("deepfake", 0)
+                generator = hive.get("generator", "")
+                if ai_score > 0.5 or df_score > 0.5:
+                    ai_line = ""
+                    if ai_score > 0.5:
+                        gen_label = f" _(likely {generator})_" if generator else ""
+                        ai_line = f"🤖 *AI-generated image detected: {int(ai_score*100)}%*{gen_label}"
+                    if df_score > 0.5:
+                        ai_line += f"\n🎭 *Deepfake detected: {int(df_score*100)}%*"
+                    msg = f"⚠️ *AI-Generated Content Detected*\n\n{ai_line}\n\n" + msg
+            send_fn(msg)
             return
         claims = assessment["claims"]
         with pending_lock:
@@ -2879,6 +2893,7 @@ def process(from_num, message):
                                 parts.append(f"Image text/content:\n{ocr}")
                                 send(from_num, "🖼 Analysed image in post")
                                 log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
+                                image_bytes = img_r.content  # save for OSINT/AI detection
                                 ocr_succeeded = True
                                 break
                         except Exception as ie:
@@ -2976,7 +2991,23 @@ def process(from_num, message):
         send(from_num, "🔍 Identifying claims...")
         assessment = assess_content_claims(query, source_type)
         if not assessment["checkable"] or not assessment["claims"]:
-            send(from_num, no_claims_msg(assessment["reason"], source_type, assessment["suggestions"]))
+            msg = no_claims_msg(assessment["reason"], source_type, assessment["suggestions"])
+            # Still run AI/deepfake detection if we have an image from the post
+            if image_bytes and HIVE_API_KEY:
+                hive = hive_ai_check(image_bytes=image_bytes)
+                ai_score = hive.get("ai_generated", 0)
+                df_score = hive.get("deepfake", 0)
+                generator = hive.get("generator", "")
+                if ai_score > 0.5 or df_score > 0.5:
+                    ai_line = ""
+                    if ai_score > 0.5:
+                        gen_label = f" _(likely {generator})_" if generator else ""
+                        ai_line = f"🤖 *AI-generated image detected: {int(ai_score*100)}%*{gen_label}"
+                    if df_score > 0.5:
+                        ai_line += f"\n🎭 *Deepfake detected: {int(df_score*100)}%*"
+                    msg = f"⚠️ *AI-Generated Content Detected*\n\n{ai_line}\n\n" + msg
+                    log.info(f"No-claims but AI flagged: ai={ai_score:.2f} deepfake={df_score:.2f}")
+            send(from_num, msg)
             return
         claims = assessment["claims"]
         with pending_lock:
