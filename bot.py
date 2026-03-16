@@ -1247,7 +1247,7 @@ def enabled_sources():
     if SRC_FULLFACT:        sources.append("FullFact")
     if SRC_FACTCHECKORG:    sources.append("FactCheck.org")
     if SRC_POLITIFACT:      sources.append("PolitiFact")
-    if SRC_AFP:             sources.append("AFP")
+    if SRC_AFP:             sources.append("AFP Fact Check")
     if SRC_ALJAZEERA:       sources.append("Al Jazeera")
     if SRC_MEE:             sources.append("Middle East Eye")
     if SRC_NOVARA:          sources.append("Novara Media")
@@ -1313,6 +1313,49 @@ def enabled_sources():
     for name, _ in parse_custom_sources():
         sources.append(f"{name} (custom)")
     return sources
+
+def _source_preview_msg():
+    """Return (total_count, preview_string) with a balanced rotating mix of sources.
+
+    Picks 2 fact-checkers, 2 regional/Middle East, 1 Western mainstream,
+    1 human-rights, 1 independent, 1 wildcard — shuffled each call so the
+    preview rotates and reflects the actual diversity of sources used.
+    """
+    all_src = enabled_sources()
+    total = len(all_src)
+
+    # Group by perspective category
+    by_cat = {}
+    for s in all_src:
+        cat = _SOURCE_PERSPECTIVE.get(s, "OTHER")
+        by_cat.setdefault(cat, []).append(s)
+
+    # Targets: (category, n_to_pick)
+    targets = [
+        ("FACT-CHECK ORGS",           2),
+        ("REGIONAL / MIDDLE EAST",    2),
+        ("WESTERN MAINSTREAM",        1),
+        ("HUMAN RIGHTS & INTL LAW",   1),
+        ("INDEPENDENT / ALTERNATIVE", 1),
+    ]
+
+    chosen = []
+    for cat, n in targets:
+        pool = by_cat.get(cat, [])
+        if pool:
+            chosen.extend(random.sample(pool, min(n, len(pool))))
+
+    # Fill last slot from anything not yet chosen
+    others = [s for s in all_src if s not in chosen]
+    if others and len(chosen) < 8:
+        chosen.extend(random.sample(others, min(8 - len(chosen), len(others))))
+
+    random.shuffle(chosen)
+    preview = ", ".join(chosen[:8])
+    if total > 8:
+        preview += f" +{total - 8} more"
+    return total, preview
+
 
 def _fetch_source(name, url):
     """Fetch a single source — returns (name, text) or None."""
@@ -2220,12 +2263,8 @@ def send_twitter_dm(recipient_id, text):
 def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None, source_url=""):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
-    # Show all enabled sources
-    all_src = enabled_sources()
-    src_preview = ", ".join(all_src[:8])
-    if len(all_src) > 8:
-        src_preview += f" +{len(all_src)-8} more"
-    send(from_num, f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
+    total_src, src_preview = _source_preview_msg()
+    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
 
     # ── OSINT checks — run in background thread while sources scrape ────────
     osint_future = None
@@ -2306,10 +2345,8 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
     """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
     _cost_reset()
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
-    all_src = enabled_sources()
-    src_preview = ", ".join(all_src[:8])
-    if len(all_src) > 8: src_preview += f" +{len(all_src)-8} more"
-    send_fn(f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
+    total_src, src_preview = _source_preview_msg()
+    send_fn(f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
 
     if pre_claims:
         claims = pre_claims
