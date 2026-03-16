@@ -2018,7 +2018,10 @@ def extract_claims(text):
         "Identify the distinct, independently checkable factual claims in the text below. "
         "Return a JSON array of strings — one string per claim, self-contained and testable. "
         "Maximum 4 claims. If there is only one claim return a single-element array. "
-        "Ignore pure opinion, emotion, and non-falsifiable statements.\n\n"
+        "Ignore pure opinion, emotion, and non-falsifiable statements.\n"
+        "IMPORTANT: deduplicate — if two or more claims are about the same underlying fact "
+        "(e.g. 'X said Y' and 'X stated Y at event Z'), merge them into one. "
+        "Only list claims that are genuinely distinct and independently verifiable.\n\n"
         f"TEXT:\n{text[:3000]}\n\n"
         'Respond ONLY with a JSON array, e.g.: ["Claim one", "Claim two"]'
     )
