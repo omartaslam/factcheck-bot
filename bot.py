@@ -145,6 +145,10 @@ SRC_BOOMLIVE         = os.getenv("SRC_BOOMLIVE",         "true").lower() == "tru
 SRC_RAPPLER          = os.getenv("SRC_RAPPLER",          "true").lower() == "true"  # Rappler — Philippines/SE Asia
 SRC_CHEQUEADO        = os.getenv("SRC_CHEQUEADO",        "true").lower() == "true"  # Chequeado — Latin America
 SRC_LOGICALLY        = os.getenv("SRC_LOGICALLY",        "true").lower() == "true"  # Logically Facts — global independent
+# OSINT / verification APIs
+TINEYE_API_KEY       = os.getenv("TINEYE_API_KEY",  "")   # TinEye reverse image search — public key
+TINEYE_API_SECRET    = os.getenv("TINEYE_API_SECRET","")   # TinEye private/secret key for HMAC auth
+HIVE_API_KEY         = os.getenv("HIVE_API_KEY",    "")   # Hive Moderation — AI/deepfake detection
 # Real-time search APIs
 TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
 BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")    # TODO: Brave Search API — 2000/month when free tier available
@@ -976,6 +980,239 @@ def download_video_url(url):
     log.info("yt-dlp failed, extracting OG metadata...")
     return None, _og_metadata(url), ""
 
+# ── OSINT / Media Verification ────────────────────────────────────────────────
+
+def extract_exif_info(image_bytes):
+    """Extract key EXIF metadata. Returns dict with findings or {}."""
+    try:
+        from PIL import Image
+        from PIL.ExifTags import TAGS
+        import io as _io
+        img = Image.open(_io.BytesIO(image_bytes))
+        raw = img._getexif()
+        if not raw:
+            return {}
+        keep = ("DateTimeOriginal", "DateTime", "DateTimeDigitized",
+                "GPSInfo", "Make", "Model", "Software", "ImageDescription")
+        result = {}
+        for tag_id, val in raw.items():
+            tag = TAGS.get(tag_id, str(tag_id))
+            if tag in keep:
+                result[tag] = str(val)[:200]
+        return result
+    except Exception as e:
+        log.debug(f"EXIF: {e}")
+        return {}
+
+def wayback_earliest(url):
+    """Return earliest Wayback Machine archive date for a URL, or None."""
+    try:
+        r = requests.get(
+            "http://web.archive.org/cdx/search/cdx",
+            params={"url": url, "output": "json", "limit": 2,
+                    "fl": "timestamp,statuscode", "filter": "statuscode:200"},
+            timeout=8
+        )
+        if r.ok:
+            rows = r.json()
+            if len(rows) > 1:
+                ts = rows[1][0]  # YYYYMMDDHHMMSS
+                return f"{ts[:4]}-{ts[4:6]}-{ts[6:8]}"
+    except Exception as e:
+        log.debug(f"Wayback: {e}")
+    return None
+
+def tineye_search(image_bytes):
+    """Reverse image search via TinEye. Returns list of match dicts (url, domain, crawl_date)."""
+    if not (TINEYE_API_KEY and TINEYE_API_SECRET):
+        return []
+    try:
+        import hmac as _hmac, hashlib as _hashlib, random as _rnd, string as _str
+        nonce = "".join(_rnd.choices(_str.ascii_lowercase + _str.digits, k=8))
+        date  = str(int(t.time()))
+        boundary = "TinEyeBoundary"
+        body = (
+            f"--{boundary}\r\nContent-Disposition: form-data; "
+            f'name="image"; filename="img.jpg"\r\nContent-Type: image/jpeg\r\n\r\n'
+        ).encode() + image_bytes + f"\r\n--{boundary}--\r\n".encode()
+        content_type = f"multipart/form-data; boundary={boundary}"
+        hmac_msg = f"POST\n{content_type}\n{date}\nx-tineye-nonce:{nonce}\n/rest/search/"
+        sig = _hmac.new(
+            TINEYE_API_SECRET.encode(), hmac_msg.encode(), _hashlib.sha256
+        ).hexdigest()
+        url = (f"https://api.tineye.com/rest/search/"
+               f"?api_key={TINEYE_API_KEY}&date={date}&nonce={nonce}&signature={sig}")
+        r = requests.post(url, data=body,
+                          headers={"Content-Type": content_type}, timeout=20)
+        if r.ok:
+            matches = r.json().get("results", {}).get("matches", [])
+            return [{"url": m.get("backlinks", [{}])[0].get("url",""),
+                     "domain": m.get("domain",""),
+                     "crawl_date": m.get("image_count","")} for m in matches[:6]]
+    except Exception as e:
+        log.warning(f"TinEye: {e}")
+    return []
+
+def tineye_search_url(image_url):
+    """TinEye reverse search by image URL (simpler than file upload)."""
+    if not (TINEYE_API_KEY and TINEYE_API_SECRET):
+        return []
+    try:
+        import hmac as _hmac, hashlib as _hashlib, random as _rnd, string as _str
+        nonce = "".join(_rnd.choices(_str.ascii_lowercase + _str.digits, k=8))
+        date  = str(int(t.time()))
+        hmac_msg = f"GET\n\n{date}\nx-tineye-nonce:{nonce}\n/rest/search/"
+        sig = _hmac.new(
+            TINEYE_API_SECRET.encode(), hmac_msg.encode(), _hashlib.sha256
+        ).hexdigest()
+        r = requests.get(
+            "https://api.tineye.com/rest/search/",
+            params={"api_key": TINEYE_API_KEY, "date": date, "nonce": nonce,
+                    "signature": sig, "url": image_url},
+            timeout=15
+        )
+        if r.ok:
+            matches = r.json().get("results", {}).get("matches", [])
+            return [{"url": m.get("backlinks", [{}])[0].get("url",""),
+                     "domain": m.get("domain",""),
+                     "crawl_date": m.get("crawl_date","")} for m in matches[:6]]
+    except Exception as e:
+        log.warning(f"TinEye URL: {e}")
+    return []
+
+def hive_ai_check(image_bytes):
+    """Check for AI-generated/deepfake content via Hive Moderation.
+    Returns dict: {ai_generated: 0.0-1.0, deepfake: 0.0-1.0} or {}."""
+    if not HIVE_API_KEY:
+        return {}
+    results = {}
+    def _call(endpoint, key):
+        try:
+            r = requests.post(
+                f"https://api.thehive.ai/api/v2/task/sync/{endpoint}",
+                headers={"token": HIVE_API_KEY},
+                files={"media": ("img.jpg", image_bytes, "image/jpeg")},
+                timeout=20
+            )
+            if r.ok:
+                classes = (r.json().get("status", [{}])[0]
+                           .get("response", {}).get("output", [{}])[0]
+                           .get("classes", []))
+                for cls in classes:
+                    if cls.get("class") in ("ai_generated", "yes"):
+                        results[key] = round(cls.get("score", 0), 3)
+                        return
+        except Exception as e:
+            log.debug(f"Hive {endpoint}: {e}")
+    with ThreadPoolExecutor(max_workers=2) as ex:
+        ex.submit(_call, "ai_generated_detection", "ai_generated")
+        ex.submit(_call, "face_manipulation_detection", "deepfake")
+    return results
+
+def run_osint(image_bytes=None, source_url=None, og_image_url=None):
+    """Run all applicable OSINT checks in parallel. Returns findings dict."""
+    findings = {}
+    tasks = {}
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        if image_bytes:
+            tasks["exif"]    = ex.submit(extract_exif_info, image_bytes)
+            tasks["tineye"]  = ex.submit(tineye_search, image_bytes)
+            tasks["hive"]    = ex.submit(hive_ai_check, image_bytes)
+        if og_image_url:
+            tasks["tineye_url"] = ex.submit(tineye_search_url, og_image_url)
+            if not image_bytes:
+                tasks["hive_url"] = ex.submit(lambda: _hive_from_url(og_image_url))
+        if source_url:
+            tasks["wayback"] = ex.submit(wayback_earliest, source_url)
+
+    for key, fut in tasks.items():
+        try:
+            findings[key] = fut.result(timeout=25)
+        except Exception as e:
+            log.debug(f"OSINT {key}: {e}")
+
+    # Merge tineye results
+    tineye_matches = findings.get("tineye") or findings.get("tineye_url") or []
+    if tineye_matches:
+        findings["tineye_matches"] = tineye_matches
+
+    return findings
+
+def _hive_from_url(image_url):
+    """Download image from URL and run Hive check."""
+    try:
+        r = requests.get(image_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
+        if r.ok and len(r.content) > 500:
+            return hive_ai_check(r.content)
+    except Exception:
+        pass
+    return {}
+
+def fmt_osint(findings):
+    """Format OSINT findings as a WhatsApp-friendly section. Returns lines list."""
+    if not findings:
+        return []
+    lines = ["*OSINT VERIFICATION*"]
+    added = False
+
+    # EXIF metadata
+    exif = findings.get("exif", {})
+    if exif:
+        date_taken = exif.get("DateTimeOriginal") or exif.get("DateTime")
+        if date_taken:
+            lines.append(f"📷 _EXIF date taken: {date_taken[:19]}_")
+            added = True
+        camera = exif.get("Make","") + (" " + exif.get("Model","")).strip()
+        if camera.strip():
+            lines.append(f"📷 _Camera: {camera.strip()}_")
+            added = True
+        if exif.get("Software") and any(k in exif["Software"].lower() for k in ("photoshop","gimp","lightroom","edit")):
+            lines.append(f"⚠️ _Edited with: {exif['Software']}_")
+            added = True
+        if exif.get("GPSInfo"):
+            lines.append("📍 _GPS coordinates embedded in image_")
+            added = True
+
+    # TinEye reverse image results
+    matches = findings.get("tineye_matches", [])
+    if matches:
+        lines.append(f"🔍 _Reverse image: found in {len(matches)} other source(s)_")
+        for m in matches[:3]:
+            domain = m.get("domain","")
+            if domain:
+                lines.append(f"   • {domain}")
+        added = True
+    elif "tineye" in findings or "tineye_url" in findings:
+        lines.append("🔍 _Reverse image: no matches found (image appears original)_")
+        added = True
+
+    # Hive AI/deepfake detection
+    hive = findings.get("hive") or findings.get("hive_url") or {}
+    if isinstance(hive, dict):
+        ai_score = hive.get("ai_generated")
+        df_score = hive.get("deepfake")
+        if ai_score is not None:
+            pct = int(ai_score * 100)
+            icon = "🤖" if ai_score > 0.7 else ("⚠️" if ai_score > 0.4 else "✅")
+            lines.append(f"{icon} _AI-generated probability: {pct}%_")
+            added = True
+        if df_score is not None:
+            pct = int(df_score * 100)
+            icon = "🎭" if df_score > 0.7 else ("⚠️" if df_score > 0.4 else "✅")
+            lines.append(f"{icon} _Deepfake probability: {pct}%_")
+            added = True
+
+    # Wayback Machine
+    wayback = findings.get("wayback")
+    if wayback:
+        lines.append(f"🕰️ _Earliest web archive: {wayback}_")
+        added = True
+
+    if not added:
+        return []
+    lines.append("")
+    return lines
+
 def google_fc(query):
     try:
         r = requests.get(GOOGLE_FC_URL, params={"key":GOOGLE_API_KEY,"query":query[:200],"pageSize":8}, timeout=10)
@@ -1581,13 +1818,39 @@ def _group_scraped_by_perspective(scraped_str):
     return "\n\n".join(parts) if parts else scraped_str
 
 
-def claude_analyse(claim, google, scraped, st, post_date=None):
+def claude_analyse(claim, google, scraped, st, post_date=None, osint=None):
     g = "\n".join([f"• {x['source']} [{x['rating']}]: {x['claim']}\n  {x['url']}" for x in google[:5]])
     grouped = _group_scraped_by_perspective(scraped) if scraped else ""
+
+    # Build OSINT summary for Claude's context
+    osint_note = ""
+    if osint:
+        parts = []
+        exif = osint.get("exif", {})
+        if exif.get("DateTimeOriginal") or exif.get("DateTime"):
+            parts.append(f"EXIF date: {exif.get('DateTimeOriginal') or exif.get('DateTime')}")
+        if exif.get("Software") and any(k in exif["Software"].lower() for k in ("photoshop","gimp","edit")):
+            parts.append(f"Image edited with: {exif['Software']}")
+        matches = osint.get("tineye_matches", [])
+        if matches:
+            domains = ", ".join(m.get("domain","") for m in matches[:3] if m.get("domain"))
+            parts.append(f"Reverse image search: found in {len(matches)} other sources ({domains})")
+        hive = osint.get("hive") or osint.get("hive_url") or {}
+        if isinstance(hive, dict):
+            if hive.get("ai_generated", 0) > 0.5:
+                parts.append(f"AI-generated detection: {int(hive['ai_generated']*100)}% probability")
+            if hive.get("deepfake", 0) > 0.5:
+                parts.append(f"Deepfake detection: {int(hive['deepfake']*100)}% probability")
+        if osint.get("wayback"):
+            parts.append(f"Wayback Machine earliest archive: {osint['wayback']}")
+        if parts:
+            osint_note = "\n\nOSINT VERIFICATION:\n" + "\n".join(f"• {p}" for p in parts)
+
     evidence = (
         f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\n"
         f"SOURCE EVIDENCE (grouped by perspective — note where perspectives diverge):\n"
         f"{grouped[:2000] or 'No results.'}"
+        f"{osint_note}"
     )
 
     # ── Step 1 & 2: Debate — pro and con in parallel (Haiku, fast + cheap) ──
@@ -1707,7 +1970,7 @@ def claude_analyse(claim, google, scraped, st, post_date=None):
                         "Snopes — https://www.snopes.com", "FullFact — https://fullfact.org"],
             "confidence": "LOW", "confidence_reason": "AI provider error"}
 
-def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
+def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -1747,6 +2010,9 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None):
         lines += ["*SOURCES CONSULTED*"] + [f"• {s}" for s in used_sources[:6]] + [""]
     elif a.get("sources"):
         lines += ["*SOURCES*"] + [f"• {s}" for s in a["sources"][:5]] + [""]
+    osint_lines = fmt_osint(osint or {})
+    if osint_lines:
+        lines += osint_lines
     if post_date:
         age = _post_age_label(post_date)
         if age:
@@ -1948,7 +2214,7 @@ def send_twitter_dm(recipient_id, text):
             log.error("Twitter DM send error: %s", e)
 
 
-def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None):
+def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None, source_url=""):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     # Show all enabled sources
@@ -1957,6 +2223,18 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     if len(all_src) > 8:
         src_preview += f" +{len(all_src)-8} more"
     send(from_num, f"⚙️ Cross-referencing {len(all_src)} sources:\n{src_preview}...")
+
+    # ── OSINT checks — run in background thread while sources scrape ────────
+    osint_future = None
+    needs_osint = img_bytes or source_url
+    if needs_osint:
+        send(from_num, "🔬 Running OSINT verification...")
+        _osint_ex = ThreadPoolExecutor(max_workers=1)
+        osint_future = _osint_ex.submit(run_osint,
+            image_bytes=img_bytes,
+            source_url=source_url or None,
+            og_image_url=None
+        )
 
     # For video content, extract frames before fact-checking
     if st == "video" and video_bytes:
@@ -1986,6 +2264,15 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     else:
         claims = [query]
 
+    # ── Collect OSINT results (non-blocking — were running in background) ──
+    osint = {}
+    if osint_future:
+        try:
+            osint = osint_future.result(timeout=25) or {}
+            _osint_ex.shutdown(wait=False)
+        except Exception as e:
+            log.warning(f"OSINT collect: {e}")
+
     # ── Multi-claim header (skip — already shown before Y confirmation) ───
     multi = len(claims) > 1
 
@@ -1999,9 +2286,9 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         gfc_sources = [x["source"] for x in g if x.get("source")]
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
         all_used_combined = list(dict.fromkeys(all_used_combined + all_used))
-        a = claude_analyse(claim, g, sc, st, post_date=post_date)
+        a = claude_analyse(claim, g, sc, st, post_date=post_date, osint=osint)
         ad = get_random_ad() if show_ad else None
-        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date)
+        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
@@ -2253,7 +2540,9 @@ def process(from_num, message):
                     send(from_num, "✓ Subscriber — unlimited access")
                 send(from_num, "Starting fact-check...")
                 threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
-                                 kwargs={"billing_type": bt, "pre_claims": data.get("claims"), "post_date": data.get("post_date", "")}, daemon=True).start()
+                                 kwargs={"billing_type": bt, "pre_claims": data.get("claims"),
+                                         "post_date": data.get("post_date", ""),
+                                         "source_url": data.get("source_url", "")}, daemon=True).start()
                 return
             elif body_upper in ("NO","N"):
                 with pending_lock: pending.pop(pkey, None)
@@ -2261,7 +2550,7 @@ def process(from_num, message):
         elif has_p and not is_yn:
             with pending_lock: pending.pop(pkey, None)
             log.info("New content received, clearing stale pending")
-    query, source_type, image_bytes, post_date = "", "text", None, ""
+    query, source_type, image_bytes, post_date, urls = "", "text", None, "", []
     if msg_type == "text":
         body = message["text"]["body"].strip()
         urls = [w for w in body.split() if w.startswith("http")]
@@ -2563,13 +2852,14 @@ def process(from_num, message):
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims,
-                             "post_date": post_date}
+                             "post_date": post_date, "source_url": urls[0] if urls else ""}
         send(from_num, claims_confirm_msg(claims, source_type, cost))
     else:
         # image / document — no claim extraction, show raw preview
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
-                             "cost": cost, "timestamp": t.time(), "post_date": post_date}
+                             "cost": cost, "timestamp": t.time(), "post_date": post_date,
+                             "source_url": urls[0] if urls else ""}
         send(from_num, confirm_msg(source_type, query, cost))
 
 # ── Web API: database, auth, rate-limiting ───────────────────────────────────
