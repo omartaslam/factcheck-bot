@@ -1774,7 +1774,7 @@ def extract_claims(text):
     return [text]
 
 
-def assess_content_claims(text, source_type):
+def assess_content_claims(text, source_type, post_date=None):
     """
     Analyse content and extract verifiable claims BEFORE asking user to confirm.
     Returns dict:
@@ -1783,13 +1783,29 @@ def assess_content_claims(text, source_type):
         reason:      str  — why not checkable (empty if checkable)
         suggestions: list of str — what the user could send instead
     """
+    import datetime as _dt
     if not ANTHROPIC_KEY or not text or len(text.strip()) < 10:
         return {"claims": [text] if text and text.strip() else [], "checkable": bool(text and text.strip()), "reason": "", "suggestions": []}
+
+    # Determine reference date for temporal context
+    ref_date = post_date or _dt.datetime.utcnow().strftime("%B %Y")
+    # Normalise post_date to "Month YYYY" if it's a full timestamp
+    if post_date and len(post_date) > 8:
+        try:
+            for fmt in ("%Y-%m-%dT%H:%M:%S", "%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+                try:
+                    ref_date = _dt.datetime.strptime(post_date[:19], fmt).strftime("%B %Y")
+                    break
+                except ValueError:
+                    continue
+        except Exception:
+            pass
 
     src_label = {"text": "text message", "image": "image", "audio": "voice note",
                  "video": "video", "url": "post/article", "document": "document"}.get(source_type, "content")
     prompt = (
         f"Analyse this {src_label} and extract ALL independently verifiable factual claims.\n\n"
+        f"Today's date: {ref_date}.\n\n"
         "Return a JSON object with exactly these fields:\n"
         '  "claims": array of short, direct factual assertions (max 6). State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
@@ -1801,7 +1817,8 @@ def assess_content_claims(text, source_type):
         "- Do NOT infer or add context not directly stated (e.g. do not add 'Mark Carney is PM of Canada' if that wasn't the claim made)\n"
         "- Include ALL distinct assertions — do not merge separate claims into one\n"
         "- Include claims about identity, history, events, quotes, and relationships\n"
-        "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n\n"
+        "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n"
+        f"- For claims about current or recent events (news, conflicts, policy, breaking stories), append 'as of {ref_date}' to anchor them in time — but only when the date materially changes what is being claimed (e.g. 'Strait of Hormuz closed as of {ref_date}', not 'Water boils at 100°C as of {ref_date}')\n\n"
         f"CONTENT:\n{text[:3000]}\n\n"
         'Respond ONLY with valid JSON.'
     )
@@ -2648,7 +2665,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
     # ── Extract claims before confirmation — show user what will be checked ──
     if source_type in ("text", "audio", "url", "video"):
         send_fn("🔍 Identifying claims...")
-        assessment = assess_content_claims(query, source_type)
+        assessment = assess_content_claims(query, source_type, post_date=post_date)
         if not assessment["checkable"] or not assessment["claims"]:
             msg = no_claims_msg(assessment["reason"], source_type, assessment["suggestions"])
             if image_bytes and HIVE_API_KEY:
@@ -3071,7 +3088,7 @@ def process(from_num, message):
     # ── Extract claims before confirmation — show user what will be checked ──
     if source_type in ("text", "audio", "url", "video"):
         send(from_num, "🔍 Identifying claims...")
-        assessment = assess_content_claims(query, source_type)
+        assessment = assess_content_claims(query, source_type, post_date=post_date)
         if not assessment["checkable"] or not assessment["claims"]:
             msg = no_claims_msg(assessment["reason"], source_type, assessment["suggestions"])
             # Still run AI/deepfake detection if we have an image from the post
