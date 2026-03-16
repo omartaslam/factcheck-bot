@@ -155,6 +155,7 @@ HIVE_API_KEY         = os.getenv("HIVE_API_KEY",    "")   # Hive Moderation — 
 # Real-time search APIs
 TAVILY_API_KEY       = os.getenv("TAVILY_API_KEY", "")   # tavily.com — free 1000/month, AI-optimised
 BRAVE_API_KEY        = os.getenv("BRAVE_API_KEY", "")    # TODO: Brave Search API — 2000/month when free tier available
+PERPLEXITY_API_KEY   = os.getenv("PERPLEXITY_API_KEY", "")  # perplexity.ai Sonar — real-time web search AI, bridges Claude's Aug-2025 knowledge cutoff
 # Custom sources — add any source without code changes
 # Format in Railway: "Name|https://site.com/search?q={q},Name2|https://site2.com/?s={q}"
 # Use {q} for URL-encoded query, {qt} for URL-encoded short query
@@ -1449,8 +1450,9 @@ def enabled_sources():
     if SRC_RAPPLER:         sources.append("Rappler")
     if SRC_CHEQUEADO:       sources.append("Chequeado")
     if SRC_LOGICALLY:       sources.append("Logically Facts")
-    if TAVILY_API_KEY:      sources.append("Tavily Search (live)")
-    if BRAVE_API_KEY:       sources.append("Brave Search (live)")
+    if TAVILY_API_KEY:        sources.append("Tavily Search (live)")
+    if BRAVE_API_KEY:         sources.append("Brave Search (live)")
+    if PERPLEXITY_API_KEY:    sources.append("Perplexity Sonar (live)")
     for name, _ in parse_custom_sources():
         sources.append(f"{name} (custom)")
     return sources
@@ -1626,6 +1628,49 @@ def brave_search(query, count=5):
         return results
     except Exception as e:
         log.warning("Brave Search failed: %s", e)
+        return []
+
+
+def perplexity_search(query, post_date=None):
+    """Query Perplexity Sonar (real-time web search AI) for current-events grounding.
+    Bridges Claude's Aug-2025 knowledge cutoff. Returns list of (name, snippet) tuples.
+    Activate via PERPLEXITY_API_KEY env var (perplexity.ai).
+    Model: sonar — live web search + synthesis with citations. ~$0.005/query."""
+    if not PERPLEXITY_API_KEY:
+        return []
+    try:
+        import datetime as _dt_px
+        today = _dt_px.date.today().isoformat()
+        year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_px.date.today().year)
+        dated_query = query if year in query else f"{query} {year}"
+        prompt = (
+            f"Today is {today}. You are a fact-checker with live web access. "
+            f"What do the most recent sources say about the following claim? "
+            f"Be specific — cite publication names, dates, and direct quotes where possible. "
+            f"Focus on facts from {year} onwards.\n\nCLAIM: {dated_query[:400]}"
+        )
+        r = requests.post(
+            "https://api.perplexity.ai/chat/completions",
+            headers={"Authorization": f"Bearer {PERPLEXITY_API_KEY}", "Content-Type": "application/json"},
+            json={"model": "sonar", "messages": [{"role": "user", "content": prompt}],
+                  "max_tokens": 600, "temperature": 0.1},
+            timeout=20
+        )
+        r.raise_for_status()
+        data = r.json()
+        answer = data.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+        citations = data.get("citations", [])
+        results = []
+        if answer:
+            results.append(("Perplexity Sonar (live)", answer[:800]))
+        # Add individual cited sources with their real publication names
+        for cite_url in citations[:5]:
+            src_name = _url_to_source_name(cite_url)
+            results.append((src_name, f"(cited by Perplexity) {cite_url}"))
+        log.info(f"Perplexity: {len(answer)} chars, {len(citations)} citations")
+        return results
+    except Exception as e:
+        log.warning(f"Perplexity search failed: {e}")
         return []
 
 
@@ -1835,6 +1880,9 @@ def scrape_sites(query, post_date=None):
             results.append(f"[{name}]: {snippet}")
     if BRAVE_API_KEY:
         for name, snippet in brave_search(query_flat):
+            results.append(f"[{name}]: {snippet}")
+    if PERPLEXITY_API_KEY:
+        for name, snippet in perplexity_search(query_flat, post_date=post_date):
             results.append(f"[{name}]: {snippet}")
     # General Nitter search — corroborate claim across Twitter/X posts
     try:
@@ -2151,6 +2199,10 @@ _SOURCE_PERSPECTIVE = {
     "Palestine Solidarity":   "INDEPENDENT / ALTERNATIVE",
     "Double Down News":       "INDEPENDENT / ALTERNATIVE",
     "Double Down News (YouTube)": "INDEPENDENT / ALTERNATIVE",
+    # Real-time search AI
+    "Perplexity Sonar (live)":    "LIVE WEB SEARCH",
+    "Tavily Search":              "LIVE WEB SEARCH",
+    "Tavily Summary":             "LIVE WEB SEARCH",
     # Western mainstream — general news
     "New York Times":      "WESTERN MAINSTREAM",
     "Washington Post":     "WESTERN MAINSTREAM",
@@ -2188,6 +2240,7 @@ _SOURCE_PERSPECTIVE = {
 }
 
 _PERSPECTIVE_ORDER = [
+    "LIVE WEB SEARCH",
     "FACT-CHECK ORGS",
     "HUMAN RIGHTS & INTL LAW",
     "REGIONAL / MIDDLE EAST",
