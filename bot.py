@@ -2172,6 +2172,9 @@ def assess_content_claims(text, source_type, post_date=None):
         "- Do NOT infer or add context not directly stated (e.g. do not add 'Mark Carney is PM of Canada' if that wasn't the claim made)\n"
         "- Include ALL distinct assertions — do not merge separate claims into one\n"
         "- Include claims about identity, history, events, quotes, and relationships\n"
+        "- Treat factual QUESTIONS as implicit claims to verify: convert them to assertions. "
+        "e.g. 'Has Iran asked for a ceasefire?' → 'Iran has asked for a ceasefire'. "
+        "'Did Bardem speak at the Oscars?' → 'Javier Bardem spoke at the Oscars'.\n"
         "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n"
         "- NEVER extract metadata claims. The day/time it was said, which outlet reported it, and where it was published are NOT claims — they are reporting context. "
         "BAD (do not extract): 'Bessent made this statement on Monday', 'Reuters reported this on March 15', 'Bessent spoke at a press conference on Tuesday'. "
@@ -3779,6 +3782,9 @@ def process(from_num, message):
             send(from_num, msg)
             return
         claims = assessment["claims"]
+        # Always add video authenticity check as the last claim for video content
+        if source_type == "video" and not any("authentic" in c.lower() or "ai-generated" in c.lower() or "real" in c.lower() for c in claims):
+            claims = list(claims) + ["This video is real and not AI-generated or manipulated"]
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims,
