@@ -2325,6 +2325,7 @@ def _parse_json_result(text):
 ANALYSE_JSON_SCHEMA = (
     '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
     '"lenz_score":7,'
+    '"rating_reason":"1 sentence explaining specifically why this rating was chosen over a higher or lower one — e.g. which element could not be confirmed, or what makes it not fully true/false. Empty string if rating is TRUE or FALSE.",'
     '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default.",'
     '"key_facts":["fact1","fact2","fact3","fact4"],'
     '"perspectives":{'
@@ -2932,34 +2933,44 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
                         "Snopes — https://www.snopes.com", "FullFact — https://fullfact.org"],
             "confidence": "LOW", "confidence_reason": "AI provider error"}
 
+def _trunc(text, limit):
+    """Truncate at word boundary, never mid-sentence. Adds ellipsis only if actually cut."""
+    if not text or len(text) <= limit:
+        return text
+    cut = text[:limit].rsplit(' ', 1)[0].rstrip('.,;:—- ')
+    return cut + '…'
+
 def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
     badge = badge_map.get(rating, f"VERDICT: {rating}")
-    lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),"","*CLAIM*",f"_{claim[:280]}_","","*ANALYSIS*",a.get("verdict",""),""]
+    lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),""]
+    if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
+        lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
+    lines += ["*CLAIM*",f"_{_trunc(claim, 280)}_","","*ANALYSIS*",a.get("verdict",""),""]
     if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {f}" for i,f in enumerate(a["key_facts"][:4],1)] + [""]
     # Perspectives — show where sources diverge by geopolitical view
     persp = a.get("perspectives", {})
     if isinstance(persp, dict) and any(persp.values()):
         lines += ["*PERSPECTIVES*"]
         if persp.get("western_mainstream"):
-            lines += [f"🌐 _Western:_ {persp['western_mainstream'][:180]}"]
+            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 220)}"]
         if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional/Arabic:_ {persp['regional_independent'][:180]}"]
+            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 220)}"]
         if persp.get("latin_american") and persp["latin_american"] != "No coverage found":
-            lines += [f"🌎 _Latin American:_ {persp['latin_american'][:180]}"]
+            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 220)}"]
         if persp.get("consensus"):
-            lines += [f"⚖️ _Consensus:_ {persp['consensus'][:150]}"]
+            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 200)}"]
         lines += [""]
     # Contested language
     cl = a.get("contested_language", [])
     if cl and isinstance(cl, list):
-        lines += ["*CONTESTED LANGUAGE*"] + [f"• {t[:160]}" for t in cl[:2]] + [""]
-    if a.get("context"): lines += ["*BACKGROUND*", a["context"][:280], ""]
-    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:2]] + [""]
-    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{a['who_benefits'][:200]}_", ""]
-    if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"][:150], ""]
+        lines += ["*CONTESTED LANGUAGE*"] + [f"• {_trunc(t, 200)}" for t in cl[:2]] + [""]
+    if a.get("context"): lines += ["*BACKGROUND*", _trunc(a["context"], 350), ""]
+    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {_trunc(f, 220)}" for f in a["red_flags"][:2]] + [""]
+    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{_trunc(a['who_benefits'], 250)}_", ""]
+    if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"], 200), ""]
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
         "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
@@ -2973,7 +2984,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         lines += [f"*TRUTH SCORE*  `░░░░░░░░░░` ?/10  _(insufficient evidence to score)_", ""]
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
-    lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')[:200]}_",""]
+    lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{_trunc(a.get('confidence_reason',''), 250)}_",""]
     # Show what Claude actually cited — these vary per claim based on evidence found.
     # Fall back to scraped source names only if Claude returned no citations.
     if a.get("sources"):
