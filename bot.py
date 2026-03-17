@@ -3545,11 +3545,24 @@ def process(from_num, message):
                         # ── STEP 4: Tavily article lookup when post text is short ──
                         # FB og:description is capped at ~150 chars; yt-dlp often fails
                         # on share URLs. Use Tavily to find and fetch the source article.
+                        # When OCR succeeded, the image often contains the article headline —
+                        # augment the query with that to target the right article.
                         post_text_part = next((p for p in parts if p.startswith("Post text:")), "")
                         post_text_len = len(post_text_part.replace("Post text: ", "", 1))
                         if post_text_len < 300 and "Article text:" not in "\n".join(parts) and TAVILY_API_KEY:
                             try:
                                 search_query = post_text_part.replace("Post text: ", "", 1)[:200]
+                                # Augment with OCR headline when post text is truncated.
+                                # The post image often shows the article headline/outlet name
+                                # which narrows the search to the right source article.
+                                ocr_part = next((p for p in parts if p.startswith("Image text/content:")), "")
+                                if ocr_part:
+                                    ocr_text = ocr_part.replace("Image text/content:\n", "", 1).strip()
+                                    # First non-empty line is usually the headline or outlet name
+                                    ocr_headline = next((ln.strip() for ln in ocr_text.split("\n") if ln.strip()), "")[:150]
+                                    if ocr_headline and ocr_headline.lower() not in search_query.lower():
+                                        search_query = f"{search_query} {ocr_headline}".strip()
+                                        log.info(f"Tavily query augmented with OCR headline: {search_query[:200]}")
                                 tv = requests.post("https://api.tavily.com/search",
                                     json={"api_key": TAVILY_API_KEY, "query": search_query,
                                           "search_depth": "basic", "max_results": 3,
