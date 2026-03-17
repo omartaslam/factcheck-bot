@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-16 (session 3)
+> **Last updated:** 2026-03-17 (session 4)
 > **Version:** v3.3 BETA
-> **Status:** Live on Railway — beta-ready, quality improvements shipped, real-time search upgraded
+> **Status:** Live on Railway — beta-ready, quality improvements shipped, UNVERIFIABLE root fix deployed
 
 ---
 
@@ -118,6 +118,7 @@ All logic is in `bot.py`. There is no separate config file — all configuration
 | `PROFIT_MARGIN` | `2.0` | Cost multiplier for billing (2.0 = 100% margin) |
 | `APP_BASE_URL` | `https://web-production-1f0a4.up.railway.app` | Used for webhook URLs |
 | `BETA_MODE` | `true` | Shows BETA label in report footer, beta welcome message |
+| `MAX_VIDEO_MINUTES` | `10` | Max video duration — rejects longer videos with friendly message |
 
 ### Real-time Search
 
@@ -240,42 +241,83 @@ if body_upper in ("HELP", "?", "START", "INFO"):
 
 ### Incoming message → claim extraction → confirmation
 
-```python
-1. Receive WhatsApp webhook → extract message type and content
-2. For video URLs: download via vikas5914 RapidAPI → extract frames (cv2/ffmpeg) + audio (yt-dlp + Whisper)
-3. For images: OCR via Claude Haiku → text
-4. For audio: transcribe via Whisper → text
-5. assess_content_claims(text, source_type)  # Sonnet call
-   → returns {claims, checkable, reason, suggestions}
-6. If not checkable: send no_claims_msg() → done
-7. If checkable: store claims in pending{from_num} dict, send claims_confirm_msg()
-8. User replies "Y" → run_check() with pre_claims=stored_claims
-9. User replies "N" → cancel
 ```
+1. Receive WhatsApp webhook POST /webhook → process() handler
+2. Media download: WhatsApp API → bytes (image/audio/video/document)
+3. Content extraction:
+   - Image/document → Claude Haiku OCR → text
+   - Audio/video     → OpenAI Whisper transcription → text
+   - Video URL       → _get_video_duration() pre-check → yt-dlp download
+                       → cv2/ffmpeg frames + Whisper transcript
+   - Article URL     → requests HTML scrape → text
+   - FB/IG post URL  → yt-dlp skip_download + OG scrape → post text + image
+   - Twitter/X URL   → fxtwitter API → post text
+4. assess_content_claims(text, source_type) — Sonnet call
+   → returns {claims: [...], checkable: bool, reason: str, suggestions: [...]}
+5. If not checkable: send no_claims_msg() → done
+6. Store in pending{wa_id} dict, send claims_confirm_msg() to user
+7. User replies with claim numbers (e.g. "1,3"), "ALL", or "N"
+8. On selection: pop from pending{}, spawn background thread → run_check()
+```
+
+### pending{} dict — the confirmation state machine
+
+This is in-memory (not persisted). Key = WhatsApp `wa_id` (phone number without `+`).
+
+```python
+pending[wa_id] = {
+    "claims":      [...],        # full list of extracted claims
+    "query":       "...",        # full extracted content (source article, transcript, etc.)
+    "source_type": "url",        # text / image / audio / video / url / document
+    "img_bytes":   b"...",       # image bytes for OSINT (or None)
+    "source_url":  "https://...",# original URL for OSINT Wayback check (or "")
+    "cost":        0.0004,       # estimated cost per claim in dollars
+    "billing_type":"free",       # free / credited / subscribed
+    "post_date":   "2026-01-15", # post date if known (for staleness detection)
+    "msg_id":      "wamid.xxx",  # WhatsApp message ID of user's original message (for reactions)
+}
+```
+
+User reply parsing:
+- `"Y"` / `"YES"` / `"ALL"` → check all claims
+- `"1"` / `"1,2"` / `"1 3"` → check selected claim numbers
+- `"N"` / `"NO"` → cancel
+
+### Two LLM calls for claim extraction
+
+**Important:** There are TWO separate claim extraction paths depending on source type:
+
+| Function | Used for | Model |
+|---|---|---|
+| `assess_content_claims(text, source_type)` | All content types — initial claim extraction before user confirmation | Sonnet |
+| `extract_claims(text, source_type)` | Called inside `run_check()` when `pre_claims` is not provided — fallback path only | Sonnet |
+
+In normal flow `pre_claims` is always provided (from `pending{}`) so `extract_claims` is rarely called. Both functions must be kept in sync — any prompt rule change (e.g. metadata claim exclusion) must be applied to **both**.
 
 ### run_check() — the fact-check engine
 
-```python
-# OSINT starts immediately in background thread
-osint_future = ThreadPoolExecutor.submit(run_osint, image_bytes, source_url)
-
-# Source scraping runs concurrently (9-15 seconds)
-for each claim:
-    google_results = google_fc(claim)          # Google Fact Check API
-    scraped_content = scrape_sites(claim)      # 65 sources, parallel
-    tavily_results = tavily_search(claim)      # Real-time Tavily search
-
-# Collect OSINT (usually done by this point — no added latency)
-osint = osint_future.result(timeout=25)
-
-verdict = claude_analyse(claim, evidence, osint)   # Sonnet with OSINT context
-send verdict to user  # includes OSINT section in report
 ```
+Runs in a background thread (threading.Thread). Returns nothing — sends WhatsApp messages directly.
+
+1. Send status: "⚙️ Cross-referencing N sources: ..." (+ OSINT line if applicable)
+2. Start OSINT in nested thread: run_osint(image_bytes, source_url) via ThreadPoolExecutor
+3. For each selected claim:
+   a. google_fc(claim)        → Google Fact Check API
+   b. scrape_sites(claim)     → parallel scrape of up to 65 sources (9-15s)
+   c. tavily_search(claim)    → Tavily real-time search
+   d. osint = osint_future.result(timeout=25)  # collected once, reused for all claims
+   e. claude_analyse(claim, google, scraped, source_type,
+                     post_date, osint, source_content)  → Sonnet verdict
+   f. send verdict to user
+4. After all claims: send_reaction(from_num, msg_id, verdict_emoji)
+```
+
+**Critical — source_content parameter:** `claude_analyse()` receives `source_content` (= the full extracted article/transcript from Step 4 of the message flow). This is the PRIMARY evidence for URL and video fact-checks. Without it, Claude only sees `scrape_sites` output which is ~95% 403/404/timeout — causing systematic UNVERIFIABLE verdicts. Do not remove this.
 
 ### Free check billing flow
 
 ```python
-# After Y confirmation:
+# After selection confirmed:
 "✓ Free check — 3 free checks remaining after this"
 # When last free check:
 "ℹ️ This is your last free check. Reply HELP for info on continuing after this."
@@ -341,7 +383,10 @@ Facebook/Instagram Reels and other social video URLs follow this chain:
 ```
 URL detected as video (video_path_hints: watch/video/reel/shorts/clip/share/v/share/r/)
     ↓
-vikas5914 RapidAPI → download video bytes
+_get_video_duration() → pre-check duration via yt-dlp metadata (no download)
+    → if > MAX_VIDEO_MINUTES (default 10): reject with friendly message, zero cost
+    ↓
+vikas5914 RapidAPI → download video bytes (max 30MB)
     ↓
 cv2 frame extraction → fails on fragmented MP4 (moov atom not found)
     ↓ (fallback)
@@ -356,6 +401,8 @@ _fb_ig_post_scrape() → OG metadata from Facebook externalhit headers
     ↓
 assess_content_claims(text) → Sonnet claim extraction
 ```
+
+**Video length limit:** `MAX_VIDEO_MINUTES` env var (default 10). Pre-checks via yt-dlp metadata before any download. FB/IG path silently skips video and falls through to text/image scrape. `_ytdlp_audio_bytes` also capped at 30MB.
 
 **Fragmented MP4 fix:** `_repair_mp4()` remuxes DASH/streaming downloads (which produce "moov atom not found") via `ffmpeg -c copy -movflags faststart`. Called automatically before audio extraction and frame extraction.
 
@@ -377,7 +424,71 @@ Uses `claude-sonnet-4-6`.
 
 ---
 
-## 11. Database Schema (SQLite)
+## 11. Threading Model
+
+```
+WhatsApp webhook POST (Flask worker thread)
+    ↓
+process() — runs synchronously, returns 200 OK immediately
+    ↓
+If new content → assess_content_claims() → store in pending{} → send claims_confirm_msg()
+    returns 200 OK
+
+If Y/selection reply → pop from pending{} →
+    threading.Thread(target=run_check, ...).start()
+    returns 200 OK immediately (WhatsApp requires <5s response)
+        ↓
+    run_check() [background thread — runs for 15-45 seconds]
+        ↓
+        ThreadPoolExecutor(max_workers=1).submit(run_osint, ...)  [nested background thread]
+        ↓
+        scrape_sites() [parallel requests inside run_check thread]
+        ↓
+        osint_future.result(timeout=25)  [waits for OSINT thread]
+        ↓
+        claude_analyse() × N claims  [sequential]
+        ↓
+        send_reaction()  [after all claims done]
+```
+
+**Important:** `pending{}` is a plain dict — not thread-safe for concurrent access but works in practice because each user key is independent. Do not replace with a shared cache without adding locking.
+
+**Gunicorn workers:** 4 workers. Each handles its own `pending{}` dict in memory. If a user sends content on worker A and replies on worker B, the pending state is lost → user gets "no pending check" error. This is a known limitation — acceptable for current scale. Fix by moving `pending{}` to Redis/DB if needed.
+
+---
+
+## 12. Known Issues & Gotchas
+
+### scrape_sites() returns mostly nothing
+~95% of the 65 configured sources return 403/404/timeout when scraped. This is expected — most news sites block scrapers. This is **not a bug to fix**. The real evidence comes from `source_content` (the extracted article/transcript) and `tavily_search()`. Don't remove sources from the list — the few that do respond (some fact-check orgs) are valuable.
+
+### Emoji reactions appear in Fred's chat only
+WhatsApp Business Cloud API `type: "reaction"` reacts to a message **in the conversation Fred is part of** — i.e. the user's chat with Fred. It cannot reach back into a group chat or another conversation where the user originally saw the post. This is a WhatsApp API limitation, not a code issue.
+
+### FB/IG cookies expire ~2026-03-30
+`FB_COOKIES_B64` and `IG_COOKIES_B64` are base64-encoded Netscape-format cookie files from a logged-in browser session. They expire periodically. When expired, FB/IG video downloads and post scrapes degrade silently. Refresh by:
+1. Log into Facebook/Instagram in browser
+2. Export cookies via "EditThisCookie" or similar extension → Netscape format
+3. `base64 -w0 cookies.txt` → paste value into Railway env var
+
+### pending{} is lost on redeploy
+Every Railway redeploy wipes in-memory state. Any user mid-flow (waiting at claim confirmation) will get "no pending check" on their next reply. Acceptable at current scale.
+
+### Video authenticity claim + OSINT
+The auto-injected claim "Is this video real and not AI-generated or manipulated?" relies on Hive AI (`HIVE_API_KEY`) for its evidence. If Hive key is missing/expired, this claim will return UNVERIFIABLE. Check `HIVE_API_KEY` is set in Railway.
+
+### Max 6 claims but source_content truncated at 3000 chars
+`claude_analyse()` truncates `source_content` to 3000 characters. For long articles this means Claude only sees the opening. Increase if needed — tradeoff is token cost.
+
+### music.youtube.com vs youtube.com
+yt-dlp supports `music.youtube.com` — treated identically to `youtube.com`. The `MAX_VIDEO_MINUTES` duration pre-check applies to both.
+
+### Two-step deploy (git push alone is not always enough)
+Railway auto-deploys on push to `main`. However, env var changes staged in the Railway dashboard are only applied on the next deploy. If you've changed env vars and pushed code, the vars may not be live until a fresh deploy is triggered. See Section 22 for the trigger command.
+
+---
+
+## 14. Database Schema (SQLite)
 
 Located at `/data/factcheck.db` (Railway Volume — persists across redeploys).
 
@@ -391,7 +502,7 @@ Billing types: `free`, `credited`, `subscribed`
 
 ---
 
-## 12. Billing / Monetisation
+## 15. Billing / Monetisation
 
 **Current state:** `FREE_CHECKS_LIMIT=9999` — effectively unlimited for testing.
 
@@ -410,7 +521,7 @@ Billing types: `free`, `credited`, `subscribed`
 
 ---
 
-## 13. Multi-Perspective / Bias-Aware Fact-Checking
+## 16. Multi-Perspective / Bias-Aware Fact-Checking
 
 Key design goal: remove Western media bias and serve investigative journalists, activists, and Muslim/Middle Eastern communities.
 
@@ -431,7 +542,7 @@ Evidence fed to Claude is grouped into labelled categories:
 
 ---
 
-## 14. Beta Launch Features (added 2026-03-16)
+## 17. Beta Launch Features (added 2026-03-16)
 
 ### Welcome message
 First-time users receive a welcome message that:
@@ -453,7 +564,7 @@ When user is on their last free check:
 
 ---
 
-## 15. Multi-Platform Support
+## 18. Multi-Platform Support
 
 Code is implemented for all platforms but most are dormant pending credentials:
 
@@ -473,7 +584,7 @@ Code is implemented for all platforms but most are dormant pending credentials:
 
 ---
 
-## 16. Admin Features
+## 19. Admin Features
 
 - **Admin alerts:** If Anthropic/OpenAI API credits run out, alert WhatsApp message goes to `ADMIN_NUMBER` (throttled 1/hour per provider)
 - **Token auto-refresh:** WhatsApp token refreshed every 50 days via APScheduler (requires `FB_APP_ID`, `FB_APP_SECRET`)
@@ -481,7 +592,7 @@ Code is implemented for all platforms but most are dormant pending credentials:
 
 ---
 
-## 17. Test Suite (test_comprehensive.py)
+## 20. Test Suite (test_comprehensive.py)
 
 Added 2026-03-16. Located at `/home/anon/whatsapp-factcheck/test_comprehensive.py`.
 
@@ -516,7 +627,7 @@ python3 test_comprehensive.py --list
 
 ---
 
-## 18. Post Date & Staleness Detection
+## 21. Post Date & Staleness Detection
 
 Post date extracted from:
 - `yt-dlp` video downloads → `upload_date` field
@@ -527,7 +638,7 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 
 ---
 
-## 19. Outstanding Tasks (priority order)
+## 22. Outstanding Tasks (priority order)
 
 ### Immediate
 1. **Set FREE_CHECKS_LIMIT for beta** — change from 9999 to 5-10 in Railway when ready to open to testers
@@ -535,11 +646,16 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 3. **Stripe setup** — create Payment Links, set all Stripe env vars, reset `FREE_CHECKS_LIMIT=3` for launch
 
 ### High Priority
-4. **Claim selection** — let users pick which claims to verify instead of Y/N for all. Free: 1 at a time; paid: multiple. Reply with claim number(s).
-5. **User feedback system** — reply FEEDBACK or 👍/👎 after a check. Store in DB. Use patterns to refine prompts.
-6. **WhatsApp message reactions + threaded replies** — react to user's original message with verdict emoji (✅❌⚠️📌❓), send full report as reply-to. WhatsApp Cloud API supports both.
-7. **Test PERSPECTIVES + CONTESTED LANGUAGE** — send real Middle East URLs to live bot, verify output
-8. **Low credit / API key alert to user** — notify user when free checks exhausted; admin alert when Anthropic/OpenAI credits low
+4. **User feedback system** — reply FEEDBACK or 👍/👎 after a check. Store in DB. Use patterns to refine prompts.
+5. **Low credit / API key alert to user** — notify user when free checks exhausted; admin alert when Anthropic/OpenAI credits low
+6. **Test PERSPECTIVES + CONTESTED LANGUAGE** — send real Middle East URLs to live bot, verify output
+
+### Done this session ✅
+- ~~Claim selection~~ — users pick claims by number (1, 2, 3 or ALL) ✅
+- ~~WhatsApp message reactions~~ — verdict emoji reacted to sender's message ✅
+- ~~Video authenticity claim~~ — auto-injected for all video fact-checks ✅
+- ~~Video length limit~~ — rejects videos over MAX_VIDEO_MINUTES (default 10) ✅
+- ~~UNVERIFIABLE root fix~~ — source article now passed as primary evidence to claude_analyse ✅
 
 ### Medium Priority
 9. **TikTok text overlay OCR** — switch `analyze_video_frames` to Sonnet or add pytesseract for styled text overlays
@@ -554,7 +670,7 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 
 ---
 
-## 20. How to Continue Development
+## 23. How to Continue Development
 
 ### Local setup
 
@@ -607,9 +723,19 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 
 ---
 
-## 21. Recent Git History
+## 24. Recent Git History
 
 ```
+7983ba8  feat: MAX_VIDEO_MINUTES limit (default 10) — pre-check duration before download
+5df8f4c  fix: inject video authenticity claim before 0-claims gate
+3f98823  feat: video questions treated as claims; authenticity claim auto-injected
+aa98c6e  feat: emoji reactions on sender's message (verdict summary emoji)
+d127a5a  ROOT FIX: pass source article to claude_analyse as primary evidence for URL fact-checks
+7a49c46  feat: claim selection + ranked claims (reply 1,2,3 or ALL)
+9d871d9  fix: truth score bar — green fills left (🟩🟩🟩🟥🟥 for MOSTLY TRUE)
+95920bc  fix: strip day/time metadata from claims — concrete bad/good examples
+adef79f  fix: combine status messages — 4 bubbles → 2
+0ec3115  fix: augment Tavily query with OCR headline when FB post text truncated
 c9ceb4d  fix: transparent status messages for FB/IG post text and image extraction
 8afe851  fix: never say 'Video found' until frames/audio confirmed
 b9d8efc  feat: add Perplexity Sonar real-time search (activate with PERPLEXITY_API_KEY)
@@ -624,7 +750,7 @@ a799382  feat: Google Vision web detection as primary reverse image search
 d3a66bd  feat: beta launch — welcome message, HELP command, BETA label, last-check warning
 ```
 
-## 22. Deploy Procedure
+## 25. Deploy Procedure
 
 Always do **both** steps:
 ```bash
