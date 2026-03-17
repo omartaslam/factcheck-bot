@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-17 (session 4)
-> **Version:** v3.3 BETA
-> **Status:** Live on Railway — beta-ready, quality improvements shipped, UNVERIFIABLE root fix deployed
+> **Last updated:** 2026-03-17 (session 5)
+> **Version:** v3.4 BETA
+> **Status:** Live on Railway — multi-perspective balanced verdicts verified working on Iran/US war story
 
 ---
 
@@ -521,14 +521,33 @@ Billing types: `free`, `credited`, `subscribed`
 
 ---
 
-## 16. Multi-Perspective / Bias-Aware Fact-Checking
+## 16. Multi-Perspective / Bias-Aware Fact-Checking ✅ Verified
 
 Key design goal: remove Western media bias and serve investigative journalists, activists, and Muslim/Middle Eastern communities.
+
+### Six parallel real-time searches per claim (session 5 — verified working)
+
+| Search | Language | Sources |
+|---|---|---|
+| Tavily main | English | General news, Western coverage |
+| Tavily regional | English | Al Jazeera EN, MEE, TRT World, Press TV, Arab News, Dawn |
+| Tavily Arabic | Arabic | Arabic-language results (MENA topics only) |
+| Brave English | English | Broad web search |
+| Brave Arabic | Arabic | `search_lang=ar, country=ae` — MENA topics only via `_is_mena_topic()` |
+| Tavily social | English | Twitter/Reddit/trending discourse |
+
+All six run in parallel — no added latency. `_is_mena_topic()` keyword list gates Arabic searches.
+
+### Pro/con debate (reframed session 5)
+
+- **Pro:** Western mainstream perspective (BBC, Reuters, AP, CNN, NYT, official government statements)
+- **Con:** Regional/Global South/affected community (Al Jazeera, MEE, regional outlets, intl law, affected people)
+- Claude Sonnet synthesises both into balanced verdict
 
 ### Source grouping by perspective
 
 Evidence fed to Claude is grouped into labelled categories:
-- `LIVE WEB SEARCH` — Perplexity Sonar, Tavily Summary, Tavily Search (shown first — most current)
+- `LIVE WEB SEARCH` — Perplexity Sonar, Tavily Summary, Tavily Search, Regional, Arabic, Social/Trending
 - `FACT-CHECK ORGS` — Snopes, FullFact, PolitiFact, AFP, Misbar, Africa Check, Alt News, Rappler, etc.
 - `HUMAN RIGHTS & INTL LAW` — HRW, Amnesty, B'Tselem, UN News, Bellingcat
 - `REGIONAL / MIDDLE EAST` — Al Jazeera, MEE, MEMO, 972 Magazine, Electronic Intifada, Mondoweiss, Anadolu, Al-Monitor, DAWN, Arab News, Haaretz, Yeni Safak
