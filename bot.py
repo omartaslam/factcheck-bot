@@ -1900,6 +1900,110 @@ def tavily_search(query, max_results=8, post_date=None):
         log.warning("Tavily Search failed: %s", e)
         return []
 
+_MENA_KEYWORDS = {
+    "iran","israel","palestine","palestinian","gaza","lebanon","syria","iraq","yemen",
+    "saudi","egypt","jordan","turkey","hezbollah","hamas","idf","west bank","strait of hormuz",
+    "houthi","netanyahu","sinwar","nasrallah","khamenei","irgc","mossad","cia","nsa",
+    "occupation","intifada","settler","ceasefire","genocide","apartheid","zionist",
+    "arab","muslim","islamic","sunni","shia","mosque","quran","prophet","allah",
+    "iran nuclear","oil tanker","rafah","jerusalem","al-quds","tel aviv","beirut",
+    "damascus","tehran","riyadh","cairo","baghdad","sanaa","ramallah","nablus",
+    "african union","brics","global south","colonialism","nato","russia","ukraine",
+}
+
+def _is_mena_topic(text):
+    t = text.lower()
+    return any(kw in t for kw in _MENA_KEYWORDS)
+
+
+def tavily_search_regional(query, post_date=None):
+    """Second Tavily pass targeting regional/Global South perspectives.
+
+    Always queries TRT World, Al Jazeera English, Press TV scope.
+    For MENA topics, also appends Arabic context terms to surface Arabic sources.
+    Returns list of (name, snippet) tuples labelled as Regional.
+    """
+    if not TAVILY_API_KEY:
+        return []
+    import datetime as _dt_reg
+    year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_reg.date.today().year)
+    results = []
+    try:
+        # Scoped query — regional outlets
+        regional_domains = "aljazeera.net OR middleeasteye.net OR presstv.ir OR arabnews.com OR trtworld.com OR africanews.com OR dawn.com OR thehindu.com OR rt.com"
+        scoped = f'({query}) site:{" OR site:".join(regional_domains.replace(" OR site:","").split(" OR "))} {year}'
+        # Simpler: just append regional context
+        regional_query = f"{query} {year} Al Jazeera OR Middle East Eye OR TRT World OR Press TV OR Arab News OR Dawn"
+        r = requests.post(
+            "https://api.tavily.com/search",
+            json={"api_key": TAVILY_API_KEY, "query": regional_query[:400], "max_results": 5,
+                  "search_depth": "advanced", "include_answer": False},
+            timeout=15
+        )
+        r.raise_for_status()
+        for item in r.json().get("results", []):
+            url = item.get("url", "")
+            source_name = _url_to_source_name(url)
+            snippet = f"{item.get('title','')} — {item.get('content','')} ({url})"
+            results.append((f"{source_name} (Regional)", snippet[:500]))
+    except Exception as e:
+        log.warning("Tavily regional search failed: %s", e)
+
+    # For MENA topics: also run Arabic-context query
+    if _is_mena_topic(query):
+        try:
+            arabic_query = f"{query} {year} الشرق الأوسط OR فلسطين OR إيران OR عربي"
+            r2 = requests.post(
+                "https://api.tavily.com/search",
+                json={"api_key": TAVILY_API_KEY, "query": arabic_query[:400], "max_results": 4,
+                      "search_depth": "advanced", "include_answer": False},
+                timeout=15
+            )
+            r2.raise_for_status()
+            for item in r2.json().get("results", []):
+                url = item.get("url", "")
+                source_name = _url_to_source_name(url)
+                snippet = f"{item.get('title','')} — {item.get('content','')} ({url})"
+                results.append((f"{source_name} (Arabic/Regional)", snippet[:500]))
+        except Exception as e:
+            log.warning("Tavily Arabic search failed: %s", e)
+
+    log.info(f"Tavily regional: {len(results)} results (MENA={_is_mena_topic(query)})")
+    return results
+
+
+def tavily_search_social(query, post_date=None):
+    """Tavily pass targeting social media discourse and trending reactions.
+
+    Surfaces how claims are circulating on Twitter/X, Reddit, and public forums.
+    Returns list of (name, snippet) tuples labelled as Social/Trending.
+    """
+    if not TAVILY_API_KEY:
+        return []
+    import datetime as _dt_soc
+    year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_soc.date.today().year)
+    results = []
+    try:
+        social_query = f"{query} {year} twitter OR reddit OR trending OR viral OR reaction"
+        r = requests.post(
+            "https://api.tavily.com/search",
+            json={"api_key": TAVILY_API_KEY, "query": social_query[:400], "max_results": 5,
+                  "search_depth": "basic", "include_answer": False},
+            timeout=12
+        )
+        r.raise_for_status()
+        for item in r.json().get("results", []):
+            url = item.get("url", "")
+            source_name = _url_to_source_name(url)
+            label = "Reddit" if "reddit.com" in url else ("Twitter/X" if "twitter.com" in url or "x.com" in url else f"{source_name} (Social/Trending)")
+            snippet = f"{item.get('title','')} — {item.get('content','')} ({url})"
+            results.append((label, snippet[:500]))
+    except Exception as e:
+        log.warning("Tavily social search failed: %s", e)
+    log.info(f"Tavily social: {len(results)} results")
+    return results
+
+
 def scrape_sites(query, post_date=None):
     # Collapse newlines to spaces so search URLs don't contain %0A (causes 403/404)
     query_flat = " ".join(query.split())
@@ -2012,19 +2116,33 @@ def scrape_sites(query, post_date=None):
             except Exception:
                 pass
 
-    # Real-time web search
-    if TAVILY_API_KEY:
-        for name, snippet in tavily_search(query_flat, post_date=post_date):
-            results.append(f"[{name}]: {snippet}")
-    if BRAVE_API_KEY:
-        for name, snippet in brave_search(query_flat):
-            results.append(f"[{name}]: {snippet}")
-    if PERPLEXITY_API_KEY:
-        for name, snippet in perplexity_search(query_flat, post_date=post_date):
-            results.append(f"[{name}]: {snippet}")
-    if YOUTUBE_API_KEY:
-        for name, snippet in youtube_search(query_flat):
-            results.append(f"[{name}]: {snippet}")
+    # Real-time web search — main + regional + social in parallel
+    with ThreadPoolExecutor(max_workers=5) as _rtex:
+        _ft_main    = _rtex.submit(tavily_search, query_flat, 8, post_date) if TAVILY_API_KEY else None
+        _ft_regional = _rtex.submit(tavily_search_regional, query_flat, post_date) if TAVILY_API_KEY else None
+        _ft_social   = _rtex.submit(tavily_search_social, query_flat, post_date) if TAVILY_API_KEY else None
+        _ft_brave    = _rtex.submit(brave_search, query_flat) if BRAVE_API_KEY else None
+        _ft_perp     = _rtex.submit(perplexity_search, query_flat, post_date) if PERPLEXITY_API_KEY else None
+        _ft_yt       = _rtex.submit(youtube_search, query_flat) if YOUTUBE_API_KEY else None
+
+        if _ft_main:
+            for name, snippet in (_ft_main.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_regional:
+            for name, snippet in (_ft_regional.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_social:
+            for name, snippet in (_ft_social.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_brave:
+            for name, snippet in (_ft_brave.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_perp:
+            for name, snippet in (_ft_perp.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_yt:
+            for name, snippet in (_ft_yt.result() or []):
+                results.append(f"[{name}]: {snippet}")
     # General Nitter search — corroborate claim across Twitter/X posts
     try:
         nitter_result = _fetch_source("Twitter/X (Nitter)", f"https://nitter.poast.org/search?q={qt}&f=tweets")
@@ -2195,7 +2313,7 @@ def assess_content_claims(text, source_type, post_date=None):
         "GOOD (do extract): 'US allowing Iranian oil tankers through Strait of Hormuz', 'Bessent said Iranian ships have been getting through'. "
         "Extract WHAT was claimed, never WHEN or WHERE or WHO reported it.\n"
         f"- For claims about current or recent events (news, conflicts, policy, breaking stories), append 'as of {ref_date}' to anchor them in time — but only when the date materially changes what is being claimed (e.g. 'Strait of Hormuz closed as of {ref_date}', not 'Water boils at 100°C as of {ref_date}')\n\n"
-        f"CONTENT:\n{text[:3000]}\n\n"
+        f"CONTENT:\n{text[:6000]}\n\n"
         'Respond ONLY with valid JSON.'
     )
     try:
@@ -2486,7 +2604,7 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
     source_section = ""
     if source_content and st in ("url", "video"):
         label = "VIDEO CONTENT (transcript + frame analysis — treat as primary evidence)" if st == "video" else "SOURCE ARTICLE (extracted directly from the post/article — treat as primary evidence)"
-        source_section = f"{label}:\n{source_content[:3000]}\n\n"
+        source_section = f"{label}:\n{source_content[:5000]}\n\n"
 
     evidence = (
         f"{source_section}"
@@ -2507,15 +2625,20 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
     pro_text, con_text = "", ""
     if ANTHROPIC_KEY:
         pro_prompt = (
-            "You are a fact-checker. Using ONLY the evidence provided, make the strongest "
-            "honest case that the claim below is TRUE or mostly accurate. Be specific, cite sources. "
+            "You are a fact-checker arguing from a WESTERN MAINSTREAM MEDIA perspective "
+            "(BBC, Reuters, AP, CNN, NYT, official government and military statements). "
+            "Using ONLY the evidence provided, make the strongest honest case that the claim "
+            "below is TRUE or mostly accurate from this perspective. Be specific, cite sources. "
             "3-4 sentences.\n\n"
             f"CLAIM: {claim[:800]}\n\n{evidence}"
         )
         con_prompt = (
-            "You are a fact-checker. Using ONLY the evidence provided, make the strongest "
-            "honest case that the claim below is FALSE or misleading. Be specific, cite sources. "
-            "3-4 sentences.\n\n"
+            "You are a fact-checker arguing from a REGIONAL / GLOBAL SOUTH / AFFECTED COMMUNITY "
+            "perspective (Al Jazeera, Middle East Eye, regional outlets, independent journalists, "
+            "people directly affected by the events, international law, human rights organisations). "
+            "Using ONLY the evidence provided, make the strongest honest case that the claim "
+            "below is FALSE, misleading, or missing crucial context from this perspective. "
+            "Be specific, cite sources. 3-4 sentences.\n\n"
             f"CLAIM: {claim[:800]}\n\n{evidence}"
         )
         with ThreadPoolExecutor(max_workers=2) as ex:
@@ -2558,8 +2681,10 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         f"CLAIM:\n\"\"\"{claim[:1200]}\"\"\"\n\n"
         f"{evidence}{debate_section}{temporal_note}\n\n"
         "INSTRUCTIONS:\n"
-        "- Fill the 'perspectives' field: summarise what Western mainstream sources say vs what regional/independent sources say. "
+        "- Fill the 'perspectives' field: summarise what Western mainstream sources say vs what regional/independent/Global South sources say. "
+        "Draw on sources labelled '(Regional)', '(Arabic/Regional)', 'Social/Trending', 'Reddit', 'Twitter/X' in the evidence. "
         "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus.\n"
+        "- If Social/Trending or Reddit evidence shows the claim is widely circulating or being debated online, note this in the verdict.\n"
         "- Fill 'contested_language' only if the claim or evidence uses terminology that is genuinely disputed across communities "
         "(e.g. how groups are labelled, how events are described). Leave empty array [] if language is uncontested.\n"
         "- Fill 'who_benefits': identify who gains from this claim being believed or spread — state actor, political party, media outlet, movement, or interest group. "
@@ -3157,6 +3282,12 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             source_type = "url"
         else:
             query, source_type = body, "text"
+            # Enrich short text with Tavily context so claim extraction has background
+            if TAVILY_API_KEY and len(body) < 400:
+                ctx = tavily_search(body, max_results=3)
+                if ctx:
+                    ctx_text = "\n".join(f"{n}: {s}" for n, s in ctx[:3])
+                    query = f"{body}\n\nBACKGROUND CONTEXT (real-time web):\n{ctx_text}"
 
     elif msg_type == "image":
         send_fn("🖼 Analysing image...")
@@ -3180,7 +3311,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
         send_fn("⚠️ Could not extract content. Please send text or a URL.")
         return
 
-    query = query.strip()[:2000]
+    query = query.strip()[:6000]
     log.info("[%s/%s] Received [%s]: %s", platform, uid, source_type, query[:100])
     cost = estimate_cost(source_type)
 
@@ -3734,6 +3865,12 @@ def process(from_num, message):
                 source_type = "url"
         else:
             query, source_type = body, "text"
+            # Enrich short text with Tavily context so claim extraction has background
+            if TAVILY_API_KEY and len(body) < 400:
+                ctx = tavily_search(body, max_results=3)
+                if ctx:
+                    ctx_text = "\n".join(f"{n}: {s}" for n, s in ctx[:3])
+                    query = f"{body}\n\nBACKGROUND CONTEXT (real-time web):\n{ctx_text}"
     elif msg_type == "image":
         send(from_num, "🖼 Analysing image..."); image_bytes = download_media(message["image"]["id"])
         if image_bytes: query = clean_query(ocr_image(image_bytes))
@@ -3783,7 +3920,7 @@ def process(from_num, message):
         send(from_num, f"⚠️ Unsupported: {msg_type}"); return
     if not query: send(from_num, "⚠️ Could not extract content."); return
     query = clean_ocr(query) if source_type == "image" else query
-    query = query.strip()[:2000]
+    query = query.strip()[:6000]
     log.info("Received [%s]: %s", source_type, query[:100])
     cost = estimate_cost(source_type)
 
