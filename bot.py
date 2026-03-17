@@ -162,6 +162,8 @@ YOUTUBE_API_KEY      = os.getenv("YOUTUBE_API_KEY", "")    # YouTube Data API v3
 # Use {q} for URL-encoded query, {qt} for URL-encoded short query
 CUSTOM_SOURCES_RAW = os.getenv("CUSTOM_SOURCES", "")
 
+MAX_VIDEO_MINUTES    = int(os.getenv("MAX_VIDEO_MINUTES", "10"))  # reject videos longer than this
+
 COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
@@ -935,6 +937,17 @@ def _ytdlp_download(url):
             except: pass
 
 
+def _get_video_duration(url):
+    """Return video duration in seconds without downloading. Returns 0 on failure."""
+    try:
+        ydl_opts = {"quiet": True, "no_warnings": True, "socket_timeout": 10}
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            return int(info.get("duration") or 0) if info else 0
+    except Exception:
+        return 0
+
+
 def _ytdlp_audio_bytes(url):
     """
     Download best audio stream only via yt-dlp — returns (bytes, ext) or (None, '').
@@ -957,6 +970,7 @@ def _ytdlp_audio_bytes(url):
             "quiet": True,
             "no_warnings": True,
             "socket_timeout": 30,
+            "max_filesize": 30 * 1024 * 1024,
             "http_headers": {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             },
@@ -3303,6 +3317,14 @@ def process(from_num, message):
             if is_video_link:
                 try:
                     send(from_num, "🔍 Fetching content...")
+                    duration_secs = _get_video_duration(url)
+                    if duration_secs > MAX_VIDEO_MINUTES * 60:
+                        mins = duration_secs // 60
+                        send(from_num,
+                            f"⏱️ This video is {mins} minutes long.\n\n"
+                            f"Fred can only fact-check videos up to {MAX_VIDEO_MINUTES} minutes. "
+                            f"Try sending a shorter clip or a specific timestamp.")
+                        return jsonify({"status": "ok"}), 200
                     video_bytes, metadata, post_date = download_video_url(url)
                     if video_bytes and _is_video_bytes(video_bytes):
                         # Silently attempt extraction — only tell user "Video found" if
@@ -3444,6 +3466,10 @@ def process(from_num, message):
                     # they don't look like video URLs. Try downloading before falling
                     # back to og:image scrape.
                     try:
+                        _fb_dur = _get_video_duration(url)
+                        if _fb_dur > MAX_VIDEO_MINUTES * 60:
+                            log.info(f"FB/IG video too long ({_fb_dur}s), skipping video download")
+                            raise ValueError("video too long")
                         vid_bytes_try, vid_meta_try, vid_date_try = download_video_url(url)
                         if vid_bytes_try and _is_video_bytes(vid_bytes_try):
                             # Bytes look like a video container — silently attempt extraction
