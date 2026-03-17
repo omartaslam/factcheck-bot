@@ -2835,7 +2835,11 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "Leave empty string if the claim is mundane/benign with no clear political beneficiary.\n"
         "- If only Western sources were found, set confidence to LOW or MEDIUM and note the source gap in 'media_bias'.\n"
         "- Your verdict must reflect the actual state of evidence — including uncertainty and geopolitical dispute — "
-        "not default to the Western official position.\n\n"
+        "not default to the Western official position.\n"
+        "- RATING RULE ON OMISSIONS: Only downgrade a claim because of missing context if that omission makes the claim "
+        "actively misleading or creates a false impression. If the omitted context merely adds weight, nuance, or "
+        "additional significance to an otherwise accurate claim, do NOT downgrade — rate the claim as stated. "
+        "A claim that is factually correct but incomplete is TRUE, not MOSTLY TRUE.\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
 
