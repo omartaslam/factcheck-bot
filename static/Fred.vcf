@@ -1,12 +1,12 @@
 BEGIN:VCARD
 VERSION:3.0
-FN:Fred — AI Fact-Checker
-N:Fact-Checker;Fred;;;
-ORG:Fred FactCheck
+FN:Fred
+N:;Fred;;;
+ORG:FredCheck
 TITLE:AI Fact-Checker
 TEL;TYPE=CELL,PREF:+447863795638
 URL;TYPE=PREF:https://fredcheck.com
-NOTE:Fred is a bias-aware AI fact-checker that verifies news\, claims\, and social media posts from Western\, Middle Eastern\, and independent sources. Send Fred any URL\, image\, video\, voice note\, or text claim on WhatsApp and get a balanced\, multi-perspective verdict in seconds. Truth Beyond Borders.
+NOTE:Fred is a bias-aware AI fact-checker that verifies news\, claims\, and social media posts from Western\, Arabic\, Latin American\, and independent sources — in English\, Arabic\, and Spanish. Send Fred any URL\, image\, video\, voice note\, or text claim on WhatsApp and get a balanced\, multi-perspective verdict in seconds. Truth Beyond Borders. 🌍 fredcheck.com
 CATEGORIES:Fact-Checker,News,Media
 X-SOCIALPROFILE;TYPE=whatsapp:+447863795638
 END:VCARD
