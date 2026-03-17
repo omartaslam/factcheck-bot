@@ -38,6 +38,7 @@ MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page
 MESSENGER_VERIFY_TOKEN = os.getenv("MESSENGER_VERIFY_TOKEN", "messenger_factcheck_verify")
 TELEGRAM_BOT_TOKEN    = os.getenv("TELEGRAM_BOT_TOKEN", "")      # Telegram bot token
 APP_BASE_URL          = os.getenv("APP_BASE_URL", "https://web-production-1f0a4.up.railway.app")
+WEBSITE_URL           = os.getenv("WEBSITE_URL", "https://web-production-1f0a4.up.railway.app")  # Public marketing site
 TWITTER_CONSUMER_KEY    = os.getenv("TWITTER_CONSUMER_KEY", "")    # Twitter/X app consumer key
 TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET", "") # Twitter/X app consumer secret
 TWITTER_ACCESS_TOKEN    = os.getenv("TWITTER_ACCESS_TOKEN", "")    # Twitter/X bot access token
@@ -2845,8 +2846,9 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
     debate_indicator = "⚖️ pro/con debate" if a.get("_debate_pro") else "single-pass"
-    version = "FactCheck Pro v3.3 BETA" if BETA_MODE else "FactCheck Pro v3.3"
-    lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  {version}  •  {debate_indicator}_"]
+    version = "Fred BETA" if BETA_MODE else "Fred"
+    lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  {version}  •  {debate_indicator}_",
+              f"_🌐 {WEBSITE_URL}_"]
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
     return "\n".join(lines)
@@ -2855,21 +2857,23 @@ def _welcome_msg():
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
     beta_line = "\n_🚧 BETA — feedback welcome! Reply HELP for info._" if BETA_MODE else ""
     return (
-        "*Welcome to FactCheck Pro! 🔍*\n\n"
-        "I verify claims, news, and social media posts with multi-perspective, "
-        "bias-aware analysis — including Western, regional, and Middle Eastern sources.\n\n"
+        "*Hi, I'm Fred 👋*\n\n"
+        "_Truth Beyond Borders_ 🌍\n\n"
+        "I fact-check news, claims, and social media posts with balanced, "
+        "multi-perspective analysis — Western, Middle Eastern, Arabic, and independent sources.\n\n"
         "*Send me any of these:*\n"
-        "• A URL (Facebook, TikTok, YouTube, news article)\n"
+        "• A URL (Facebook, Instagram, TikTok, YouTube, news article)\n"
         "• A video, image, or voice note\n"
         "• A text claim or quote\n\n"
-        f"You have *{FREE_CHECKS_LIMIT} free {free_word}* to try it out."
+        f"You have *{FREE_CHECKS_LIMIT} free {free_word}* to try it out.\n"
+        f"🌐 {WEBSITE_URL}"
         + beta_line
     )
 
 HELP_MSG = (
-    "*FactCheck Pro — Help* 🔍\n\n"
+    "*Fred — Help* 🌍\n\n"
     "*What I can check:*\n"
-    "• URLs (Facebook, TikTok, YouTube, news articles)\n"
+    "• URLs (Facebook, Instagram, TikTok, YouTube, news articles)\n"
     "• Videos and images\n"
     "• Voice notes / audio\n"
     "• Text claims or quotes\n\n"
@@ -2877,10 +2881,11 @@ HELP_MSG = (
     "• *Y* — confirm a fact-check\n"
     "• *N* — cancel\n"
     "• *HELP* — show this message\n\n"
-    "*About:*\n"
-    "Multi-perspective analysis using Western, Middle Eastern, and independent sources. "
-    "Identifies bias, contested language, and geopolitical framing differences.\n\n"
-    "_Powered by FactCheck Pro — built for journalists, activists & curious minds._"
+    "*About Fred:*\n"
+    "Balanced, bias-aware fact-checking using Western, Middle Eastern, Arabic, and independent sources. "
+    "Identifies contested language, geopolitical framing, and who benefits from a claim.\n\n"
+    f"🌐 {WEBSITE_URL}\n\n"
+    "_Truth Beyond Borders — built for journalists, activists & curious minds._"
 )
 
 def confirm_msg(st, preview, cost):
@@ -4877,12 +4882,12 @@ def _qc_worker(from_num, msg_text):
                 # Check if latest message looks like the final fact-check report
                 with _qc_lock:
                     last_msg = _qc_jobs[from_num]["messages"][-1] if _qc_jobs[from_num]["messages"] else ""
-                if "FactCheck Pro v3.3" in last_msg or "FactCheck Pro v3.2" in last_msg:
+                if "Fred BETA" in last_msg or "•  Fred" in last_msg or "FactCheck Pro v3" in last_msg:
                     t.sleep(8)  # allow any trailing multi-claim messages to arrive
                     with _qc_lock:
                         # For multi-claim jobs, only stop if last N messages all have the footer
                         recent = _qc_jobs[from_num]["messages"][-1]
-                    if "FactCheck Pro v3.3" in recent or "FactCheck Pro v3.2" in recent:
+                    if "Fred BETA" in recent or "•  Fred" in recent or "FactCheck Pro v3" in recent:
                         break
     except Exception as e:
         log.error("QC worker error: %s", e)
