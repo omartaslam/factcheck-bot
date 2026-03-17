@@ -4786,6 +4786,10 @@ def setup_twitter_webhook():
 
 
 @app.route("/", methods=["GET"])
+def index():
+    return send_from_directory("static", "index.html")
+
+@app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status":"running","version":"v3.2","keys":{
         "whatsapp":bool(WHATSAPP_TOKEN),"google_fc":bool(GOOGLE_API_KEY),
