@@ -1724,6 +1724,34 @@ def brave_search(query, count=5):
         return []
 
 
+def brave_search_arabic(query, count=5):
+    """Brave Search with Arabic language filter — surfaces Arabic-language news sources.
+    Uses same BRAVE_API_KEY. Only called for MENA-related claims via _is_mena_topic().
+    """
+    if not BRAVE_API_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY},
+            params={"q": query[:200], "count": count, "text_decorations": False,
+                    "search_lang": "ar", "country": "ae"},
+            timeout=8
+        )
+        r.raise_for_status()
+        results = []
+        for item in r.json().get("web", {}).get("results", []):
+            url = item.get("url", "")
+            source_name = _url_to_source_name(url)
+            snippet = f"{item.get('title','')} — {item.get('description','')} ({url})"
+            results.append((f"{source_name} (Arabic)", snippet[:400]))
+        log.info(f"Brave Arabic: {len(results)} results")
+        return results
+    except Exception as e:
+        log.warning("Brave Arabic search failed: %s", e)
+        return []
+
+
 def youtube_search(query, max_results=4):
     """Search YouTube Data API v3 for relevant videos from credible sources.
     Targets official news channels and verified organisations.
@@ -2117,11 +2145,13 @@ def scrape_sites(query, post_date=None):
                 pass
 
     # Real-time web search — main + regional + social in parallel
-    with ThreadPoolExecutor(max_workers=5) as _rtex:
-        _ft_main    = _rtex.submit(tavily_search, query_flat, 8, post_date) if TAVILY_API_KEY else None
+    with ThreadPoolExecutor(max_workers=6) as _rtex:
+        _is_mena     = _is_mena_topic(query_flat)
+        _ft_main     = _rtex.submit(tavily_search, query_flat, 8, post_date) if TAVILY_API_KEY else None
         _ft_regional = _rtex.submit(tavily_search_regional, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_social   = _rtex.submit(tavily_search_social, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_brave    = _rtex.submit(brave_search, query_flat) if BRAVE_API_KEY else None
+        _ft_brave_ar = _rtex.submit(brave_search_arabic, query_flat) if (BRAVE_API_KEY and _is_mena) else None
         _ft_perp     = _rtex.submit(perplexity_search, query_flat, post_date) if PERPLEXITY_API_KEY else None
         _ft_yt       = _rtex.submit(youtube_search, query_flat) if YOUTUBE_API_KEY else None
 
@@ -2136,6 +2166,9 @@ def scrape_sites(query, post_date=None):
                 results.append(f"[{name}]: {snippet}")
         if _ft_brave:
             for name, snippet in (_ft_brave.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_brave_ar:
+            for name, snippet in (_ft_brave_ar.result() or []):
                 results.append(f"[{name}]: {snippet}")
         if _ft_perp:
             for name, snippet in (_ft_perp.result() or []):
