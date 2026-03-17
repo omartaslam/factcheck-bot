@@ -2791,7 +2791,11 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
             "perspective (Al Jazeera, Middle East Eye, regional outlets, independent journalists, "
             "people directly affected by the events, international law, human rights organisations). "
             "Using ONLY the evidence provided, make the strongest honest case that the claim "
-            "below is FALSE, misleading, or missing crucial context from this perspective. "
+            "below is FACTUALLY INCORRECT or ACTIVELY MISLEADING. "
+            "IMPORTANT: Only argue from direct contradictory evidence — facts in the evidence that "
+            "directly contradict what the claim states. Do NOT argue about omitted context, missing "
+            "nuance, or details not in the claim — those are separate issues handled elsewhere. "
+            "If the evidence does not directly contradict the claim, say so honestly. "
             "Be specific, cite sources. 3-4 sentences.\n\n"
             f"CLAIM: {claim[:800]}\n\n{evidence}"
         )
