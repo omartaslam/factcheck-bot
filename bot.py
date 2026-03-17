@@ -2162,7 +2162,7 @@ def assess_content_claims(text, source_type, post_date=None):
         f"Analyse this {src_label} and extract ALL independently verifiable factual claims.\n\n"
         f"Today's date: {ref_date}.\n\n"
         "Return a JSON object with exactly these fields:\n"
-        '  "claims": array of short, direct factual assertions (max 4). State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
+        '  "claims": array of short, direct factual assertions (max 4), ranked by importance — most significant or potentially false claim first, least important last. State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
         '  "reason": if checkable=false, one short sentence explaining why. Empty string if checkable=true.\n'
         '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
@@ -2207,17 +2207,25 @@ def assess_content_claims(text, source_type, post_date=None):
 
 
 def claims_confirm_msg(claims, source_type, cost):
-    """Confirmation message that shows enumerated verifiable claims before Y/N."""
+    """Confirmation message that shows ranked, enumerated claims with number selection."""
     src = {"text": "Text", "image": "Image", "audio": "Voice Note", "video": "Video",
            "url": "Post / Article", "document": "Document"}
     HDR = "*━━━━━━━━━━━━━━━━━━━━*"
     plural = "claims" if len(claims) > 1 else "claim"
     claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
+    if len(claims) == 1:
+        reply_prompt = f"_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel"
+    else:
+        nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
+        reply_prompt = (
+            f"_Est. cost: ${cost:.4f} per claim_\n\n"
+            f"Reply {nums} or *ALL* to fact-check\n"
+            f"Reply *N* to cancel"
+        )
     return (
         f"{HDR}\n*FACTCHECK PRO*\n_{src.get(source_type, source_type)}_\n{HDR}\n\n"
         f"*Found {len(claims)} verifiable {plural}:*\n\n{claim_lines}\n\n"
-        f"_Est. cost: ${cost:.4f}_\n\n"
-        f"Reply *Y* to fact-check\nReply *N* to cancel"
+        f"{reply_prompt}"
     )
 
 
@@ -3015,39 +3023,51 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
 
     expire_pending()
     body_upper = (text_body or "").strip().upper()
-    is_yn = body_upper in ("YES", "Y", "NO", "N")
+    is_cancel = body_upper in ("NO", "N")
+    is_check_all = body_upper in ("YES", "Y", "ALL")
+    is_selection = bool(re.match(r'^[\d][,\s\d]*$', body_upper.strip()))
+    is_pending_response = is_cancel or is_check_all or is_selection
 
     with pending_lock:
         has_p = pkey in pending
         data = pending.get(pkey)
 
-    if has_p and is_yn:
-        if body_upper in ("YES", "Y"):
-            with pending_lock: data = pending.pop(pkey)
-            bt = _pbilling_type(platform, uid)
-            if bt == "blocked":
-                u = _puser(platform, uid)
-                _psend_payment_prompt(platform, uid, u["balance_cents"], send_fn)
-                return
-            if bt == "free":
-                u = _puser(platform, uid)
-                remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
-                send_fn(f"✓ Free check — {remaining} free check{'s' if remaining != 1 else ''} remaining after this")
-            elif bt == "paid":
-                u = _puser(platform, uid)
-                send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f}")
-            elif bt == "subscriber":
-                send_fn("✓ Subscriber — unlimited access")
-            send_fn("Starting fact-check...")
-            threading.Thread(
-                target=run_check_platform,
-                args=(platform, uid, data["query"], data["source_type"], bt, send_fn),
-                kwargs={"pre_claims": data.get("claims")},
-                daemon=True
-            ).start()
-        elif body_upper in ("NO", "N"):
+    if has_p and is_pending_response:
+        if is_cancel:
             with pending_lock: pending.pop(pkey, None)
             send_fn("Cancelled.")
+            return
+        with pending_lock: data = pending.pop(pkey)
+        # Filter to selected claims
+        all_claims = data.get("claims") or []
+        if is_check_all or not all_claims:
+            selected_claims = all_claims or None
+        else:
+            nums = [int(x) for x in re.split(r'[,\s]+', body_upper.strip()) if x.isdigit()]
+            selected_claims = [all_claims[n-1] for n in nums if 1 <= n <= len(all_claims)]
+            if not selected_claims:
+                selected_claims = all_claims
+        bt = _pbilling_type(platform, uid)
+        if bt == "blocked":
+            u = _puser(platform, uid)
+            _psend_payment_prompt(platform, uid, u["balance_cents"], send_fn)
+            return
+        if bt == "free":
+            u = _puser(platform, uid)
+            remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
+            send_fn(f"✓ Free check — {remaining} free check{'s' if remaining != 1 else ''} remaining after this")
+        elif bt == "paid":
+            u = _puser(platform, uid)
+            send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f}")
+        elif bt == "subscriber":
+            send_fn("✓ Subscriber — unlimited access")
+        send_fn("Starting fact-check...")
+        threading.Thread(
+            target=run_check_platform,
+            args=(platform, uid, data["query"], data["source_type"], bt, send_fn),
+            kwargs={"pre_claims": selected_claims or data.get("claims")},
+            daemon=True
+        ).start()
         return
     elif has_p and not is_yn:
         with pending_lock: pending.pop(pkey, None)
@@ -3151,44 +3171,55 @@ def process(from_num, message):
         if body_upper in ("HELP", "?", "START", "INFO"):
             send(from_num, HELP_MSG)
             return
-        is_yn = body_upper in ("YES","Y","NO","N") or (len(body) < 10 and body_upper in ("YES","Y","NO","N"))
+        is_cancel = body_upper in ("NO", "N")
+        is_check_all = body_upper in ("YES", "Y", "ALL")
+        is_selection = bool(re.match(r'^[\d][,\s\d]*$', body_upper.strip()))
+        is_pending_response = is_cancel or is_check_all or is_selection
         with pending_lock: has_p = pkey in pending; data = pending.get(pkey)
-        if has_p and is_yn:
-            if body_upper in ("YES","Y"):
-                with pending_lock: data = pending.pop(pkey)
-                # ── Billing gate ───────────────────────────────────────────
-                bt = _wa_billing_type(from_num)
-                if bt == "blocked":
-                    u = _wa_user(from_num)
-                    _send_payment_prompt(from_num, u["balance_cents"])
-                    return
-                if bt == "free":
-                    u = _wa_user(from_num)
-                    remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
-                    if remaining <= 0:
-                        suffix = "last free check"
-                    else:
-                        suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
-                    status_line = f"✓ Free check — {suffix}"
-                    if remaining == 0:
-                        status_line += "\n_This is your last free check. Reply HELP for info on continuing after this._"
-                elif bt == "paid":
-                    u = _wa_user(from_num)
-                    status_line = f"✓ Balance: ${u['balance_cents']/100:.2f}"
-                elif bt == "subscriber":
-                    status_line = "✓ Subscriber — unlimited access"
-                else:
-                    status_line = "✓ Starting fact-check..."
-                send(from_num, f"{status_line}\nStarting fact-check...")
-                threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
-                                 kwargs={"billing_type": bt, "pre_claims": data.get("claims"),
-                                         "post_date": data.get("post_date", ""),
-                                         "source_url": data.get("source_url", "")}, daemon=True).start()
-                return
-            elif body_upper in ("NO","N"):
+        if has_p and is_pending_response:
+            if is_cancel:
                 with pending_lock: pending.pop(pkey, None)
                 send(from_num, "Cancelled."); return
-        elif has_p and not is_yn:
+            with pending_lock: data = pending.pop(pkey)
+            # ── Filter to selected claims ──────────────────────────────────
+            all_claims = data.get("claims") or []
+            if is_check_all or not all_claims:
+                selected_claims = all_claims or None
+            else:
+                nums = [int(x) for x in re.split(r'[,\s]+', body_upper.strip()) if x.isdigit()]
+                selected_claims = [all_claims[n-1] for n in nums if 1 <= n <= len(all_claims)]
+                if not selected_claims:
+                    selected_claims = all_claims
+            # ── Billing gate ───────────────────────────────────────────────
+            bt = _wa_billing_type(from_num)
+            if bt == "blocked":
+                u = _wa_user(from_num)
+                _send_payment_prompt(from_num, u["balance_cents"])
+                return
+            if bt == "free":
+                u = _wa_user(from_num)
+                remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
+                if remaining <= 0:
+                    suffix = "last free check"
+                else:
+                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
+                status_line = f"✓ Free check — {suffix}"
+                if remaining == 0:
+                    status_line += "\n_This is your last free check. Reply HELP for info on continuing after this._"
+            elif bt == "paid":
+                u = _wa_user(from_num)
+                status_line = f"✓ Balance: ${u['balance_cents']/100:.2f}"
+            elif bt == "subscriber":
+                status_line = "✓ Subscriber — unlimited access"
+            else:
+                status_line = "✓ Starting fact-check..."
+            send(from_num, f"{status_line}\nStarting fact-check...")
+            threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
+                             kwargs={"billing_type": bt, "pre_claims": selected_claims or data.get("claims"),
+                                     "post_date": data.get("post_date", ""),
+                                     "source_url": data.get("source_url", "")}, daemon=True).start()
+            return
+        elif has_p and not is_pending_response:
             with pending_lock: pending.pop(pkey, None)
             log.info("New content received, clearing stale pending")
     query, source_type, image_bytes, post_date, urls = "", "text", None, "", []
