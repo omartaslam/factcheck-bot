@@ -3783,8 +3783,8 @@ def process(from_num, message):
             return
         claims = assessment["claims"]
         # Always add video authenticity check as the last claim for video content
-        if source_type == "video" and not any("authentic" in c.lower() or "ai-generated" in c.lower() or "real" in c.lower() for c in claims):
-            claims = list(claims) + ["This video is real and not AI-generated or manipulated"]
+        if source_type == "video" and not any("ai-generated" in c.lower() or "manipulated" in c.lower() for c in claims):
+            claims = list(claims) + ["Is this video real and not AI-generated or manipulated?"]
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims,
