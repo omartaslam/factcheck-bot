@@ -339,7 +339,7 @@ def meter_visual(r):
     labels = {"TRUE":"✅ VERIFIED TRUE","MOSTLY TRUE":"🟢 MOSTLY TRUE","HALF TRUE":"🟡 HALF TRUE","MOSTLY FALSE":"🟠 MOSTLY FALSE","FALSE":"❌ FALSE","PANTS ON FIRE":"🔥 PANTS ON FIRE","UNVERIFIABLE":"❓ UNVERIFIABLE","MISLEADING":"⚠️ MISLEADING","NEEDS CONTEXT":"📌 NEEDS CONTEXT"}
     if r not in patterns: return labels.get(r, r)
     red, green = patterns[r]
-    bar = "🟥" * red + "🟩" * green
+    bar = "🟩" * green + "🟥" * red
     return f"\n{bar}\n{labels[r]}\n"
 
 def html_text(html, lim=2000):
