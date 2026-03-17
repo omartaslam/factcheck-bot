@@ -2839,7 +2839,15 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "- RATING RULE ON OMISSIONS: Only downgrade a claim because of missing context if that omission makes the claim "
         "actively misleading or creates a false impression. If the omitted context merely adds weight, nuance, or "
         "additional significance to an otherwise accurate claim, do NOT downgrade — rate the claim as stated. "
-        "A claim that is factually correct but incomplete is TRUE, not MOSTLY TRUE.\n\n"
+        "A claim that is factually correct but incomplete is TRUE, not MOSTLY TRUE.\n"
+        "- RATING RULE ON BREAKING NEWS: For very recent events (same-day or within 48 hours), full-text articles from "
+        "major outlets may not yet be indexed. Do NOT use UNVERIFIABLE solely because full-text corroboration is absent. "
+        "Tavily Web Search is a live aggregation of current news sources — treat it as equivalent to multiple independent "
+        "news sources for recent events. If Tavily plus at least one other source (e.g. Dubawa, fact-check org, regional outlet) "
+        "both confirm the core claim, rate it TRUE or MOSTLY TRUE with MEDIUM confidence, noting the source recency.\n"
+        "- RATING RULE ON SUPERLATIVES: For claims using 'first', 'largest', 'only' etc. — if the available sources "
+        "directly state or confirm the superlative without contradiction, that is sufficient to verify it. Do not demand "
+        "exhaustive historical comparison data that cannot reasonably exist for same-day breaking news.\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
 
