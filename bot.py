@@ -2160,7 +2160,7 @@ def assess_content_claims(text, source_type, post_date=None):
         f"Analyse this {src_label} and extract ALL independently verifiable factual claims.\n\n"
         f"Today's date: {ref_date}.\n\n"
         "Return a JSON object with exactly these fields:\n"
-        '  "claims": array of short, direct factual assertions (max 6). State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
+        '  "claims": array of short, direct factual assertions (max 4). State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
         '  "reason": if checkable=false, one short sentence explaining why. Empty string if checkable=true.\n'
         '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
@@ -2171,6 +2171,7 @@ def assess_content_claims(text, source_type, post_date=None):
         "- Include ALL distinct assertions — do not merge separate claims into one\n"
         "- Include claims about identity, history, events, quotes, and relationships\n"
         "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n"
+        "- NEVER extract metadata claims: skip anything about when it was said (day/time), which outlet reported it, or where it was published — only extract the substance of what was claimed\n"
         f"- For claims about current or recent events (news, conflicts, policy, breaking stories), append 'as of {ref_date}' to anchor them in time — but only when the date materially changes what is being claimed (e.g. 'Strait of Hormuz closed as of {ref_date}', not 'Water boils at 100°C as of {ref_date}')\n\n"
         f"CONTENT:\n{text[:3000]}\n\n"
         'Respond ONLY with valid JSON.'
@@ -2186,7 +2187,7 @@ def assess_content_claims(text, source_type, post_date=None):
         s = raw.find("{"); e = raw.rfind("}") + 1
         if s >= 0 and e > s:
             data = json.loads(raw[s:e])
-            claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:6]
+            claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:4]
             checkable = bool(data.get("checkable", bool(claims)))
             if claims:
                 checkable = True  # if we have claims, always checkable
