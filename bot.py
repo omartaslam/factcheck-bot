@@ -2749,6 +2749,37 @@ def send(to, text):
         except Exception as e:
             log.error("Send: %s", e)
 
+_VERDICT_REACTION = {
+    "TRUE":           "✅",
+    "MOSTLY TRUE":    "👍",
+    "HALF TRUE":      "🤔",
+    "NEEDS CONTEXT":  "📌",
+    "MOSTLY FALSE":   "👎",
+    "MISLEADING":     "⚠️",
+    "FALSE":          "❌",
+    "PANTS ON FIRE":  "🔥",
+    "UNVERIFIABLE":   "❓",
+}
+_VERDICT_PRIORITY = ["PANTS ON FIRE","FALSE","MISLEADING","MOSTLY FALSE",
+                     "HALF TRUE","NEEDS CONTEXT","UNVERIFIABLE","MOSTLY TRUE","TRUE"]
+
+def send_reaction(to, message_id, emoji):
+    """React to a WhatsApp message with an emoji."""
+    if not message_id:
+        return
+    try:
+        r = requests.post(WHATSAPP_URL,
+            json={"messaging_product":"whatsapp","to":to,"type":"reaction",
+                  "reaction":{"message_id":message_id,"emoji":emoji}},
+            headers={"Authorization":f"Bearer {WHATSAPP_TOKEN}","Content-Type":"application/json"},
+            timeout=10)
+        if r.ok:
+            log.info(f"Reaction {emoji} sent to msg {message_id[:20]}")
+        else:
+            log.warning(f"Reaction failed {r.status_code}: {r.text[:100]}")
+    except Exception as e:
+        log.error("send_reaction: %s", e)
+
 def send_messenger(recipient_id, text):
     """Send a text message via Facebook Messenger/Instagram API."""
     if not MESSENGER_PAGE_TOKEN:
@@ -2870,7 +2901,7 @@ def send_twitter_dm(recipient_id, text):
             log.error("Twitter DM send error: %s", e)
 
 
-def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None, source_url=""):
+def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_type="free", pre_claims=None, post_date=None, source_url="", msg_id=""):
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     topic_text = query + (" " + " ".join(pre_claims) if pre_claims else "")
@@ -2930,6 +2961,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
 
     # ── Analyse each claim with its own search ────────────────────────────
     all_used_combined = []
+    all_ratings = []
     for i, claim in enumerate(claims):
         g = google_fc(claim)
         sc, used_sources = scrape_sites(claim, post_date=post_date)
@@ -2938,12 +2970,19 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         all_used_combined = list(dict.fromkeys(all_used_combined + all_used))
         a = claude_analyse(claim, g, sc, st, post_date=post_date, osint=osint,
                            source_content=query if st == "url" else None)
+        all_ratings.append(a.get("rating", "UNVERIFIABLE"))
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
             send(from_num, report)
+
+    # ── React to original message with most significant verdict emoji ──────
+    if msg_id and all_ratings:
+        top = min(all_ratings, key=lambda r: _VERDICT_PRIORITY.index(r) if r in _VERDICT_PRIORITY else 99)
+        emoji = _VERDICT_REACTION.get(top, "❓")
+        send_reaction(from_num, msg_id, emoji)
 
     # ── Billing: record cost and deduct balance ────────────────────────────
     actual_cents = max(1, _cost_get())
@@ -3234,7 +3273,8 @@ def process(from_num, message):
             threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
                              kwargs={"billing_type": bt, "pre_claims": selected_claims or data.get("claims"),
                                      "post_date": data.get("post_date", ""),
-                                     "source_url": data.get("source_url", "")}, daemon=True).start()
+                                     "source_url": data.get("source_url", ""),
+                                     "msg_id": data.get("msg_id","")}, daemon=True).start()
             return
         elif has_p and not is_pending_response:
             with pending_lock: pending.pop(pkey, None)
@@ -3742,14 +3782,15 @@ def process(from_num, message):
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims,
-                             "post_date": post_date, "source_url": urls[0] if urls else ""}
+                             "post_date": post_date, "source_url": urls[0] if urls else "",
+                             "msg_id": msg_id}
         send(from_num, claims_confirm_msg(claims, source_type, cost))
     else:
         # image / document — no claim extraction, show raw preview
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "post_date": post_date,
-                             "source_url": urls[0] if urls else ""}
+                             "source_url": urls[0] if urls else "", "msg_id": msg_id}
         send(from_num, confirm_msg(source_type, query, cost))
 
 # ── Web API: database, auth, rate-limiting ───────────────────────────────────
