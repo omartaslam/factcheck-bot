@@ -667,6 +667,7 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 13. **Twitter/X** — activate when ready to pay (~$100/month)
 14. **Supporting website** — standalone fact-check site as alternative access channel
 15. **In-platform integrations** — native FB/TikTok/Instagram/Twitter bot integrations (beyond DMs)
+16. **Lenz.io integration** — contact lenz.io for API access (they have `/api/purchase` + `/api/subscribe` endpoints suggesting B2B tiers exist). Their results JSON is well-structured (verdict score 0-10, panelist reasoning, sources) — a Claude-based parser would handle format changes gracefully. Add as `SRC_LENZ` toggle like other sources. **Blocker:** Cloudflare Turnstile prevents scraping without API key — do not attempt workaround, contact them directly.
 
 ---
 
