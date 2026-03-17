@@ -2128,7 +2128,19 @@ def tavily_search_spanish(query, post_date=None):
     return results
 
 
+_scrape_cache: dict = {}          # claim_key → (timestamp, result)
+_scrape_cache_lock = threading.Lock()
+_SCRAPE_CACHE_TTL = 3600          # reuse search results for 1 hour
+
 def scrape_sites(query, post_date=None):
+    import time as _t
+    cache_key = query.strip().lower()[:300]
+    with _scrape_cache_lock:
+        entry = _scrape_cache.get(cache_key)
+        if entry and (_t.time() - entry[0]) < _SCRAPE_CACHE_TTL:
+            log.info("scrape_sites cache HIT for: %s", cache_key[:60])
+            return entry[1]
+
     # Collapse newlines to spaces so search URLs don't contain %0A (causes 403/404)
     query_flat = " ".join(query.split())
     q = quote_plus(query_flat[:100])
@@ -2290,7 +2302,10 @@ def scrape_sites(query, post_date=None):
         pass
 
     log.info(f"Scraped {len(results)} sources")
-    return "\n\n".join(results), [r.split("]")[0].replace("[","").strip() for r in results]
+    result = ("\n\n".join(results), [r.split("]")[0].replace("[","").strip() for r in results])
+    with _scrape_cache_lock:
+        _scrape_cache[cache_key] = (_t.time(), result)
+    return result
 
 
 def estimate_cost(st):
@@ -2545,7 +2560,7 @@ def no_claims_msg(reason, source_type, suggestions):
 
 def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, system=None):
     """Single Claude API call. Returns text or None. Tracks token cost."""
-    body = {"model": model, "max_tokens": max_tokens,
+    body = {"model": model, "max_tokens": max_tokens, "temperature": 0,
             "messages": [{"role": "user", "content": prompt}]}
     if system:
         body["system"] = system
@@ -2856,8 +2871,8 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
             try:
                 r = requests.post("https://api.anthropic.com/v1/messages",
                     headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-                    json={"model": "claude-sonnet-4-6", "max_tokens": 2000, "system": SYSTEM,
-                          "messages": [{"role": "user", "content": synth_prompt}]},
+                    json={"model": "claude-sonnet-4-6", "max_tokens": 2000, "temperature": 0,
+                          "system": SYSTEM, "messages": [{"role": "user", "content": synth_prompt}]},
                     timeout=55)
                 if _is_credit_error(r.status_code, r.text):
                     send_admin_alert("anthropic", f"Anthropic API credits exhausted (HTTP {r.status_code}). Falling back to OpenAI for synthesis.")
