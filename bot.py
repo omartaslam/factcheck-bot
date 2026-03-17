@@ -2457,7 +2457,7 @@ def assess_content_claims(text, source_type, post_date=None):
         "- Use the speaker's own framing where possible, stripped of emotional language\n"
         "- Do NOT infer or add context not directly stated (e.g. do not add 'Mark Carney is PM of Canada' if that wasn't the claim made)\n"
         "- Include ALL distinct assertions — do not merge separate claims into one\n"
-        "- Include claims about identity, history, events, quotes, and relationships\n"
+        "- Prioritise claims that are newsworthy, potentially disputed, or surprising. Deprioritise background biographical facts (job titles, roles, affiliations) that are widely known and uncontroversial — only include them if they are themselves disputed or central to the claim being verified.\n"
         "- Treat factual QUESTIONS as implicit claims to verify: convert them to assertions. "
         "e.g. 'Has Iran asked for a ceasefire?' → 'Iran has asked for a ceasefire'. "
         "'Did Bardem speak at the Oscars?' → 'Javier Bardem spoke at the Oscars'.\n"
@@ -2473,7 +2473,7 @@ def assess_content_claims(text, source_type, post_date=None):
     try:
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-            json={"model": "claude-sonnet-4-6", "max_tokens": 800,
+            json={"model": "claude-sonnet-4-6", "max_tokens": 800, "temperature": 0,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=30)
         r.raise_for_status()
