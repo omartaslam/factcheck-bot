@@ -2852,13 +2852,12 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     topic_text = query + (" " + " ".join(pre_claims) if pre_claims else "")
     total_src, src_preview = _source_preview_msg(topic_text)
-    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
-
     # ── OSINT checks — run in background thread while sources scrape ────────
     osint_future = None
     needs_osint = img_bytes or source_url
+    osint_line = "\n🔬 Running OSINT verification..." if needs_osint else ""
+    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...{osint_line}")
     if needs_osint:
-        send(from_num, "🔬 Running OSINT verification...")
         _osint_ex = ThreadPoolExecutor(max_workers=1)
         osint_future = _osint_ex.submit(run_osint,
             image_bytes=img_bytes,
@@ -2909,8 +2908,6 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     # ── Analyse each claim with its own search ────────────────────────────
     all_used_combined = []
     for i, claim in enumerate(claims):
-        if multi:
-            send(from_num, f"⚖️ Analysing claim {i+1}/{len(claims)}...")
         g = google_fc(claim)
         sc, used_sources = scrape_sites(claim, post_date=post_date)
         gfc_sources = [x["source"] for x in g if x.get("source")]
@@ -2937,7 +2934,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
     total_src, src_preview = _source_preview_msg(topic_text)
     send_fn(f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
 
-    if pre_claims:
+    if pre_claims:  # platform version — no OSINT line needed here
         claims = pre_claims
         log.info(f"Using {len(claims)} pre-extracted claim(s)")
     elif st in ("text", "audio", "url"):
@@ -2955,8 +2952,6 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
 
     cost_est = estimate_cost(st)
     for i, claim in enumerate(claims):
-        if multi:
-            send_fn(f"⚖️ Analysing claim {i+1}/{len(claims)}...")
         g = google_fc(claim)
         sc, used_sources = scrape_sites(claim, post_date=post_date)
         gfc_sources = [x["source"] for x in g if x.get("source")]
@@ -3174,15 +3169,17 @@ def process(from_num, message):
                         suffix = "last free check"
                     else:
                         suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
-                    send(from_num, f"✓ Free check — {suffix}")
+                    status_line = f"✓ Free check — {suffix}"
                     if remaining == 0:
-                        send(from_num, "ℹ️ _This is your last free check. Reply HELP for info on continuing after this._")
+                        status_line += "\n_This is your last free check. Reply HELP for info on continuing after this._"
                 elif bt == "paid":
                     u = _wa_user(from_num)
-                    send(from_num, f"✓ Balance: ${u['balance_cents']/100:.2f}")
+                    status_line = f"✓ Balance: ${u['balance_cents']/100:.2f}"
                 elif bt == "subscriber":
-                    send(from_num, "✓ Subscriber — unlimited access")
-                send(from_num, "Starting fact-check...")
+                    status_line = "✓ Subscriber — unlimited access"
+                else:
+                    status_line = "✓ Starting fact-check..."
+                send(from_num, f"{status_line}\nStarting fact-check...")
                 threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
                                  kwargs={"billing_type": bt, "pre_claims": data.get("claims"),
                                          "post_date": data.get("post_date", ""),
