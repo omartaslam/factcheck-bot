@@ -2470,11 +2470,9 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
                 )
 
     source_section = ""
-    if source_content and st == "url":
-        source_section = (
-            f"SOURCE ARTICLE (extracted directly from the post/article being fact-checked — "
-            f"treat as primary evidence):\n{source_content[:3000]}\n\n"
-        )
+    if source_content and st in ("url", "video"):
+        label = "VIDEO CONTENT (transcript + frame analysis — treat as primary evidence)" if st == "video" else "SOURCE ARTICLE (extracted directly from the post/article — treat as primary evidence)"
+        source_section = f"{label}:\n{source_content[:3000]}\n\n"
 
     evidence = (
         f"{source_section}"
@@ -2485,10 +2483,10 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
     )
     if source_section:
         evidence += (
-            "\n\nIMPORTANT: The source article above was extracted directly from the post being "
-            "fact-checked. If it clearly confirms or contradicts the claim, use it as primary "
-            "evidence and do not return UNVERIFIABLE solely because external fact-checkers "
-            "haven't indexed it yet."
+            "\n\nIMPORTANT: The source content above was extracted directly from the submitted "
+            "media. If it clearly confirms or contradicts the claim, use it as primary evidence "
+            "and do not return UNVERIFIABLE solely because external fact-checkers haven't "
+            "indexed it yet. For video authenticity claims, use the OSINT verification result."
         )
 
     # ── Step 1 & 2: Debate — pro and con in parallel (Haiku, fast + cheap) ──
@@ -2972,7 +2970,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
         all_used_combined = list(dict.fromkeys(all_used_combined + all_used))
         a = claude_analyse(claim, g, sc, st, post_date=post_date, osint=osint,
-                           source_content=query if st == "url" else None)
+                           source_content=query if st in ("url", "video") else None)
         all_ratings.append(a.get("rating", "UNVERIFIABLE"))
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint)
@@ -3023,7 +3021,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         gfc_sources = [x["source"] for x in g if x.get("source")]
         all_used = list(dict.fromkeys(gfc_sources + used_sources))
         a = claude_analyse(claim, g, sc, st, post_date=post_date,
-                           source_content=query if st == "url" else None)
+                           source_content=query if st in ("url", "video") else None)
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date)
         if multi:
