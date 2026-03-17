@@ -2354,7 +2354,7 @@ def neutralize_claim(raw_text):
 
 
 def extract_claims(text):
-    """Split text into individual checkable factual claims (max 4). Returns list of strings."""
+    """Split text into individual checkable factual claims (max 3). Returns list of strings."""
     if len(text) < 60:
         return [text]
     if not ANTHROPIC_KEY:
@@ -2433,7 +2433,7 @@ def assess_content_claims(text, source_type, post_date=None):
         f"Analyse this {src_label} and extract ALL independently verifiable factual claims.\n\n"
         f"Today's date: {ref_date}.\n\n"
         "Return a JSON object with exactly these fields:\n"
-        '  "claims": array of short, direct factual assertions (max 4), ranked by importance — most significant or potentially false claim first, least important last. State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
+        '  "claims": array of short, direct factual assertions (max 3), ranked by importance — most significant or potentially false claim first, least important last. State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
         '  "reason": if checkable=false, one short sentence explaining why. Empty string if checkable=true.\n'
         '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
@@ -2484,7 +2484,7 @@ def claims_confirm_msg(claims, source_type, cost):
     """Confirmation message that shows ranked, enumerated claims with number selection."""
     src = {"text": "Text", "image": "Image", "audio": "Voice Note", "video": "Video",
            "url": "Post / Article", "document": "Document"}
-    HDR = "*━━━━━━━━━━━━━━━━━━━━*"
+    HDR = "*━━━━━━━━━━━━━━*"
     plural = "claims" if len(claims) > 1 else "claim"
     claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
     if len(claims) == 1:
@@ -3001,7 +3001,7 @@ HELP_MSG = (
 
 def confirm_msg(st, preview, cost):
     src = {"text":"Text","image":"Image","audio":"Voice Note","video":"Video","url":"Article","document":"Document"}
-    HDR = "*━━━━━━━━━━━━━━━━━━━━*"
+    HDR = "*━━━━━━━━━━━━━━*"
     return (f"{HDR}\n*FACTCHECK PRO*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\n_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel")
 
 def _split_message(text, limit=4000):
