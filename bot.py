@@ -1753,6 +1753,34 @@ def brave_search_arabic(query, count=5):
         return []
 
 
+def brave_search_spanish(query, count=5):
+    """Brave Search with Spanish language filter — surfaces Latin American and Spanish news.
+    Uses same BRAVE_API_KEY. Covers Chequeado, Maldita, Telesur, BBC Mundo, El País etc.
+    """
+    if not BRAVE_API_KEY:
+        return []
+    try:
+        r = requests.get(
+            "https://api.search.brave.com/res/v1/web/search",
+            headers={"Accept": "application/json", "X-Subscription-Token": BRAVE_API_KEY},
+            params={"q": query[:200], "count": count, "text_decorations": False,
+                    "search_lang": "es", "country": "mx"},
+            timeout=8
+        )
+        r.raise_for_status()
+        results = []
+        for item in r.json().get("web", {}).get("results", []):
+            url = item.get("url", "")
+            source_name = _url_to_source_name(url)
+            snippet = f"{item.get('title','')} — {item.get('description','')} ({url})"
+            results.append((f"{source_name} (Spanish)", snippet[:400]))
+        log.info(f"Brave Spanish: {len(results)} results")
+        return results
+    except Exception as e:
+        log.warning("Brave Spanish search failed: %s", e)
+        return []
+
+
 def youtube_search(query, max_results=4):
     """Search YouTube Data API v3 for relevant videos from credible sources.
     Targets official news channels and verified organisations.
@@ -1945,6 +1973,22 @@ def _is_mena_topic(text):
     return any(kw in t for kw in _MENA_KEYWORDS)
 
 
+_LATAM_KEYWORDS = {
+    "venezuela","colombia","mexico","argentina","chile","peru","bolivia","ecuador","cuba","nicaragua",
+    "brazil","brasil","latin america","latinoamerica","america latina","caribbean","central america",
+    "maduro","chavez","lula","morales","ortega","castro","guaido","milei","petro","boric","amlo",
+    "narco","cartel","drug war","us sanctions","imf","world bank","coup","golpe","dictator",
+    "immigration","migrants","border","deportation","asylum","refugees","us mexico",
+    "telesur","chequeado","maldita","efe","el pais","bbc mundo",
+    "united states","trump","biden","pentagon","cia","us foreign policy","imperialism",
+    "climate","amazon","deforestation","indigenous","nato","russia","china","brics",
+}
+
+def _is_latam_topic(text):
+    t = text.lower()
+    return any(kw in t for kw in _LATAM_KEYWORDS)
+
+
 def tavily_search_regional(query, post_date=None):
     """Second Tavily pass targeting regional/Global South perspectives.
 
@@ -2030,6 +2074,57 @@ def tavily_search_social(query, post_date=None):
     except Exception as e:
         log.warning("Tavily social search failed: %s", e)
     log.info(f"Tavily social: {len(results)} results")
+    return results
+
+
+def tavily_search_spanish(query, post_date=None):
+    """Tavily pass targeting Spanish-language and Latin American sources.
+
+    Always queries BBC Mundo, El País, Telesur, Chequeado, Maldita, EFE, DW Español.
+    Returns list of (name, snippet) tuples labelled as Spanish/LatAm.
+    """
+    if not TAVILY_API_KEY:
+        return []
+    import datetime as _dt_es
+    year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_es.date.today().year)
+    results = []
+    try:
+        spanish_query = f"{query} {year} BBC Mundo OR Telesur OR El País OR Chequeado OR Maldita OR EFE OR DW Español OR Al Jazeera Español"
+        r = requests.post(
+            "https://api.tavily.com/search",
+            json={"api_key": TAVILY_API_KEY, "query": spanish_query[:400], "max_results": 5,
+                  "search_depth": "advanced", "include_answer": False},
+            timeout=15
+        )
+        r.raise_for_status()
+        for item in r.json().get("results", []):
+            url = item.get("url", "")
+            source_name = _url_to_source_name(url)
+            snippet = f"{item.get('title','')} — {item.get('content','')} ({url})"
+            results.append((f"{source_name} (Spanish/LatAm)", snippet[:500]))
+    except Exception as e:
+        log.warning("Tavily Spanish search failed: %s", e)
+
+    # For LATAM topics: also run Spanish-language query
+    if _is_latam_topic(query):
+        try:
+            latam_query = f"{query} {year} América Latina OR Venezuela OR México OR Argentina OR imperialismo OR EEUU"
+            r2 = requests.post(
+                "https://api.tavily.com/search",
+                json={"api_key": TAVILY_API_KEY, "query": latam_query[:400], "max_results": 4,
+                      "search_depth": "advanced", "include_answer": False},
+                timeout=15
+            )
+            r2.raise_for_status()
+            for item in r2.json().get("results", []):
+                url = item.get("url", "")
+                source_name = _url_to_source_name(url)
+                snippet = f"{item.get('title','')} — {item.get('content','')} ({url})"
+                results.append((f"{source_name} (Spanish/LatAm)", snippet[:500]))
+        except Exception as e:
+            log.warning("Tavily LatAm Spanish search failed: %s", e)
+
+    log.info(f"Tavily Spanish: {len(results)} results (LATAM={_is_latam_topic(query)})")
     return results
 
 
@@ -2146,13 +2241,16 @@ def scrape_sites(query, post_date=None):
                 pass
 
     # Real-time web search — main + regional + social in parallel
-    with ThreadPoolExecutor(max_workers=6) as _rtex:
+    with ThreadPoolExecutor(max_workers=8) as _rtex:
         _is_mena     = _is_mena_topic(query_flat)
+        _is_latam    = _is_latam_topic(query_flat)
         _ft_main     = _rtex.submit(tavily_search, query_flat, 8, post_date) if TAVILY_API_KEY else None
         _ft_regional = _rtex.submit(tavily_search_regional, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_social   = _rtex.submit(tavily_search_social, query_flat, post_date) if TAVILY_API_KEY else None
+        _ft_spanish  = _rtex.submit(tavily_search_spanish, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_brave    = _rtex.submit(brave_search, query_flat) if BRAVE_API_KEY else None
         _ft_brave_ar = _rtex.submit(brave_search_arabic, query_flat) if (BRAVE_API_KEY and _is_mena) else None
+        _ft_brave_es = _rtex.submit(brave_search_spanish, query_flat) if (BRAVE_API_KEY and _is_latam) else None
         _ft_perp     = _rtex.submit(perplexity_search, query_flat, post_date) if PERPLEXITY_API_KEY else None
         _ft_yt       = _rtex.submit(youtube_search, query_flat) if YOUTUBE_API_KEY else None
 
@@ -2165,11 +2263,17 @@ def scrape_sites(query, post_date=None):
         if _ft_social:
             for name, snippet in (_ft_social.result() or []):
                 results.append(f"[{name}]: {snippet}")
+        if _ft_spanish:
+            for name, snippet in (_ft_spanish.result() or []):
+                results.append(f"[{name}]: {snippet}")
         if _ft_brave:
             for name, snippet in (_ft_brave.result() or []):
                 results.append(f"[{name}]: {snippet}")
         if _ft_brave_ar:
             for name, snippet in (_ft_brave_ar.result() or []):
+                results.append(f"[{name}]: {snippet}")
+        if _ft_brave_es:
+            for name, snippet in (_ft_brave_es.result() or []):
                 results.append(f"[{name}]: {snippet}")
         if _ft_perp:
             for name, snippet in (_ft_perp.result() or []):
@@ -2211,6 +2315,7 @@ ANALYSE_JSON_SCHEMA = (
     '"perspectives":{'
     '"western_mainstream":"What Western mainstream sources say (or \'No coverage found\').",'
     '"regional_independent":"What regional, Muslim, Middle Eastern, and independent sources say (or \'No coverage found\').",'
+    '"latin_american":"What Latin American and Spanish-language sources say — Telesur, Chequeado, BBC Mundo, El País, etc. (or \'No coverage found\').",'
     '"consensus":"Where all sources agree — or \'Disputed along geopolitical lines\' if they fundamentally diverge."},'
     '"contested_language":["term used — note the dispute and alternative framings, e.g. \'terrorist / militant / resistance fighter — contested depending on political standpoint\'"],'
     '"context":"structural or historical background needed to understand the claim",'
@@ -2715,9 +2820,13 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         f"CLAIM:\n\"\"\"{claim[:1200]}\"\"\"\n\n"
         f"{evidence}{debate_section}{temporal_note}\n\n"
         "INSTRUCTIONS:\n"
-        "- Fill the 'perspectives' field: summarise what Western mainstream sources say vs what regional/independent/Global South sources say. "
-        "Draw on sources labelled '(Regional)', '(Arabic/Regional)', 'Social/Trending', 'Reddit', 'Twitter/X' in the evidence. "
-        "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus.\n"
+        "- Fill the 'perspectives' field: summarise three perspectives separately: "
+        "(1) western_mainstream — BBC, Reuters, AP, CNN, NYT, Western governments; "
+        "(2) regional_independent — Al Jazeera, Middle East Eye, Press TV, Arabic sources, African, Asian, Muslim-world outlets; "
+        "(3) latin_american — Telesur, BBC Mundo, Chequeado, El País, Maldita, EFE, DW Español, Latin American outlets. "
+        "Draw on sources labelled '(Regional)', '(Arabic/Regional)', '(Spanish/LatAm)', 'Social/Trending', 'Reddit', 'Twitter/X' in the evidence. "
+        "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus. "
+        "If no Spanish/LatAm sources are found, set latin_american to 'No coverage found'.\n"
         "- If Social/Trending or Reddit evidence shows the claim is widely circulating or being debated online, note this in the verdict.\n"
         "- Fill 'contested_language' only if the claim or evidence uses terminology that is genuinely disputed across communities "
         "(e.g. how groups are labelled, how events are described). Leave empty array [] if language is uncontested.\n"
@@ -2801,7 +2910,9 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         if persp.get("western_mainstream"):
             lines += [f"🌐 _Western:_ {persp['western_mainstream'][:180]}"]
         if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional:_ {persp['regional_independent'][:180]}"]
+            lines += [f"🕌 _Regional/Arabic:_ {persp['regional_independent'][:180]}"]
+        if persp.get("latin_american") and persp["latin_american"] != "No coverage found":
+            lines += [f"🌎 _Latin American:_ {persp['latin_american'][:180]}"]
         if persp.get("consensus"):
             lines += [f"⚖️ _Consensus:_ {persp['consensus'][:150]}"]
         lines += [""]
