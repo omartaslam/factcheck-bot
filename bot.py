@@ -3465,7 +3465,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
     cost = estimate_cost(source_type)
 
     # ── Extract claims before confirmation — show user what will be checked ──
-    if source_type in ("text", "audio", "url", "video"):
+    if source_type in ("text", "image", "audio", "url", "video"):
         send_fn("🔍 Identifying claims...")
         assessment = assess_content_claims(query, source_type, post_date=post_date)
         if source_type == "video":
@@ -4074,7 +4074,7 @@ def process(from_num, message):
     cost = estimate_cost(source_type)
 
     # ── Extract claims before confirmation — show user what will be checked ──
-    if source_type in ("text", "audio", "url", "video"):
+    if source_type in ("text", "image", "audio", "url", "video"):
         send(from_num, "🔍 Identifying claims...")
         assessment = assess_content_claims(query, source_type, post_date=post_date)
         # For video: always ensure authenticity check is present — inject before the 0-claims gate
@@ -4110,7 +4110,7 @@ def process(from_num, message):
                              "msg_id": msg_id}
         send(from_num, claims_confirm_msg(claims, source_type, cost))
     else:
-        # image / document — no claim extraction, show raw preview
+        # document — no claim extraction, show raw preview
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "post_date": post_date,
