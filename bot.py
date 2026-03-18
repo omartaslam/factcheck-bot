@@ -2257,7 +2257,7 @@ def scrape_sites(query, post_date=None):
     with ThreadPoolExecutor(max_workers=8) as _rtex:
         _is_mena     = _is_mena_topic(query_flat)
         _is_latam    = _is_latam_topic(query_flat)
-        _ft_main     = _rtex.submit(tavily_search, query_flat, 8, post_date) if TAVILY_API_KEY else None
+        _ft_main     = _rtex.submit(tavily_search, query_flat, 12, post_date) if TAVILY_API_KEY else None
         _ft_regional = _rtex.submit(tavily_search_regional, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_social   = _rtex.submit(tavily_search_social, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_spanish  = _rtex.submit(tavily_search_spanish, query_flat, post_date) if TAVILY_API_KEY else None
@@ -2922,6 +2922,7 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
                 if result:
                     if pro_text: result["_debate_pro"] = pro_text
                     if con_text: result["_debate_con"] = con_text
+                    log.info("Verdict: %s | Confidence: %s", result.get("rating"), result.get("confidence"))
                     return result
             except Exception as e:
                 log.warning("Claude synthesis attempt %d: %s", attempt+1, e)
