@@ -2217,7 +2217,7 @@ def tavily_search_spanish(query, post_date=None):
 
 _scrape_cache: dict = {}          # claim_key → (timestamp, result)
 _scrape_cache_lock = threading.Lock()
-_SCRAPE_CACHE_TTL = 900           # reuse search results for 15 minutes
+_SCRAPE_CACHE_TTL = 0             # cache disabled
 
 def scrape_sites(query, post_date=None):
     import time as _t
