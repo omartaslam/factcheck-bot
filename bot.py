@@ -5176,7 +5176,8 @@ def test_endpoint():
     if not claim:
         return jsonify({"error": "claim required"}), 400
     try:
-        result = analyse(claim, source_type)
+        results = _factcheck_pipeline(claim, source_type)
+        result = results[0] if results else {}
         report = fmt_report(claim, result, source_type, 0)
         truncated = "…" in report
         return jsonify({
