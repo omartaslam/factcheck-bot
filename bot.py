@@ -2020,12 +2020,15 @@ def tavily_search(query, max_results=12, post_date=None):
         data = _run_tavily(dated_query)
         results = _parse_tavily(data)
 
-        # If thin results (fewer than 5 named sources), retry without year anchor.
-        # This catches past events being recirculated — the year suffix filters out older coverage.
+        # If thin results (fewer than 5 named sources), retry without year anchor and without
+        # vague temporal words like "recently" / "just" that bias Tavily toward current content
+        # and filter out historical coverage of past events being recirculated.
         named = [r for r in results if r[0] != "Live Web Search"]
         if len(named) < 5:
-            log.info("Tavily main: thin results (%d named), retrying without year anchor", len(named))
-            data2 = _run_tavily(query, include_answer=False)
+            import re as _re
+            timeless_query = _re.sub(r'\b(recently|just|newly|new|latest|current|now)\b', '', query, flags=_re.IGNORECASE).strip()
+            log.info("Tavily main: thin results (%d named), retrying without year/temporal anchor", len(named))
+            data2 = _run_tavily(timeless_query, include_answer=False)
             seen_snippets = {r[1][:80] for r in results}
             for item in data2.get("results", []):
                 title = item.get("title", "")
@@ -3120,8 +3123,8 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
-    lines += ["*CLAIM*",f"_{_trunc(claim, 200)}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 250),""]
-    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f, 120)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
+    lines += ["*CLAIM*",f"_{_trunc(claim, 200)}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 450),""]
+    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f, 160)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
     # Perspectives — show where sources diverge by geopolitical view
     persp = a.get("perspectives", {})
     if isinstance(persp, dict) and any(persp.values()):
