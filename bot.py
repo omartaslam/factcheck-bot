@@ -2993,6 +2993,7 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus. "
         "If no Spanish/LatAm sources are found, set latin_american to 'No coverage found'.\n"
         "- If Social/Trending or Reddit evidence shows the claim is widely circulating or being debated online, note this in the verdict.\n"
+        "- RATING RULE ON SOCIAL MEDIA EVIDENCE: Posts from Instagram, Reddit, Facebook, Twitter/X, TikTok, and other social platforms are evidence of how a claim is *circulating*, NOT evidence of its truth or falsehood. Never use the volume, tone, or framing of social media posts to downgrade or upgrade a rating. Only named news outlets, fact-checkers, academic sources, and official records count as evidentiary weight for the rating itself.\n"
         "- Fill 'contested_language' only if the claim or evidence uses terminology that is genuinely disputed across communities "
         "(e.g. how groups are labelled, how events are described). Leave empty array [] if language is uncontested.\n"
         "- Fill 'who_benefits': identify who gains from this claim being believed or spread — state actor, political party, media outlet, movement, or interest group. "
