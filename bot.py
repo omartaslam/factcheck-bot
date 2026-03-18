@@ -1635,54 +1635,59 @@ _TOPIC_SOURCE_MAP = [
 
 
 def _source_preview_msg(topic_text=""):
-    """Return (total_count, preview_string) with topic-relevant + balanced rotating mix.
+    """Return (total_count, preview_string) with a balanced, rotating source preview.
 
-    Up to 4 slots are reserved for sources directly relevant to the detected topic
-    (e.g. Africa Check for African content, Al Jazeera for Middle East content).
-    Remaining slots filled with a balanced per-category mix, shuffled for rotation.
+    Always shows a mix of Western, regional/Middle East, Spanish/LatAm and fact-check
+    sources so the display signals Fred's impartiality regardless of topic.
+    Up to 2 slots reserved for topic-relevant sources (shuffled so they rotate).
     """
     all_src = enabled_sources()
     total = len(all_src)
     all_src_set = set(all_src)
     ql = topic_text.lower()
 
-    # Step 1: collect topic-priority sources (preserve order, deduplicate)
+    # Step 1: collect topic-priority sources, shuffled so different ones surface each time
     priority = []
     for keywords, sources in _TOPIC_SOURCE_MAP:
         if any(kw in ql for kw in keywords):
             for s in sources:
                 if s in all_src_set and s not in priority:
                     priority.append(s)
+    random.shuffle(priority)
 
-    # Step 2: balanced category fill for remaining slots
+    # Step 2: bucket all sources by region category
     by_cat = {}
     for s in all_src:
         cat = _SOURCE_PERSPECTIVE.get(s, "OTHER")
         by_cat.setdefault(cat, []).append(s)
 
-    targets = [
-        ("FACT-CHECK ORGS",           2),
-        ("REGIONAL / MIDDLE EAST",    2),
-        ("WESTERN MAINSTREAM",        1),
-        ("HUMAN RIGHTS & INTL LAW",   1),
-        ("INDEPENDENT / ALTERNATIVE", 1),
-    ]
+    chosen = []
 
-    chosen = list(priority[:4])  # up to 4 topic-priority slots
-    for cat, n in targets:
+    # Always guarantee regional balance across the 3 core regions + fact-checkers
+    # Each slot: pick randomly from that category (excluding already chosen)
+    _quota = [
+        ("WESTERN MAINSTREAM",        2),   # e.g. BBC, Reuters, CNN
+        ("REGIONAL / MIDDLE EAST",    2),   # e.g. Al Jazeera, Middle East Eye
+        ("SPANISH / LATIN AMERICAN",  1),   # e.g. Chequeado, Maldita
+        ("FACT-CHECK ORGS",           1),   # e.g. Snopes, FullFact, AFP Fact Check
+        ("INDEPENDENT / ALTERNATIVE", 1),   # e.g. Bellingcat, The Intercept
+    ]
+    for cat, n in _quota:
         pool = [s for s in by_cat.get(cat, []) if s not in chosen]
         if pool:
             chosen.extend(random.sample(pool, min(n, len(pool))))
-        if len(chosen) >= 8:
-            break
 
-    # Wildcard fill
+    # Fill remaining slot(s) with topic-priority sources not already shown
+    prio_new = [s for s in priority if s not in chosen]
+    chosen.extend(prio_new[:max(0, 8 - len(chosen))])
+
+    # Wildcard fill if still under 8
     others = [s for s in all_src if s not in chosen]
     if others and len(chosen) < 8:
         chosen.extend(random.sample(others, min(8 - len(chosen), len(others))))
 
-    # Priority sources shown first; rest shuffled for variety
-    prio_shown = [s for s in chosen if s in set(priority[:4])]
+    # Put topic-relevant sources first in the display, rest shuffled
+    prio_shown = [s for s in chosen if s in set(priority)]
     rest = [s for s in chosen if s not in set(prio_shown)]
     random.shuffle(rest)
     final = (prio_shown + rest)[:8]
@@ -2643,7 +2648,6 @@ _SOURCE_PERSPECTIVE = {
     "Alt News":          "FACT-CHECK ORGS",
     "Boom Live":         "FACT-CHECK ORGS",
     "Rappler":           "FACT-CHECK ORGS",
-    "Chequeado":         "FACT-CHECK ORGS",
     "Logically Facts":   "FACT-CHECK ORGS",
     # Human rights / international law
     "Human Rights Watch":    "HUMAN RIGHTS & INTL LAW",
@@ -2706,9 +2710,18 @@ _SOURCE_PERSPECTIVE = {
     "People":                 "WESTERN MAINSTREAM",
     "Entertainment Weekly":   "WESTERN MAINSTREAM",
     "IndieWire":              "WESTERN MAINSTREAM",
-    # European / Spanish-language mainstream
-    "EL PAÍS":             "WESTERN MAINSTREAM",
-    "El País":             "WESTERN MAINSTREAM",
+    # Spanish / Latin American
+    "Chequeado":           "SPANISH / LATIN AMERICAN",
+    "Maldita":             "SPANISH / LATIN AMERICAN",
+    "EL PAÍS":             "SPANISH / LATIN AMERICAN",
+    "El País":             "SPANISH / LATIN AMERICAN",
+    "Telesur":             "SPANISH / LATIN AMERICAN",
+    "La Silla Vacía":      "SPANISH / LATIN AMERICAN",
+    "Aos Fatos":           "SPANISH / LATIN AMERICAN",
+    "BBC Mundo":           "SPANISH / LATIN AMERICAN",
+    "Infobae":             "SPANISH / LATIN AMERICAN",
+    "La Nación":           "SPANISH / LATIN AMERICAN",
+    # European mainstream
     "Le Monde":            "WESTERN MAINSTREAM",
     "Der Spiegel":         "WESTERN MAINSTREAM",
     "Euronews":            "WESTERN MAINSTREAM",
@@ -2737,6 +2750,7 @@ _PERSPECTIVE_ORDER = [
     "FACT-CHECK ORGS",
     "HUMAN RIGHTS & INTL LAW",
     "REGIONAL / MIDDLE EAST",
+    "SPANISH / LATIN AMERICAN",
     "INDEPENDENT / ALTERNATIVE",
     "WESTERN MAINSTREAM",
     "OTHER SOURCES",
