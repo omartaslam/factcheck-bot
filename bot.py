@@ -279,7 +279,8 @@ CORE PRINCIPLES:
 7. International law (Geneva Conventions, UN resolutions, ICJ/ICC rulings) provides an objective reference frame. Apply it consistently to all parties.
 8. Statistical claims — casualty figures, percentages, area measurements — deserve specific scrutiny. Note when official figures conflict with independent counts.
 
-EXPERTISE: Gaza conflict, West Bank occupation, Lebanese civil conflicts, Iran-US-Israel tensions, Iraqi and Syrian wars, Yemeni conflict, Sudanese crisis, global Muslim communities, colonialism's ongoing effects, Western foreign policy in MENA and beyond."""
+EXPERTISE: Gaza conflict, West Bank occupation, Lebanese civil conflicts, Iran-US-Israel tensions, Iraqi and Syrian wars, Yemeni conflict, Sudanese crisis, global Muslim communities, colonialism's ongoing effects, Western foreign policy in MENA and beyond.
+9. Never treat the social or political origin of a claim as evidence about its truth. A factually accurate claim is TRUE regardless of who shares it, what community circulates it, or what narrative it is used to support. Do not use labels like 'antisemitic framing', 'conspiracy theory framing', 'far-right narrative', or similar social/political categorisations as verdict modifiers — these are editorial categories, not factual assessments. Criticism of a government (including the Israeli government), a political ideology (including Zionism), or a state's actions is not the same as hatred of an ethnic or religious group and must not be treated as such."""
 
 TRUTH_METER = {"TRUE": ("✅","TRUE",5),"MOSTLY TRUE": ("🟢","MOSTLY TRUE",4),"HALF TRUE": ("🟡","HALF TRUE",3),"MOSTLY FALSE": ("🟠","MOSTLY FALSE",2),"FALSE": ("❌","FALSE",1),"PANTS ON FIRE": ("🔥","PANTS ON FIRE",0),"UNVERIFIABLE": ("❓","UNVERIFIABLE",-1),"MISLEADING": ("⚠️","MISLEADING",-1),"NEEDS CONTEXT": ("📌","NEEDS CONTEXT",-1)}
 
@@ -1986,23 +1987,19 @@ def tavily_search(query, max_results=12, post_date=None):
     """Query Tavily Search API for real-time results. Returns list of (name, snippet) tuples."""
     if not TAVILY_API_KEY:
         return []
-    try:
-        # Always anchor query with a year — use post_date year if known, otherwise current year.
-        # Critical: Claude's cutoff is Aug 2025, so without a year Tavily may surface older events.
-        import datetime as _dt_tav
-        year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_tav.date.today().year)
-        dated_query = query if year in query else f"{query} {year}"
 
+    def _run_tavily(q, include_answer=True):
         r = requests.post(
             "https://api.tavily.com/search",
-            json={"api_key": TAVILY_API_KEY, "query": dated_query[:400], "max_results": max_results,
-                  "search_depth": "advanced", "include_answer": True},
+            json={"api_key": TAVILY_API_KEY, "query": q[:400], "max_results": max_results,
+                  "search_depth": "advanced", "include_answer": include_answer},
             timeout=15
         )
         r.raise_for_status()
-        data = r.json()
+        return r.json()
+
+    def _parse_tavily(data):
         results = []
-        # Synthesised answer from Tavily — very useful for recency and breadth
         answer = (data.get("answer") or "").strip()
         if answer:
             results.append(("Live Web Search", answer[:600]))
@@ -2013,6 +2010,33 @@ def tavily_search(query, max_results=12, post_date=None):
             source_name = _url_to_source_name(url)
             snippet = f"{title} — {content} ({url})"
             results.append((source_name, snippet[:500]))
+        return results
+
+    try:
+        import datetime as _dt_tav
+        year = post_date[:4] if (post_date and len(post_date) >= 4) else str(_dt_tav.date.today().year)
+        dated_query = query if year in query else f"{query} {year}"
+
+        data = _run_tavily(dated_query)
+        results = _parse_tavily(data)
+
+        # If thin results (fewer than 3 named sources), retry without year anchor.
+        # This catches past events being recirculated — the year suffix filters out older coverage.
+        named = [r for r in results if r[0] != "Live Web Search"]
+        if len(named) < 3:
+            log.info("Tavily main: thin results (%d named), retrying without year anchor", len(named))
+            data2 = _run_tavily(query, include_answer=False)
+            seen_snippets = {r[1][:80] for r in results}
+            for item in data2.get("results", []):
+                title = item.get("title", "")
+                content = item.get("content", "")
+                url = item.get("url", "")
+                source_name = _url_to_source_name(url)
+                snippet = f"{title} — {content} ({url})"
+                if snippet[:80] not in seen_snippets:
+                    results.append((source_name, snippet[:500]))
+                    seen_snippets.add(snippet[:80])
+
         log.info("Tavily main: %d results — sources: %s", len(results),
                  [r[0] for r in results])
         return results
@@ -3000,7 +3024,16 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "Never cite absence of Western outlet coverage as a reason to downgrade a rating or confidence level.\n"
         "- RATING RULE ON SUPERLATIVES: For claims using 'first', 'largest', 'only' etc. — if the available sources "
         "directly state or confirm the superlative without contradiction, that is sufficient to verify it. Do not demand "
-        "exhaustive historical comparison data that cannot reasonably exist for same-day breaking news.\n\n"
+        "exhaustive historical comparison data that cannot reasonably exist for same-day breaking news.\n"
+        "- RATING RULE ON CLAIM ORIGIN: A factually accurate claim is TRUE regardless of who shares it, what community "
+        "circulates it, or what narrative it is used to support. Do NOT downgrade or switch to NEEDS CONTEXT because a "
+        "claim is associated with conspiracy theory communities, fringe movements, or contested political narratives. "
+        "Assess the factual accuracy of the claim as stated — nothing else.\n"
+        "- RATING RULE ON POLITICAL FRAMING LABELS: Never use labels such as 'antisemitic framing', 'far-right narrative', "
+        "'conspiracy theory framing', 'Islamist framing', or similar social/political categorisations as a reason to "
+        "downgrade a verdict or switch to NEEDS CONTEXT. These are editorial judgements, not factual assessments. "
+        "If a claim is factually true, rate it TRUE. If the claim itself contains a factually false assertion, rate it "
+        "on those factual merits — not because of its social associations.\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
 
