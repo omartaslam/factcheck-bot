@@ -5177,8 +5177,10 @@ def test_endpoint():
         return jsonify({"error": "claim required"}), 400
     try:
         results = _factcheck_pipeline(claim, source_type)
-        result = results[0] if results else {}
-        report = fmt_report(claim, result, source_type, 0)
+        first = results[0] if results else {}
+        result = first.get("analysis", {})
+        used_sources = first.get("sources_consulted", [])
+        report = fmt_report(claim, result, source_type, 0, used_sources=used_sources)
         truncated = "…" in report
         return jsonify({
             "verdict": result.get("rating"),
