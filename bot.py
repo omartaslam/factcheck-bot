@@ -2649,6 +2649,7 @@ _SOURCE_PERSPECTIVE = {
     "Perplexity Sonar (live)":    "LIVE WEB SEARCH",
     "Tavily Search":              "LIVE WEB SEARCH",
     "Tavily Summary":             "LIVE WEB SEARCH",
+    "Live Web Search":            "LIVE WEB SEARCH",
     # Western mainstream — general news
     "New York Times":      "WESTERN MAINSTREAM",
     "Washington Post":     "WESTERN MAINSTREAM",
