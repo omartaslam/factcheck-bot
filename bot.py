@@ -3123,29 +3123,29 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
-    lines += ["*CLAIM*",f"_{claim}_","","*ANALYSIS*",a.get("verdict",""),""]
-    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {f}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
+    lines += ["*CLAIM*",f"_{claim}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
+    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f,180)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
     # Perspectives — show where sources diverge by geopolitical view
     persp = a.get("perspectives", {})
     if isinstance(persp, dict) and any(persp.values()):
         lines += ["*PERSPECTIVES*"]
         if persp.get("western_mainstream"):
-            lines += [f"🌐 _Western:_ {persp['western_mainstream']}"]
+            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 200)}"]
         if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional/Arabic:_ {persp['regional_independent']}"]
+            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 200)}"]
         if persp.get("latin_american") and persp["latin_american"] != "No coverage found":
-            lines += [f"🌎 _Latin American:_ {persp['latin_american']}"]
+            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 180)}"]
         if persp.get("consensus"):
-            lines += [f"⚖️ _Consensus:_ {persp['consensus']}"]
+            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 180)}"]
         lines += [""]
     # Contested language
     cl = a.get("contested_language", [])
     if cl and isinstance(cl, list):
-        lines += ["*CONTESTED LANGUAGE*"] + [f"• {t}" for t in cl[:2]] + [""]
-    if a.get("context"): lines += ["*BACKGROUND*", a["context"], ""]
-    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {f}" for f in a["red_flags"][:2]] + [""]
-    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{a['who_benefits']}_", ""]
-    if a.get("media_bias"): lines += ["*BIAS NOTE*", a["media_bias"], ""]
+        lines += ["*CONTESTED LANGUAGE*"] + [f"• {_trunc(t,160)}" for t in cl[:2]] + [""]
+    if a.get("context"): lines += ["*BACKGROUND*", _trunc(a["context"], 300), ""]
+    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {_trunc(f,180)}" for f in a["red_flags"][:2]] + [""]
+    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{_trunc(a['who_benefits'],200)}_", ""]
+    if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"],180), ""]
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
         "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
@@ -3159,7 +3159,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         lines += [f"*TRUTH SCORE*  `░░░░░░░░░░` ?/10  _(insufficient evidence to score)_", ""]
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
-    lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{a.get('confidence_reason','')}_",""]
+    lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{_trunc(a.get('confidence_reason',''), 200)}_",""]
     # Show what Claude actually cited — these vary per claim based on evidence found.
     # Fall back to scraped source names only if Claude returned no citations.
     if a.get("sources"):
@@ -3184,12 +3184,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
               f"_🌐 {WEBSITE_URL}_"]
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
-    msg = "\n".join(lines)
-    # WhatsApp hard limit is 4096 chars. If over, trim from the middle sections,
-    # keeping header (verdict/claim) and footer (sources/cost) intact.
-    if len(msg) > 3900:
-        msg = msg[:3850].rsplit('\n', 1)[0] + "\n\n_(message trimmed for length)_\n" + "\n".join(lines[-4:])
-    return msg
+    return "\n".join(lines)
 
 def _welcome_msg():
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
