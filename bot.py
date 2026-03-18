@@ -3337,6 +3337,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint)
         _log_request("whatsapp", from_num, st, query, claim, a, report, cost)
+        log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
@@ -3388,6 +3389,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date)
         _log_request(platform, uid, st, query, claim, a, report, cost_est)
+        log.info("VERDICT SENT to %s/%s:\n%s", platform, uid, report)
         if multi:
             send_fn(f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
