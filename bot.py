@@ -1901,6 +1901,22 @@ _DOMAIN_TO_SOURCE = {
     # Independent / alt
     "theintercept.com": "The Intercept", "democracynow.org": "Democracy Now",
     "novaramedia.com": "Novara Media",
+    "responsiblestatecraft.org": "Responsible Statecraft",
+    "jacobin.com": "Jacobin", "commondreams.org": "Common Dreams",
+    "antiwar.com": "Antiwar.com",
+    # Reference
+    "wikipedia.org": "Wikipedia",
+    # South Asian / African / Global South
+    "dawn.com": "Dawn (Pakistan)", "thenews.com.pk": "The News International",
+    "thehindu.com": "The Hindu", "ndtv.com": "NDTV", "hindustantimes.com": "Hindustan Times",
+    "timesofindia.com": "Times of India", "tribuneindia.com": "The Tribune India",
+    "dailysabah.com": "Daily Sabah", "trtworld.com": "TRT World",
+    "presstv.ir": "Press TV", "xinhuanet.com": "Xinhua", "cgtn.com": "CGTN",
+    "rt.com": "RT", "sputniknews.com": "Sputnik",
+    "dailymaverick.co.za": "Daily Maverick", "allafrica.com": "AllAfrica",
+    "premiumtimesng.com": "Premium Times Nigeria", "punchng.com": "Punch Nigeria",
+    "monitor.co.ug": "Daily Monitor Uganda", "nation.africa": "Nation Africa",
+    "nairobitimes.co.ke": "Nairobi Times",
     # Video platforms
     "youtube.com": "YouTube", "youtu.be": "YouTube",
 }
@@ -1909,11 +1925,24 @@ def _url_to_source_name(url):
     """Return a readable publication name from a URL, falling back to the domain."""
     try:
         from urllib.parse import urlparse
-        domain = urlparse(url).netloc.lower().replace("www.", "")
+        netloc = urlparse(url).netloc.lower()
+        # Strip common non-www subdomains that mask the real domain
+        _STRIP_PREFIXES = ("www.", "edition.", "en.", "m.", "mobile.", "amp.", "news.", "static.")
+        domain = netloc
+        for pfx in _STRIP_PREFIXES:
+            if domain.startswith(pfx):
+                domain = domain[len(pfx):]
+                break
         if domain in _DOMAIN_TO_SOURCE:
             return _DOMAIN_TO_SOURCE[domain]
-        # Try matching on second-level domain (e.g. "rollingstone.co.uk" → "rollingstone")
-        base = domain.split(".")[0]
+        # Try last two parts of domain (e.g. "politics.theguardian.com" → "theguardian.com")
+        parts = domain.split(".")
+        if len(parts) >= 2:
+            sld = ".".join(parts[-2:])
+            if sld in _DOMAIN_TO_SOURCE:
+                return _DOMAIN_TO_SOURCE[sld]
+        # Try matching on second-level domain root (e.g. "rollingstone.co.uk" → "rollingstone")
+        base = parts[0]
         for k, v in _DOMAIN_TO_SOURCE.items():
             if k.startswith(base + "."):
                 return v
@@ -2787,7 +2816,7 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         f"{source_section}"
         f"GOOGLE FACT CHECK:\n{g or 'No matches.'}\n\n"
         f"SOURCE EVIDENCE (grouped by perspective — note where perspectives diverge):\n"
-        f"{grouped[:2000] or 'No results.'}"
+        f"{grouped[:10000] or 'No results.'}"
         f"{osint_note}"
     )
     if source_section:
