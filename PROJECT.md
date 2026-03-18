@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-17 (session 5)
+> **Last updated:** 2026-03-18 (session 6)
 > **Version:** v3.4 BETA
-> **Status:** Live on Railway — multi-perspective balanced verdicts verified working on Iran/US war story
+> **Status:** Live on Railway — TRUE/HIGH confidence verified working; multi-region source coverage expanded
 
 ---
 
@@ -548,11 +548,18 @@ All six run in parallel — no added latency. `_is_mena_topic()` keyword list ga
 
 Evidence fed to Claude is grouped into labelled categories:
 - `LIVE WEB SEARCH` — Perplexity Sonar, Tavily Summary, Tavily Search, Regional, Arabic, Social/Trending
-- `FACT-CHECK ORGS` — Snopes, FullFact, PolitiFact, AFP, Misbar, Africa Check, Alt News, Rappler, etc.
+- `FACT-CHECK ORGS` — Snopes, FullFact, PolitiFact, AFP, Misbar, Africa Check, Alt News, Boom Live, Rappler, Logically Facts etc.
 - `HUMAN RIGHTS & INTL LAW` — HRW, Amnesty, B'Tselem, UN News, Bellingcat
-- `REGIONAL / MIDDLE EAST` — Al Jazeera, MEE, MEMO, 972 Magazine, Electronic Intifada, Mondoweiss, Anadolu, Al-Monitor, DAWN, Arab News, Haaretz, Yeni Safak
-- `INDEPENDENT / ALTERNATIVE` — Grayzone, Intercept, Democracy Now, Novara, Canary, MintPress, Responsible Statecraft
-- `WESTERN MAINSTREAM` — BBC, Reuters, AP, Guardian, CNN, NYT, WaPo, Hollywood Reporter, Rolling Stone, EL PAÍS, etc. (40+ outlets)
+- `REGIONAL / MIDDLE EAST` — Al Jazeera, MEE, MEMO, 972 Magazine, Electronic Intifada, Mondoweiss, Anadolu, Al-Monitor, DAWN, Arab News, Haaretz, TRT World
+- `FRENCH / FRANCOPHONE` — RFI, France 24, Jeune Afrique, Le Monde, Libération, Le Figaro, Afrik.com, APA News
+- `SOUTH ASIAN / URDU` — Geo News, Dawn (Pakistan), BBC Urdu, ARY News, Jang, The Hindu, NDTV, Hindustan Times, Times of India
+- `SWAHILI / EAST AFRICA` — BBC Swahili, VOA Swahili, The Citizen Tanzania, Standard Media Kenya
+- `SPANISH / LATIN AMERICAN` — Chequeado, Maldita, EL PAÍS, Telesur, BBC Mundo, Aos Fatos, Infobae, La Nación
+- `INDEPENDENT / ALTERNATIVE` — Grayzone, Intercept, Democracy Now, Novara, Canary, MintPress, Responsible Statecraft, Meduza (Russia)
+- `WESTERN MAINSTREAM` — BBC, Reuters, AP, Guardian, CNN, NYT, WaPo, Der Spiegel, Euronews etc. (40+ outlets)
+
+**State media excluded (disinfo risk):** RT, Sputnik, CGTN, Xinhua, Press TV, Yeni Safak — removed 2026-03-18.
+Policy: only sources with editorial independence and a track record of correcting errors.
 
 ### Report fields
 - **PERSPECTIVES** — `🌐 Western:` / `🕌 Regional:` / `⚖️ Consensus:` — shows where sources diverge by geopolitical view
@@ -659,22 +666,39 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 
 ## 22. Outstanding Tasks (priority order)
 
+### Urgent
+1. **FB cookies rotation** — `FB_COOKIES_B64` / `IG_COOKIES_B64` expire ~2026-03-30 (12 days). Refresh via EditThisCookie → base64 → Railway env var.
+
 ### Immediate
-1. **Set FREE_CHECKS_LIMIT for beta** — change from 9999 to 5-10 in Railway when ready to open to testers
-2. **Share beta link** — `wa.me/447863795638` — ready to share now
-3. **Stripe setup** — create Payment Links, set all Stripe env vars, reset `FREE_CHECKS_LIMIT=3` for launch
+2. **fredcheck.co.uk** — add as custom domain in Railway
+3. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
+4. **Set FREE_CHECKS_LIMIT for beta** — change from 9999 to 5-10 when ready to open to testers
+5. **Stripe setup** — create Payment Links, set all Stripe env vars, reset `FREE_CHECKS_LIMIT=3` for launch
 
 ### High Priority
-4. **User feedback system** — reply FEEDBACK or 👍/👎 after a check. Store in DB. Use patterns to refine prompts.
-5. **Low credit / API key alert to user** — notify user when free checks exhausted; admin alert when Anthropic/OpenAI credits low
-6. **Test PERSPECTIVES + CONTESTED LANGUAGE** — send real Middle East URLs to live bot, verify output
+6. **User feedback system** — reply FEEDBACK or 👍/👎 after a check. Store in DB. Use patterns to refine prompts.
+7. **Low credit alerts** — notify user when free checks exhausted; admin alert when Anthropic/OpenAI credits low
+8. **Persist `pending` state to DB** — lost on every redeploy; users mid-flow get errors
 
-### Done this session ✅
-- ~~Claim selection~~ — users pick claims by number (1, 2, 3 or ALL) ✅
-- ~~WhatsApp message reactions~~ — verdict emoji reacted to sender's message ✅
-- ~~Video authenticity claim~~ — auto-injected for all video fact-checks ✅
-- ~~Video length limit~~ — rejects videos over MAX_VIDEO_MINUTES (default 10) ✅
-- ~~UNVERIFIABLE root fix~~ — source article now passed as primary evidence to claude_analyse ✅
+### Medium Priority
+9. **Tavily language passes** — French/Urdu/Swahili search passes (query in target language for RFI/Geo etc.). Currently Tavily is English-only.
+10. **Perplexity Sonar** — activate post-beta with `PERPLEXITY_API_KEY`
+11. **TikTok OCR** — text overlay recognition (pytesseract or Sonnet)
+12. **BBC Swahili/Urdu subpath URL matching** — test that `bbc.com/urdu` and `bbc.com/swahili` resolve correctly in `_url_to_source_name`
+
+### Lower Priority / Future
+13. **Messenger/Telegram** — set tokens when ready to expand platforms
+14. **Twitter/X** — activate when ready to pay (~$100/month)
+15. **Turkish/Farsi independent sources** — Cumhuriyet, Bianet, IranWire, Iran International
+16. **Lenz.io integration** — contact for API access (Cloudflare blocks scraping)
+
+### Done this session (2026-03-18) ✅
+- ~~Evidence truncation bug~~ — `grouped[:2000]` → `grouped[:10000]` — Claude now sees all outlet snippets ✅
+- ~~Subdomain source names~~ — `edition.cnn.com`→CNN, `en.wikipedia.org`→Wikipedia etc. ✅
+- ~~TRUE/HIGH confidence~~ — verified working for well-corroborated breaking news ✅
+- ~~Balanced source preview~~ — quota system, always shows all regions in cross-referencing line ✅
+- ~~French/Urdu/Swahili regions~~ — 4 new regional categories added ✅
+- ~~State media removed~~ — RT, Sputnik, CGTN, Xinhua, Press TV, Yeni Safak gone ✅
 
 ### Medium Priority
 9. **TikTok text overlay OCR** — switch `analyze_video_frames` to Sonnet or add pytesseract for styled text overlays
@@ -746,6 +770,13 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 ## 24. Recent Git History
 
 ```
+c528d24  feat: add French/Urdu/Swahili regions; remove state media sources
+66de935  fix: balanced regional source preview + SPANISH/LATIN AMERICAN category
+d62eed7  fix: raise evidence cap 2k→10k chars + fix subdomain source name lookup
+05cfa92  fix: (session 5 — multiple verdict quality fixes)
+806995c  fix: remove Western outlet bias from confidence/rating rules
+13026f0  fix: word-boundary truncation + rating_reason explanation field
+f912149  fix: temperature=0 on claim extraction + deprioritise biographical filler claims
 7983ba8  feat: MAX_VIDEO_MINUTES limit (default 10) — pre-check duration before download
 5df8f4c  fix: inject video authenticity claim before 0-claims gate
 3f98823  feat: video questions treated as claims; authenticity claim auto-injected
