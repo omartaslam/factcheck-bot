@@ -3123,29 +3123,29 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
-    lines += ["*CLAIM*",f"_{_trunc(claim, 200)}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 450),""]
-    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f, 160)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
+    lines += ["*CLAIM*",f"_{_trunc(claim, 300)}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 600),""]
+    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f, 200)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
     # Perspectives — show where sources diverge by geopolitical view
     persp = a.get("perspectives", {})
     if isinstance(persp, dict) and any(persp.values()):
         lines += ["*PERSPECTIVES*"]
         if persp.get("western_mainstream"):
-            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 160)}"]
+            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 220)}"]
         if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 160)}"]
+            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 220)}"]
         if persp.get("latin_american") and persp["latin_american"] != "No coverage found":
-            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 150)}"]
+            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 200)}"]
         if persp.get("consensus"):
-            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 150)}"]
+            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 200)}"]
         lines += [""]
     # Contested language
     cl = a.get("contested_language", [])
     if cl and isinstance(cl, list):
-        lines += ["*CONTESTED LANGUAGE*"] + [f"• {_trunc(t, 130)}" for t in cl[:2]] + [""]
-    if a.get("context"): lines += ["*BACKGROUND*", _trunc(a["context"], 220), ""]
-    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {_trunc(f, 150)}" for f in a["red_flags"][:2]] + [""]
-    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{_trunc(a['who_benefits'], 160)}_", ""]
-    if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"], 130), ""]
+        lines += ["*CONTESTED LANGUAGE*"] + [f"• {_trunc(t, 180)}" for t in cl[:2]] + [""]
+    if a.get("context"): lines += ["*BACKGROUND*", _trunc(a["context"], 350), ""]
+    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {_trunc(f, 200)}" for f in a["red_flags"][:2]] + [""]
+    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{_trunc(a['who_benefits'], 220)}_", ""]
+    if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"], 200), ""]
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
         "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
