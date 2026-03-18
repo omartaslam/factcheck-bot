@@ -1877,10 +1877,11 @@ _DOMAIN_TO_SOURCE = {
     "nytimes.com": "New York Times", "washingtonpost.com": "Washington Post",
     "independent.co.uk": "The Independent", "telegraph.co.uk": "The Telegraph",
     "cnn.com": "CNN", "nbcnews.com": "NBC News", "cbsnews.com": "CBS News",
-    "abcnews.go.com": "ABC News", "foxnews.com": "Fox News",
-    "huffpost.com": "HuffPost", "newsweek.com": "Newsweek",
+    "cnbc.com": "CNBC", "abcnews.go.com": "ABC News", "foxnews.com": "Fox News",
+    "breitbart.com": "Breitbart", "huffpost.com": "HuffPost", "newsweek.com": "Newsweek",
     "time.com": "Time", "politico.com": "Politico", "thehill.com": "The Hill",
     "npr.org": "NPR", "pbs.org": "PBS NewsHour",
+    "itv.com": "ITV News", "skynews.com": "Sky News", "sky.com": "Sky News",
     "msn.com": "MSN News", "yahoo.com": "Yahoo News",
     # European / Spanish-language
     "elpais.com": "EL PAÍS", "lemonde.fr": "Le Monde",
@@ -1921,7 +1922,7 @@ def _url_to_source_name(url):
     except Exception:
         return "Live Web Search"
 
-def tavily_search(query, max_results=8, post_date=None):
+def tavily_search(query, max_results=12, post_date=None):
     """Query Tavily Search API for real-time results. Returns list of (name, snippet) tuples."""
     if not TAVILY_API_KEY:
         return []
@@ -2681,9 +2682,23 @@ _SOURCE_PERSPECTIVE = {
     "Der Spiegel":         "WESTERN MAINSTREAM",
     "Euronews":            "WESTERN MAINSTREAM",
     # Wire services
+    "Reuters":             "WESTERN MAINSTREAM",
+    "AP News":             "WESTERN MAINSTREAM",
     "Associated Press":    "WESTERN MAINSTREAM",
     "AFP":                 "WESTERN MAINSTREAM",
     "Bloomberg":           "WESTERN MAINSTREAM",
+    "Axios":               "WESTERN MAINSTREAM",
+    # Additional mainstream outlets
+    "CNN":                 "WESTERN MAINSTREAM",
+    "CNBC":                "WESTERN MAINSTREAM",
+    "NPR":                 "WESTERN MAINSTREAM",
+    "PBS NewsHour":        "WESTERN MAINSTREAM",
+    "The Guardian":        "WESTERN MAINSTREAM",
+    "ITV News":            "WESTERN MAINSTREAM",
+    "Sky News":            "WESTERN MAINSTREAM",
+    "Breitbart":           "WESTERN MAINSTREAM",
+    "MSN News":            "WESTERN MAINSTREAM",
+    "Yahoo News":          "WESTERN MAINSTREAM",
 }
 
 _PERSPECTIVE_ORDER = [
@@ -2875,8 +2890,9 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "BBC, CNN) have not yet published full-text coverage — their absence is a function of publication lag, not a reflection "
         "of the claim's accuracy. Similarly, absence of Western fact-checking organisation verdicts is expected for same-day "
         "stories and must not be used to downgrade. Live web search is a real-time aggregation of current news sources across "
-        "the globe — treat it as sufficient primary corroboration for breaking news. Rate TRUE with MEDIUM confidence if "
-        "live web search confirms the core claim without contradiction.\n"
+        "the globe — treat it as sufficient primary corroboration for breaking news. "
+        "Rate TRUE with MEDIUM confidence if only the live web search summary confirms with no named outlet articles visible. "
+        "Rate TRUE with HIGH confidence if the live web search summary plus 2 or more named mainstream outlets in the evidence independently confirm the core claim without contradiction.\n"
         "- WESTERN SOURCE BIAS: Do not treat Reuters, AP, BBC, CNN, or Western fact-checkers as the gold standard for "
         "verification. Regional outlets, independent journalists, and non-Western sources carry equal evidentiary weight. "
         "Never cite absence of Western outlet coverage as a reason to downgrade a rating or confidence level.\n"
