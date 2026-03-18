@@ -1554,13 +1554,26 @@ def enabled_sources():
 # Topic → priority sources. Each entry: (set_of_keywords, [ordered_source_names]).
 # Keywords matched case-insensitively against the combined query+claims text.
 _TOPIC_SOURCE_MAP = [
-    # Africa
+    # Francophone Africa / France
+    ({"france", "french", "francophone", "senegal", "mali", "burkina", "niger",
+      "cameroon", "côte d'ivoire", "ivory coast", "guinea", "congo", "drc",
+      "madagascar", "benin", "togo", "chad", "gabon", "rwanda", "burundi",
+      "algeria", "morocco", "tunisia", "macron", "le pen", "paris"},
+     ["RFI", "France 24", "Jeune Afrique", "Le Monde", "Africa Check"]),
+
+    # Sub-Saharan Africa (English)
     ({"africa", "african", "kenya", "nigeria", "ghana", "ethiopia", "somalia",
-      "sudan", "south africa", "zimbabwe", "tanzania", "uganda", "rwanda",
-      "cameroon", "senegal", "mozambique", "zambia", "malawi", "botswana",
-      "namibia", "ivory coast", "côte d'ivoire", "liberia", "sierra leone",
-      "guinea", "niger", "mali", "burkina", "congo", "angola"},
-     ["Africa Check", "PesaCheck", "Dubawa", "Logically Facts"]),
+      "sudan", "south africa", "zimbabwe", "tanzania", "uganda",
+      "mozambique", "zambia", "malawi", "botswana", "namibia",
+      "liberia", "sierra leone", "angola"},
+     ["Africa Check", "PesaCheck", "Dubawa", "Daily Maverick", "Logically Facts"]),
+
+    # South Asia / Urdu / Pakistan
+    ({"pakistan", "pakistani", "imran khan", "pmln", "pti", "isi", "lahore",
+      "karachi", "islamabad", "urdu", "punjab", "sindh", "balochistan",
+      "kashmir", "india", "indian", "modi", "bjp", "hindutva", "delhi",
+      "mumbai", "bangladesh", "sri lanka", "nepal"},
+     ["Geo News", "Dawn (Pakistan)", "BBC Urdu", "ARY News", "Alt News", "Boom Live"]),
 
     # Palestine / Israel
     ({"palestine", "palestinian", "israel", "israeli", "gaza", "west bank",
@@ -1663,14 +1676,16 @@ def _source_preview_msg(topic_text=""):
 
     chosen = []
 
-    # Always guarantee regional balance across the 3 core regions + fact-checkers
-    # Each slot: pick randomly from that category (excluding already chosen)
+    # Always guarantee regional balance — one slot per region family + fact-checkers
+    # Regions with no enabled sources simply skip, so new regions auto-activate
     _quota = [
-        ("WESTERN MAINSTREAM",        2),   # e.g. BBC, Reuters, CNN
-        ("REGIONAL / MIDDLE EAST",    2),   # e.g. Al Jazeera, Middle East Eye
-        ("SPANISH / LATIN AMERICAN",  1),   # e.g. Chequeado, Maldita
-        ("FACT-CHECK ORGS",           1),   # e.g. Snopes, FullFact, AFP Fact Check
-        ("INDEPENDENT / ALTERNATIVE", 1),   # e.g. Bellingcat, The Intercept
+        ("WESTERN MAINSTREAM",        2),   # BBC, Reuters, CNN etc.
+        ("REGIONAL / MIDDLE EAST",    1),   # Al Jazeera, Middle East Eye etc.
+        ("FRENCH / FRANCOPHONE",      1),   # RFI, France 24, Jeune Afrique etc.
+        ("SOUTH ASIAN / URDU",        1),   # Geo News, Dawn, BBC Urdu etc.
+        ("SPANISH / LATIN AMERICAN",  1),   # Chequeado, Maldita, El País etc.
+        ("FACT-CHECK ORGS",           1),   # Snopes, FullFact, AFP Fact Check etc.
+        ("INDEPENDENT / ALTERNATIVE", 1),   # Bellingcat, The Intercept, Meduza etc.
     ]
     for cat, n in _quota:
         pool = [s for s in by_cat.get(cat, []) if s not in chosen]
@@ -1911,17 +1926,28 @@ _DOMAIN_TO_SOURCE = {
     "antiwar.com": "Antiwar.com",
     # Reference
     "wikipedia.org": "Wikipedia",
-    # South Asian / African / Global South
+    # South Asian
     "dawn.com": "Dawn (Pakistan)", "thenews.com.pk": "The News International",
     "thehindu.com": "The Hindu", "ndtv.com": "NDTV", "hindustantimes.com": "Hindustan Times",
     "timesofindia.com": "Times of India", "tribuneindia.com": "The Tribune India",
-    "dailysabah.com": "Daily Sabah", "trtworld.com": "TRT World",
-    "presstv.ir": "Press TV", "xinhuanet.com": "Xinhua", "cgtn.com": "CGTN",
-    "rt.com": "RT", "sputniknews.com": "Sputnik",
+    "geo.tv": "Geo News", "jang.com.pk": "Jang", "arynews.tv": "ARY News",
+    "bbc.com/urdu": "BBC Urdu", "urdu.geo.tv": "Geo Urdu",
+    # French-language
+    "rfi.fr": "RFI", "france24.com": "France 24",
+    "jeuneafrique.com": "Jeune Afrique", "liberation.fr": "Libération",
+    "lefigaro.fr": "Le Figaro", "20minutes.fr": "20 Minutes",
+    "afrik.com": "Afrik.com", "apanews.net": "APA News",
+    # Swahili / East Africa
+    "bbc.com/swahili": "BBC Swahili", "voaswahili.com": "VOA Swahili",
+    "thecitizen.co.tz": "The Citizen Tanzania", "standardmedia.co.ke": "Standard Media Kenya",
+    # Independent Russian
+    "meduza.io": "Meduza",
+    # African
     "dailymaverick.co.za": "Daily Maverick", "allafrica.com": "AllAfrica",
     "premiumtimesng.com": "Premium Times Nigeria", "punchng.com": "Punch Nigeria",
     "monitor.co.ug": "Daily Monitor Uganda", "nation.africa": "Nation Africa",
     "nairobitimes.co.ke": "Nairobi Times",
+    "dailysabah.com": "Daily Sabah", "trtworld.com": "TRT World",
     # Video platforms
     "youtube.com": "YouTube", "youtu.be": "YouTube",
 }
@@ -2667,8 +2693,37 @@ _SOURCE_PERSPECTIVE = {
     "Mondoweiss":            "REGIONAL / MIDDLE EAST",
     "Haaretz":               "REGIONAL / MIDDLE EAST",
     "Arab News":             "REGIONAL / MIDDLE EAST",
-    "Yeni Safak":            "REGIONAL / MIDDLE EAST",
+    "TRT World":             "REGIONAL / MIDDLE EAST",
     "DAWN":                  "REGIONAL / MIDDLE EAST",
+    # French-language
+    "RFI":                   "FRENCH / FRANCOPHONE",
+    "France 24":             "FRENCH / FRANCOPHONE",
+    "Jeune Afrique":         "FRENCH / FRANCOPHONE",
+    "Le Monde":              "FRENCH / FRANCOPHONE",
+    "Libération":            "FRENCH / FRANCOPHONE",
+    "Le Figaro":             "FRENCH / FRANCOPHONE",
+    "20 Minutes":            "FRENCH / FRANCOPHONE",
+    "Afrik.com":             "FRENCH / FRANCOPHONE",
+    "APA News":              "FRENCH / FRANCOPHONE",
+    # South Asian / Urdu
+    "Dawn (Pakistan)":       "SOUTH ASIAN / URDU",
+    "The News International":"SOUTH ASIAN / URDU",
+    "Geo News":              "SOUTH ASIAN / URDU",
+    "Jang":                  "SOUTH ASIAN / URDU",
+    "ARY News":              "SOUTH ASIAN / URDU",
+    "BBC Urdu":              "SOUTH ASIAN / URDU",
+    "Geo Urdu":              "SOUTH ASIAN / URDU",
+    "The Hindu":             "SOUTH ASIAN / URDU",
+    "NDTV":                  "SOUTH ASIAN / URDU",
+    "Hindustan Times":       "SOUTH ASIAN / URDU",
+    "Times of India":        "SOUTH ASIAN / URDU",
+    # Swahili / East Africa
+    "BBC Swahili":           "SWAHILI / EAST AFRICA",
+    "VOA Swahili":           "SWAHILI / EAST AFRICA",
+    "The Citizen Tanzania":  "SWAHILI / EAST AFRICA",
+    "Standard Media Kenya":  "SWAHILI / EAST AFRICA",
+    # Independent Russian
+    "Meduza":                "INDEPENDENT / ALTERNATIVE",
     # Independent / alternative
     "The Grayzone":           "INDEPENDENT / ALTERNATIVE",
     "The Intercept":          "INDEPENDENT / ALTERNATIVE",
@@ -2722,7 +2777,6 @@ _SOURCE_PERSPECTIVE = {
     "Infobae":             "SPANISH / LATIN AMERICAN",
     "La Nación":           "SPANISH / LATIN AMERICAN",
     # European mainstream
-    "Le Monde":            "WESTERN MAINSTREAM",
     "Der Spiegel":         "WESTERN MAINSTREAM",
     "Euronews":            "WESTERN MAINSTREAM",
     # Wire services
@@ -2750,6 +2804,9 @@ _PERSPECTIVE_ORDER = [
     "FACT-CHECK ORGS",
     "HUMAN RIGHTS & INTL LAW",
     "REGIONAL / MIDDLE EAST",
+    "FRENCH / FRANCOPHONE",
+    "SOUTH ASIAN / URDU",
+    "SWAHILI / EAST AFRICA",
     "SPANISH / LATIN AMERICAN",
     "INDEPENDENT / ALTERNATIVE",
     "WESTERN MAINSTREAM",
