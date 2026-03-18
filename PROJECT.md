@@ -6,6 +6,46 @@
 
 ---
 
+## 0. For AI Assistants Picking Up This Project
+
+Read this section first. It captures hard-won rules that are not obvious from the code.
+
+### Collaboration rules
+
+- **Always read the relevant code before proposing changes.** Identify the root cause, explain the fix in plain English, and ask for confirmation before editing `bot.py`. This rule exists because rushed changes have twice caused cascading bugs (a source name rename broke `_SOURCE_PERSPECTIVE` lookup → 3× UNVERIFIABLE verdicts; a default parameter change was bypassed by a hardcoded call site).
+- Exception: if the user says "yes go ahead" or "do both", proceed without further confirmation for that specific change.
+
+### Verdict philosophy
+
+- **TRUE means TRUE.** Never downgrade a verdict from TRUE to LIKELY TRUE because search returned thin or unnamed sources, if the claim is factually correct. The audience cares about truth and reality — Fred must reflect reality, not over-hedge on retrieval gaps.
+- If search quality is the problem, the fix is to improve retrieval — not to downgrade the verdict.
+- Defensive hedging that produces LIKELY TRUE for a demonstrably TRUE claim is a failure mode, not a safety feature.
+
+### Key verdict logic rules (in `synth_prompt`)
+
+1. **Omissions**: if omitted context strengthens the claim → don't downgrade; if it misleads/weakens → downgrade; if neutral → don't downgrade
+2. **UNVERIFIABLE**: only when the claim genuinely cannot be assessed at all — not for partial evidence
+3. **Breaking news**: Tavily live aggregation is sufficient for TRUE — no penalty for Western outlet publication lag
+4. **Superlatives**: sources confirming "first/only" without contradiction = sufficient for TRUE
+5. **Western bias**: absence of Reuters/AP/BBC must never downgrade rating or confidence
+6. **Con-side debate**: only influences rating if it finds direct contradictions — not omissions that happen to strengthen the claim
+
+### Known footguns
+
+- `grouped[:N]` in `claude_analyse()` — the evidence string passed to Claude. Was 2000 chars (caused persistent MEDIUM confidence because named outlet snippets were cut). Now 10000. Do not reduce.
+- `_SOURCE_PERSPECTIVE` dict must stay in sync with any source rename. If you rename a source (e.g. "Tavily Summary" → "Live Web Search"), add the new name to the dict or it falls through to "OTHER SOURCES" and Claude stops treating it as primary evidence.
+- `pending{}` is in-memory only — lost on every redeploy. Users mid-flow will get "no pending check" errors after a deploy. Known issue, fix deferred.
+- `source_content` parameter in `claude_analyse()` is the primary evidence for URL/video fact-checks. Without it, scrape_sites returns mostly 403/404 and verdicts default to UNVERIFIABLE. Do not remove.
+- Two claim extraction functions exist (`assess_content_claims` and `extract_claims`) — keep prompt rules in sync across both.
+
+### Source policy
+
+Only include editorially independent sources with a track record of correcting errors. State-controlled outlets (RT, Sputnik, CGTN, Xinhua, Press TV) are excluded regardless of reach — they actively produce disinformation on geopolitical topics and pollute verdicts.
+
+Al Jazeera is state-funded (Qatar) but editorially independent with a corrections policy — it stays.
+
+---
+
 ## 1. What This Project Is
 
 FactCheck Pro is a WhatsApp bot that fact-checks claims sent by users via WhatsApp message. Users send text, images, audio, documents, or URLs (articles, Facebook, Instagram, TikTok, YouTube, X/Twitter). The bot:
@@ -664,7 +704,54 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 
 ---
 
-## 22. Outstanding Tasks (priority order)
+## 22. Current State & Session History
+
+### Session 6 — 2026-03-18 — what was fixed
+
+| Commit | Change |
+|---|---|
+| `c528d24` | feat: French/Urdu/Swahili regions added; state media removed |
+| `66de935` | fix: balanced regional source preview + SPANISH/LATIN AMERICAN category |
+| `d62eed7` | fix: evidence cap 2000→10000 chars + subdomain source name lookup |
+| `73cfd80` | docs: PROJECT.md updated for session 6 |
+
+**Root cause fixed this session:** `grouped[:2000]` in `claude_analyse()` was truncating the evidence string to 2000 characters. With a Tavily Live Web Search summary consuming ~600 chars, only ~1400 chars remained for named outlet snippets (~500 chars each). Claude consistently saw 0–2 named outlets and returned MEDIUM confidence. Raising to 10000 chars fixed it — TRUE/HIGH confidence now verified working.
+
+**Verified working:** TRUE + HIGH confidence for well-corroborated breaking news (Joe Kent/NCTC resignation story confirmed by Al Jazeera direct quote + BBC headline + Live Web Search).
+
+### Session 5 — 2026-03-17 — what was fixed
+
+| Commit | Change |
+|---|---|
+| `806995c` | fix: remove Western outlet bias from confidence/rating rules |
+| `13026f0` | fix: word-boundary truncation (`_trunc`) + `rating_reason` field |
+| `f912149` | fix: temperature=0 on claim extraction + deprioritise filler claims |
+| `260b64f` | fix: restore con_prompt omission arguments with correct distinction |
+| `8094b39` | fix: tighten UNVERIFIABLE — partial evidence must get a rating |
+| `14b41f1` | fix: search result cache 1hr TTL + temperature=0 on verdict calls |
+| `3f93b45` | fix: omissions rule — only downgrade if omission misleads |
+| `0306e44` | fix: max claims 3, dividers 14 chars (fit iPhone screen) |
+| `e6f2f1b` | fix: images use enumerated claims flow (not old CLAIM PREVIEW) |
+
+### Source expansion — shipped vs still to do
+
+**Shipped (2026-03-18):**
+- `FRENCH / FRANCOPHONE`: RFI, France 24, Jeune Afrique, Le Monde, Libération, APA News
+- `SOUTH ASIAN / URDU`: Geo News, Dawn, BBC Urdu, ARY News, Jang, The Hindu, NDTV
+- `SWAHILI / EAST AFRICA`: BBC Swahili, VOA Swahili, The Citizen Tanzania, Standard Media Kenya
+- `SPANISH / LATIN AMERICAN`: Chequeado, Maldita, EL PAÍS, Telesur, BBC Mundo, Aos Fatos
+- Meduza (independent Russian, exiled) → `INDEPENDENT / ALTERNATIVE`
+- State media removed: RT, Sputnik, CGTN, Xinhua, Press TV, Yeni Safak
+
+**Still to do:**
+- Tavily language passes — search is still English-only; French/Urdu/Swahili sources only surface if their English content appears in Tavily results
+- BBC Swahili/Urdu subpath URL matching — `bbc.com/urdu` and `bbc.com/swahili` in domain map but subpath matching needs testing
+- Turkish independent sources: Cumhuriyet, Bianet
+- Farsi independent sources: IranWire, Iran International
+
+---
+
+## 23. Outstanding Tasks (priority order)
 
 ### Urgent
 1. **FB cookies rotation** — `FB_COOKIES_B64` / `IG_COOKIES_B64` expire ~2026-03-30 (12 days). Refresh via EditThisCookie → base64 → Railway env var.
@@ -714,7 +801,7 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 
 ---
 
-## 23. How to Continue Development
+## 24. How to Continue Development
 
 ### Local setup
 
@@ -767,7 +854,7 @@ curl -s -H "Authorization: Bearer bc2d9c22-2d89-458c-8c33-3635a57193c7" \
 
 ---
 
-## 24. Recent Git History
+## 25. Recent Git History
 
 ```
 c528d24  feat: add French/Urdu/Swahili regions; remove state media sources
@@ -801,7 +888,7 @@ a799382  feat: Google Vision web detection as primary reverse image search
 d3a66bd  feat: beta launch — welcome message, HELP command, BETA label, last-check warning
 ```
 
-## 25. Deploy Procedure
+## 26. Deploy Procedure
 
 Always do **both** steps:
 ```bash
