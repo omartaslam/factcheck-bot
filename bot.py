@@ -1953,6 +1953,8 @@ def tavily_search(query, max_results=12, post_date=None):
             source_name = _url_to_source_name(url)
             snippet = f"{title} — {content} ({url})"
             results.append((source_name, snippet[:500]))
+        log.info("Tavily main: %d results — sources: %s", len(results),
+                 [r[0] for r in results])
         return results
     except Exception as e:
         log.warning("Tavily Search failed: %s", e)
@@ -2131,7 +2133,7 @@ def tavily_search_spanish(query, post_date=None):
 
 _scrape_cache: dict = {}          # claim_key → (timestamp, result)
 _scrape_cache_lock = threading.Lock()
-_SCRAPE_CACHE_TTL = 3600          # reuse search results for 1 hour
+_SCRAPE_CACHE_TTL = 900           # reuse search results for 15 minutes
 
 def scrape_sites(query, post_date=None):
     import time as _t
