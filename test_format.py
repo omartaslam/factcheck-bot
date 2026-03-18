@@ -56,7 +56,8 @@ def run_test(claim, source_type="text", expect=None):
 
     verdict = data.get("verdict", "?")
     confidence = data.get("confidence", "?")
-    truncated = data.get("truncated", False)
+    # Only flag as truncated if the blunt mid-message cut happened, not word-boundary ellipsis
+    truncated = "_(message trimmed for length)_" in data.get("formatted_output", "")
     passed = (expect is None) or (verdict == expect)
 
     print(f"\nVERDICT    : {verdict}  ({confidence})")

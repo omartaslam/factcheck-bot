@@ -5181,7 +5181,7 @@ def test_endpoint():
         result = first.get("analysis", {})
         used_sources = first.get("sources_consulted", [])
         report = fmt_report(claim, result, source_type, 0, used_sources=used_sources)
-        truncated = "…" in report
+        truncated = "_(message trimmed for length)_" in report
         return jsonify({
             "verdict": result.get("rating"),
             "confidence": result.get("confidence"),
