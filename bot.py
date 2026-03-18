@@ -5167,7 +5167,7 @@ def setup_twitter_webhook():
 def index():
     return send_from_directory("static", "index.html")
 
-@app.route("/test", methods=["POST"])
+@app.route("/api/test", methods=["POST"])
 def test_endpoint():
     """Dev testing endpoint — runs the full pipeline and returns formatted output + raw JSON.
     Usage: curl -X POST https://HOST/test -H 'Content-Type: application/json' \

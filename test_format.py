@@ -37,7 +37,7 @@ def run_test(claim, source_type="text", expect=None):
 
     try:
         r = requests.post(
-            f"{HOST}/test",
+            f"{HOST}/api/test",
             json={"claim": claim, "type": source_type, "token": TOKEN},
             timeout=90
         )
