@@ -3109,10 +3109,17 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
             "confidence": "LOW", "confidence_reason": "AI provider error"}
 
 def _trunc(text, limit):
-    """Truncate at word boundary, never mid-sentence. Adds ellipsis only if actually cut."""
+    """Truncate at sentence boundary where possible; fall back to word boundary. No ellipsis if clean cut."""
     if not text or len(text) <= limit:
         return text
-    cut = text[:limit].rsplit(' ', 1)[0].rstrip('.,;:—- ')
+    chunk = text[:limit]
+    # Try to end at a sentence boundary (. ! ?)
+    for sep in ('. ', '! ', '? '):
+        idx = chunk.rfind(sep)
+        if idx > limit // 2:  # only use if we keep at least half the content
+            return chunk[:idx + 1]
+    # Fall back to word boundary with ellipsis
+    cut = chunk.rsplit(' ', 1)[0].rstrip('.,;:—- ')
     return cut + '…'
 
 def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None):
