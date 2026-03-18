@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-18 (session 6)
+> **Last updated:** 2026-03-18 (session 7)
 > **Version:** v3.4 BETA
-> **Status:** Live on Railway — TRUE/HIGH confidence verified working; multi-region source coverage expanded
+> **Status:** Live on Railway — 3/3 automated test claims passing with no truncation; verdict quality and claim-origin philosophy fixed
 
 ---
 
@@ -705,6 +705,40 @@ Stored in `pending` dict → passed to `run_check` → `claude_analyse` (tempora
 ---
 
 ## 22. Current State & Session History
+
+### Session 7 — 2026-03-18 — what was fixed
+
+| Commit | Change |
+|---|---|
+| (multiple) | fix: synth_prompt — CLAIM ORIGIN, POLITICAL FRAMING LABELS, SOCIAL MEDIA EVIDENCE, NUMERICAL APPROXIMATIONS rules added |
+| (multiple) | fix: Tavily two-pass search — temporal word stripping + retry if <5 named sources |
+| (multiple) | feat: `/api/test` endpoint for automated pipeline testing without WhatsApp |
+| (multiple) | feat: `test_format.py` test runner hitting Railway `/api/test` live endpoint |
+| `1881e97` | fix: `_trunc` cuts at sentence boundary to eliminate mid-thought ellipsis |
+
+**Root causes fixed this session:**
+1. **Model downgrading TRUE claims to NEEDS CONTEXT** — synth_prompt was lacking rules to stop the model treating conspiracy-theory association, "antisemitic framing", and claim origin as verdict modifiers. Fixed with four explicit RATING RULE blocks.
+2. **MOSTLY TRUE instead of TRUE for minor numerical approximations** — "six weeks" vs ~7 weeks caused a downgrade. Fixed with NUMERICAL APPROXIMATIONS rule: minor imprecision in numbers/dates that doesn't change substance = TRUE.
+3. **Tavily missing historical coverage** — "Silverstein recently bought US Bank Tower" was anchored to 2026, filtering out 2020 purchase news. Fixed with two-pass strategy: year-anchored first, then retry stripping temporal words if <5 named sources found.
+4. **Truncation — `…` mid-sentence in output** — `_trunc` was cutting at word boundary and appending `…`. Fixed to cut at sentence boundary (`. `, `! `, `? `) with no ellipsis when a clean sentence end is found.
+5. **Automated testing** — established `test_format.py` + `/api/test` endpoint so testing can be triggered without WhatsApp involvement.
+
+**Verdict philosophy (now in synth_prompt):**
+- `CLAIM ORIGIN` — TRUE is TRUE regardless of who circulates it or what narrative it supports
+- `POLITICAL FRAMING LABELS` — "antisemitic framing", "conspiracy theory framing" etc. are editorial categories, not factual assessments; never use as verdict modifiers
+- `SOCIAL MEDIA EVIDENCE` — social posts show circulation only, not truth/falsehood
+- `NUMERICAL APPROXIMATIONS` — minor numerical imprecision that doesn't change substance = TRUE, never downgrade
+
+**Automated test results (3/3 PASS, no truncation):**
+- Claim 1 (WTC lease — "six weeks"): TRUE (HIGH) ✅
+- Claim 2 (US Bank Tower purchase): TRUE (MEDIUM) ✅
+- Claim 3 (Carney/mafia state): UNVERIFIABLE (LOW) ✅
+
+**Test command:**
+```bash
+VERIFY_TOKEN=factcheck_verify_123 python3 test_format.py
+# Single claim: python3 test_format.py "your claim"
+```
 
 ### Session 6 — 2026-03-18 — what was fixed
 
