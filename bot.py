@@ -5162,6 +5162,34 @@ def setup_twitter_webhook():
 def index():
     return send_from_directory("static", "index.html")
 
+@app.route("/test", methods=["POST"])
+def test_endpoint():
+    """Dev testing endpoint — runs the full pipeline and returns formatted output + raw JSON.
+    Usage: curl -X POST https://HOST/test -H 'Content-Type: application/json' \
+             -d '{"claim": "...", "type": "text", "token": "VERIFY_TOKEN"}'
+    """
+    data = request.get_json(force=True) or {}
+    if data.get("token") != VERIFY_TOKEN:
+        return jsonify({"error": "forbidden"}), 403
+    claim = data.get("claim", "").strip()
+    source_type = data.get("type", "text")
+    if not claim:
+        return jsonify({"error": "claim required"}), 400
+    try:
+        result = analyse(claim, source_type)
+        report = fmt_report(claim, result, source_type, 0)
+        truncated = "…" in report
+        return jsonify({
+            "verdict": result.get("rating"),
+            "confidence": result.get("confidence"),
+            "rating_reason": result.get("rating_reason"),
+            "truncated": truncated,
+            "formatted_output": report,
+            "raw": result,
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/health", methods=["GET"])
 def health():
     return jsonify({"status":"running","version":"v3.2","keys":{

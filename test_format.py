@@ -1,44 +1,98 @@
 #!/usr/bin/env python3
 """
-Test Fred's formatting locally without WhatsApp.
-Usage: python3 test_format.py "your claim here"
-       python3 test_format.py  # runs default test claims
+Fred test runner — tests the full pipeline via the /test endpoint on Railway.
+No WhatsApp needed. All API keys used are Railway's live keys.
+
+Usage:
+  python3 test_format.py                    # run all default test cases
+  python3 test_format.py "your claim"       # test a single claim
+  python3 test_format.py --url http://...   # override Railway URL
+
+Each test shows: verdict, confidence, truncation warning, full formatted output.
 """
-import sys, os
-sys.path.insert(0, os.path.dirname(__file__))
+import sys, os, json, requests
 
-# Patch out WhatsApp/webhook dependencies before importing bot
-import unittest.mock as mock
-with mock.patch.dict(os.environ, {"WHATSAPP_TOKEN": "x", "VERIFY_TOKEN": "x"}):
-    from bot import analyse, fmt_report, _trunc
+HOST = os.getenv("TEST_HOST", "https://web-production-1f0a4.up.railway.app")
+TOKEN = os.getenv("VERIFY_TOKEN", "")
 
-TEST_CLAIMS = [
-    "Silverstein leased the World Trade Center six weeks before 9/11",
-    "Silverstein recently bought US Bank Tower in Los Angeles",
-    "Mark Carney called America a mafia state at WEF",
+# Default test claims with expected verdicts (None = no assertion)
+TEST_CASES = [
+    {"claim": "Silverstein leased the World Trade Center six weeks before 9/11",
+     "expect": "TRUE",
+     "type": "text"},
+    {"claim": "Silverstein recently bought US Bank Tower in Los Angeles",
+     "expect": "MOSTLY TRUE",
+     "type": "text"},
+    {"claim": "Mark Carney called America a mafia state at WEF",
+     "expect": None,
+     "type": "text"},
 ]
 
-def run_test(claim):
-    print(f"\n{'='*60}")
-    print(f"CLAIM: {claim}")
-    print('='*60)
+def run_test(claim, source_type="text", expect=None):
+    print(f"\n{'='*65}")
+    print(f"CLAIM : {claim}")
+    if expect:
+        print(f"EXPECT: {expect}")
+    print('='*65)
+
     try:
-        result = analyse(claim, "text")
-        if not result:
-            print("ERROR: analyse() returned None")
-            return
-        report = fmt_report(claim, result, "text", 0)
-        print(report)
-        # Check for truncation
-        if '…' in report:
-            print("\n⚠️  WARNING: truncation detected (…) in output")
-        else:
-            print("\n✅ No truncation detected")
+        r = requests.post(
+            f"{HOST}/test",
+            json={"claim": claim, "type": source_type, "token": TOKEN},
+            timeout=90
+        )
+        if r.status_code == 403:
+            print("❌ ERROR: Wrong VERIFY_TOKEN. Set env var: export VERIFY_TOKEN=your_token")
+            return False
+        r.raise_for_status()
+        data = r.json()
     except Exception as e:
-        print(f"ERROR: {e}")
-        import traceback; traceback.print_exc()
+        print(f"❌ REQUEST FAILED: {e}")
+        return False
+
+    if "error" in data:
+        print(f"❌ ERROR: {data['error']}")
+        return False
+
+    verdict = data.get("verdict", "?")
+    confidence = data.get("confidence", "?")
+    truncated = data.get("truncated", False)
+    passed = (expect is None) or (verdict == expect)
+
+    print(f"\nVERDICT    : {verdict}  ({confidence})")
+    if data.get("rating_reason"):
+        print(f"REASON     : {data['rating_reason']}")
+    print(f"TRUNCATED  : {'⚠️  YES' if truncated else '✅ NO'}")
+    print(f"RESULT     : {'✅ PASS' if passed else f'❌ FAIL (expected {expect})'}")
+    print(f"\n--- FORMATTED OUTPUT ---\n")
+    print(data.get("formatted_output", ""))
+
+    return passed and not truncated
 
 if __name__ == "__main__":
-    claims = sys.argv[1:] if len(sys.argv) > 1 else TEST_CLAIMS
-    for claim in claims:
-        run_test(claim)
+    args = sys.argv[1:]
+
+    # Parse --url override
+    if "--url" in args:
+        idx = args.index("--url")
+        HOST = args[idx+1]
+        args = [a for i,a in enumerate(args) if i not in (idx, idx+1)]
+
+    if not TOKEN:
+        print("⚠️  VERIFY_TOKEN not set. Export it first:")
+        print("   export VERIFY_TOKEN=your_token")
+        print("   (find it in Railway env vars)\n")
+
+    if args:
+        cases = [{"claim": " ".join(args), "type": "text", "expect": None}]
+    else:
+        cases = TEST_CASES
+
+    results = []
+    for case in cases:
+        ok = run_test(case["claim"], case.get("type", "text"), case.get("expect"))
+        results.append(ok)
+
+    print(f"\n{'='*65}")
+    print(f"SUMMARY: {sum(results)}/{len(results)} passed")
+    sys.exit(0 if all(results) else 1)
