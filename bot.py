@@ -2020,10 +2020,10 @@ def tavily_search(query, max_results=12, post_date=None):
         data = _run_tavily(dated_query)
         results = _parse_tavily(data)
 
-        # If thin results (fewer than 3 named sources), retry without year anchor.
+        # If thin results (fewer than 5 named sources), retry without year anchor.
         # This catches past events being recirculated — the year suffix filters out older coverage.
         named = [r for r in results if r[0] != "Live Web Search"]
-        if len(named) < 3:
+        if len(named) < 5:
             log.info("Tavily main: thin results (%d named), retrying without year anchor", len(named))
             data2 = _run_tavily(query, include_answer=False)
             seen_snippets = {r[1][:80] for r in results}
