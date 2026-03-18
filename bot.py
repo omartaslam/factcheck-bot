@@ -1544,7 +1544,7 @@ def enabled_sources():
     if SRC_RAPPLER:         sources.append("Rappler")
     if SRC_CHEQUEADO:       sources.append("Chequeado")
     if SRC_LOGICALLY:       sources.append("Logically Facts")
-    if TAVILY_API_KEY:        sources.append("Tavily Search (live)")
+    if TAVILY_API_KEY:        sources.append("Live Web Search")
     if BRAVE_API_KEY:         sources.append("Brave Search (live)")
     if PERPLEXITY_API_KEY:    sources.append("Perplexity Sonar (live)")
     for name, _ in parse_custom_sources():
@@ -1919,7 +1919,7 @@ def _url_to_source_name(url):
         # Generic: capitalise domain root
         return base.replace("-", " ").title()
     except Exception:
-        return "Tavily Search"
+        return "Live Web Search"
 
 def tavily_search(query, max_results=8, post_date=None):
     """Query Tavily Search API for real-time results. Returns list of (name, snippet) tuples."""
@@ -1944,7 +1944,7 @@ def tavily_search(query, max_results=8, post_date=None):
         # Synthesised answer from Tavily — very useful for recency and breadth
         answer = (data.get("answer") or "").strip()
         if answer:
-            results.append(("Tavily Summary", answer[:600]))
+            results.append(("Live Web Search", answer[:600]))
         for item in data.get("results", []):
             title = item.get("title", "")
             content = item.get("content", "")
@@ -2393,6 +2393,10 @@ def extract_claims(text):
         "RULE 3 — DEDUPLICATE: A paraphrase and a direct quote of the same statement count as one claim. "
         "If the post text paraphrases something that is also quoted verbatim in the image text, "
         "use the verbatim quote and discard the paraphrase.\n\n"
+        "RULE 4 — PRESERVE PROPER NOUNS EXACTLY: Copy names, titles, and organisations exactly as they appear "
+        "in the source text. Never correct, normalise, or substitute a name — even if you think you recognise "
+        "a similar name. If the text says 'Joe Kent', write 'Joe Kent'. If it says 'Jon Kent', write 'Jon Kent'. "
+        "Do not change spellings of people's names.\n\n"
         f"TEXT:\n{text[:3000]}\n\n"
         'Respond ONLY with a JSON array, e.g.: ["Claim one", "Claim two"]'
     )
@@ -2869,9 +2873,9 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "any outlet may not yet be indexed. Do NOT downgrade confidence or rating because named Western outlets (Reuters, AP, "
         "BBC, CNN) have not yet published full-text coverage — their absence is a function of publication lag, not a reflection "
         "of the claim's accuracy. Similarly, absence of Western fact-checking organisation verdicts is expected for same-day "
-        "stories and must not be used to downgrade. Tavily Web Search is a live aggregation of current news sources across "
+        "stories and must not be used to downgrade. Live web search is a real-time aggregation of current news sources across "
         "the globe — treat it as sufficient primary corroboration for breaking news. Rate TRUE with MEDIUM confidence if "
-        "Tavily confirms the core claim without contradiction.\n"
+        "live web search confirms the core claim without contradiction.\n"
         "- WESTERN SOURCE BIAS: Do not treat Reuters, AP, BBC, CNN, or Western fact-checkers as the gold standard for "
         "verification. Regional outlets, independent journalists, and non-Western sources carry equal evidentiary weight. "
         "Never cite absence of Western outlet coverage as a reason to downgrade a rating or confidence level.\n"
@@ -2953,29 +2957,29 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
-    lines += ["*CLAIM*",f"_{_trunc(claim, 280)}_","","*ANALYSIS*",a.get("verdict",""),""]
-    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {f}" for i,f in enumerate(a["key_facts"][:4],1)] + [""]
+    lines += ["*CLAIM*",f"_{_trunc(claim, 200)}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 250),""]
+    if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f, 120)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
     # Perspectives — show where sources diverge by geopolitical view
     persp = a.get("perspectives", {})
     if isinstance(persp, dict) and any(persp.values()):
         lines += ["*PERSPECTIVES*"]
         if persp.get("western_mainstream"):
-            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 220)}"]
+            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 160)}"]
         if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 220)}"]
+            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 160)}"]
         if persp.get("latin_american") and persp["latin_american"] != "No coverage found":
-            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 220)}"]
+            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 150)}"]
         if persp.get("consensus"):
-            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 200)}"]
+            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 150)}"]
         lines += [""]
     # Contested language
     cl = a.get("contested_language", [])
     if cl and isinstance(cl, list):
-        lines += ["*CONTESTED LANGUAGE*"] + [f"• {_trunc(t, 200)}" for t in cl[:2]] + [""]
-    if a.get("context"): lines += ["*BACKGROUND*", _trunc(a["context"], 350), ""]
-    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {_trunc(f, 220)}" for f in a["red_flags"][:2]] + [""]
-    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{_trunc(a['who_benefits'], 250)}_", ""]
-    if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"], 200), ""]
+        lines += ["*CONTESTED LANGUAGE*"] + [f"• {_trunc(t, 130)}" for t in cl[:2]] + [""]
+    if a.get("context"): lines += ["*BACKGROUND*", _trunc(a["context"], 220), ""]
+    if a.get("red_flags"): lines += ["*RED FLAGS*"] + [f"• {_trunc(f, 150)}" for f in a["red_flags"][:2]] + [""]
+    if a.get("who_benefits"): lines += ["*WHO BENEFITS?*", f"_{_trunc(a['who_benefits'], 160)}_", ""]
+    if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"], 130), ""]
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
         "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
@@ -2989,7 +2993,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         lines += [f"*TRUTH SCORE*  `░░░░░░░░░░` ?/10  _(insufficient evidence to score)_", ""]
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
-    lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{_trunc(a.get('confidence_reason',''), 250)}_",""]
+    lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{_trunc(a.get('confidence_reason',''), 180)}_",""]
     # Show what Claude actually cited — these vary per claim based on evidence found.
     # Fall back to scraped source names only if Claude returned no citations.
     if a.get("sources"):
@@ -3314,6 +3318,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         all_ratings.append(a.get("rating", "UNVERIFIABLE"))
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint)
+        _log_request("whatsapp", from_num, st, query, claim, a, report, cost)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
@@ -3364,6 +3369,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
                            source_content=query if st in ("url", "video") else None)
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date)
+        _log_request(platform, uid, st, query, claim, a, report, cost_est)
         if multi:
             send_fn(f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
         else:
@@ -4231,6 +4237,21 @@ def init_db():
                 last_seen INTEGER NOT NULL,
                 PRIMARY KEY (platform, platform_id)
             );
+            CREATE TABLE IF NOT EXISTS request_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                platform TEXT NOT NULL,
+                uid TEXT NOT NULL,
+                source_type TEXT NOT NULL,
+                raw_input TEXT,
+                extracted_claim TEXT,
+                rating TEXT,
+                confidence TEXT,
+                verdict_json TEXT,
+                response_text TEXT,
+                cost_usd REAL,
+                feedback INTEGER,
+                created_at INTEGER NOT NULL
+            );
         """)
         # Migrations for existing deployments
         for col, defn in [("balance_cents","INTEGER NOT NULL DEFAULT 0"),
@@ -4251,6 +4272,27 @@ def init_db():
     log.info("DB initialised at %s", DB_PATH)
 
 init_db()
+
+def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd):
+    """Log a fact-check request and Fred's response to request_log."""
+    import time as _time, json as _json
+    try:
+        with _db() as c:
+            c.execute("""
+                INSERT INTO request_log
+                    (platform, uid, source_type, raw_input, extracted_claim,
+                     rating, confidence, verdict_json, response_text, cost_usd, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                (platform, uid, source_type,
+                 (raw_input or "")[:2000],
+                 (extracted_claim or "")[:1000],
+                 a.get("rating"), a.get("confidence"),
+                 _json.dumps(a),
+                 (report or "")[:4000],
+                 cost_usd,
+                 int(_time.time())))
+    except Exception as e:
+        log.warning("request_log insert failed: %s", e)
 
 # ── WhatsApp user billing ─────────────────────────────────────────────────────
 
