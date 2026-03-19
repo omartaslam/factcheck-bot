@@ -5269,6 +5269,10 @@ def api_contact():
         log.error("contact email error: %s", e)
     return jsonify({"ok": True})
 
+@app.route("/privacy", methods=["GET"])
+def privacy_policy():
+    return send_from_directory("static", "privacy.html")
+
 @app.route("/fred.vcf", methods=["GET"])
 def contact_card():
     return send_from_directory("static", "Fred.vcf",
