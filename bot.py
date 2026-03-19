@@ -5188,6 +5188,13 @@ def setup_twitter_webhook():
 def index():
     return send_from_directory("static", "index.html")
 
+@app.route("/fred.vcf", methods=["GET"])
+def contact_card():
+    return send_from_directory("static", "Fred.vcf",
+                               mimetype="text/vcard",
+                               as_attachment=True,
+                               download_name="Fred.vcf")
+
 @app.route("/api/test", methods=["POST"])
 def test_endpoint():
     """Dev testing endpoint — runs the full pipeline and returns formatted output + raw JSON.
