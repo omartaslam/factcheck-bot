@@ -177,6 +177,25 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 app = Flask(__name__)
 
+# ── CORS — allow fredcheck.com to call /api/* from the browser ────────────────
+_CORS_ORIGINS = {"https://fredcheck.com", "https://www.fredcheck.com", "https://fredcheck.co.uk"}
+
+@app.after_request
+def _cors(response):
+    origin = request.headers.get("Origin", "")
+    if origin in _CORS_ORIGINS or origin.endswith(".railway.app"):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    return response
+
+@app.route("/api/factcheck", methods=["OPTIONS"])
+@app.route("/api/register", methods=["OPTIONS"])
+@app.route("/api/login", methods=["OPTIONS"])
+@app.route("/api/me", methods=["OPTIONS"])
+def _preflight():
+    return "", 204
+
 # ── Admin alerting ────────────────────────────────────────────────────────────
 _alert_sent = {}   # provider -> timestamp of last alert (throttle to 1/hour)
 _alert_lock = threading.Lock()
