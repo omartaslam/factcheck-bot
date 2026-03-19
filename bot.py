@@ -2436,21 +2436,17 @@ ANALYSE_JSON_SCHEMA = (
     '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
     '"lenz_score":7,'
     '"rating_reason":"1 sentence explaining specifically why this rating was chosen over a higher or lower one — e.g. which element could not be confirmed, or what makes it not fully true/false. Empty string if rating is TRUE or FALSE.",'
-    '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default.",'
-    '"key_facts":["fact1","fact2","fact3","fact4"],'
-    '"perspectives":{'
-    '"western_mainstream":"What Western mainstream sources say (or \'No coverage found\').",'
-    '"regional_independent":"What regional, Muslim, Middle Eastern, and independent sources say (or \'No coverage found\').",'
-    '"latin_american":"What Latin American and Spanish-language sources say — Telesur, Chequeado, BBC Mundo, El País, etc. (or \'No coverage found\').",'
-    '"consensus":"Where all sources agree — or \'Disputed along geopolitical lines\' if they fundamentally diverge."},'
-    '"contested_language":["term used — note the dispute and alternative framings, e.g. \'terrorist / militant / resistance fighter — contested depending on political standpoint\'"],'
-    '"context":"structural or historical background needed to understand the claim",'
-    '"red_flags":["propaganda technique or bias flag1","flag2"],'
-    '"who_benefits":"Who stands to gain if this claim is believed/shared — state actor, political party, outlet, movement, etc. One concise sentence. Empty string if genuinely unclear or claim is benign.",'
-    '"media_bias":"note any source concentration bias (e.g. only Western sources found) or empty",'
+    '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default. Max 400 chars.",'
+    '"key_facts":["1 sentence per fact, max 120 chars each"],'
+    '"perspectives":"Single sentence covering what all regions found — Western, Middle Eastern/Arabic, African, South Asian, Latin American. Mention any region by name only if it has actual coverage; otherwise say \'No coverage found across all regions\' or \'No coverage found except [region] which reports X\'. Max 150 chars.",'
+    '"contested_language":["term — dispute in max 90 chars"],'
+    '"context":"1-2 sentences of structural/historical background. Max 180 chars.",'
+    '"red_flags":["1 sentence per flag, max 120 chars"],'
+    '"who_benefits":"Who gains if this claim is believed. One sentence, max 120 chars. Empty string if benign.",'
+    '"media_bias":"1 sentence on source concentration bias, or empty",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
     '"confidence":"HIGH|MEDIUM|LOW",'
-    '"confidence_reason":"reason — note if confidence is limited by source diversity"}'
+    '"confidence_reason":"1 sentence, max 120 chars"}'
 )
 
 def neutralize_claim(raw_text):
@@ -3008,13 +3004,12 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         f"CLAIM:\n\"\"\"{claim[:1200]}\"\"\"\n\n"
         f"{evidence}{debate_section}{temporal_note}\n\n"
         "INSTRUCTIONS:\n"
-        "- Fill the 'perspectives' field: summarise three perspectives separately: "
-        "(1) western_mainstream — BBC, Reuters, AP, CNN, NYT, Western governments; "
-        "(2) regional_independent — Al Jazeera, Middle East Eye, Press TV, Arabic sources, African, Asian, Muslim-world outlets; "
-        "(3) latin_american — Telesur, BBC Mundo, Chequeado, El País, Maldita, EFE, DW Español, Latin American outlets. "
-        "Draw on sources labelled '(Regional)', '(Arabic/Regional)', '(Spanish/LatAm)', 'Social/Trending', 'Reddit', 'Twitter/X' in the evidence. "
-        "If they disagree, make the disagreement explicit — do NOT merge them into a false consensus. "
-        "If no Spanish/LatAm sources are found, set latin_american to 'No coverage found'.\n"
+        "- Fill the 'perspectives' field with a single concise sentence (max 150 chars) summarising what was found across ALL regions: "
+        "Western (BBC, Reuters, AP, CNN), Middle Eastern/Arabic (Al Jazeera, Middle East Eye, Press TV, Arab News, TRT World), "
+        "African (Africanews, Africa Check), South Asian (Dawn, The Hindu), Latin American (Telesur, Chequeado, BBC Mundo). "
+        "Name a region only if it has actual coverage from those sources. "
+        "If sources disagree, state the disagreement in the same sentence (e.g. 'Western outlets confirm X; Arabic sources dispute the framing'). "
+        "If nothing found anywhere, write 'No coverage found across all regions'.\n"
         "- If Social/Trending or Reddit evidence shows the claim is widely circulating or being debated online, note this in the verdict.\n"
         "- RATING RULE ON SOCIAL MEDIA EVIDENCE: Posts from Instagram, Reddit, Facebook, Twitter/X, TikTok, and other social platforms are evidence of how a claim is *circulating*, NOT evidence of its truth or falsehood. Never use the volume, tone, or framing of social media posts to downgrade or upgrade a rating. Only named news outlets, fact-checkers, academic sources, and official records count as evidentiary weight for the rating itself.\n"
         "- Fill 'contested_language' only if the claim or evidence uses terminology that is genuinely disputed across communities "
@@ -3152,19 +3147,22 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
     lines += ["*CLAIM*",f"_{claim}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
     if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f,180)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
-    # Perspectives — show where sources diverge by geopolitical view
-    persp = a.get("perspectives", {})
-    if isinstance(persp, dict) and any(persp.values()):
-        lines += ["*PERSPECTIVES*"]
-        if persp.get("western_mainstream"):
-            lines += [f"🌐 _Western:_ {_trunc(persp['western_mainstream'], 200)}"]
-        if persp.get("regional_independent"):
-            lines += [f"🕌 _Regional/Arabic:_ {_trunc(persp['regional_independent'], 200)}"]
+    # Perspectives — single summary sentence across all regions
+    persp = a.get("perspectives", "")
+    if isinstance(persp, dict):
+        # backwards compat: flatten old nested format
+        parts = []
+        if persp.get("western_mainstream") and persp["western_mainstream"] != "No coverage found":
+            parts.append(persp["western_mainstream"])
+        if persp.get("regional_independent") and persp["regional_independent"] != "No coverage found":
+            parts.append(persp["regional_independent"])
         if persp.get("latin_american") and persp["latin_american"] != "No coverage found":
-            lines += [f"🌎 _Latin American:_ {_trunc(persp['latin_american'], 180)}"]
+            parts.append(persp["latin_american"])
         if persp.get("consensus"):
-            lines += [f"⚖️ _Consensus:_ {_trunc(persp['consensus'], 180)}"]
-        lines += [""]
+            parts.append(persp["consensus"])
+        persp = " ".join(parts) if parts else ""
+    if persp and str(persp).strip():
+        lines += ["*PERSPECTIVES*", _trunc(str(persp), 200), ""]
     # Contested language
     cl = a.get("contested_language", [])
     if cl and isinstance(cl, list):
