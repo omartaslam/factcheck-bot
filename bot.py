@@ -32,6 +32,8 @@ TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Paymen
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
 SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for $9.99/month subscription
 BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
+DEV_AUTOSELECT_NUM  = os.getenv("DEV_AUTOSELECT_NUM", "")               # Phone number that skips claim selection (dev only)
+DEV_AUTOSELECT_ON   = os.getenv("DEV_AUTOSELECT_ON", "false").lower() == "true"  # Toggle dev auto-select
 
 # ── Multi-platform config ──────────────────────────────────────────────────────
 MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page Access Token (Messenger + Instagram DMs)
@@ -2606,7 +2608,7 @@ def assess_content_claims(text, source_type, post_date=None):
     return {"claims": [text[:500].strip()], "checkable": True, "reason": "", "suggestions": []}
 
 
-def claims_confirm_msg(claims, source_type, cost):
+def claims_confirm_msg(claims, source_type, cost, is_free=False):
     """Confirmation message that shows ranked, enumerated claims with number selection."""
     src = {"text": "Text", "image": "Image", "audio": "Voice Note", "video": "Video",
            "url": "Post / Article", "document": "Document"}
@@ -2615,6 +2617,13 @@ def claims_confirm_msg(claims, source_type, cost):
     claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
     if len(claims) == 1:
         reply_prompt = f"_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel"
+    elif is_free:
+        nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
+        reply_prompt = (
+            f"_Est. cost: ${cost:.4f}_\n\n"
+            f"Reply {nums} to pick one claim (free plan — one claim per check)\n"
+            f"Reply *N* to cancel"
+        )
     else:
         nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
         reply_prompt = (
@@ -3623,7 +3632,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
     expire_pending()
     body_upper = (text_body or "").strip().upper()
     is_cancel = body_upper in ("NO", "N")
-    is_check_all = body_upper in ("YES", "Y", "ALL")
+    is_check_all = body_upper in ("YES", "Y", "ALL", "A")
     is_selection = bool(re.match(r'^[\d][,\s\d]*$', body_upper.strip()))
     is_pending_response = is_cancel or is_check_all or is_selection
 
@@ -3647,6 +3656,10 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             if not selected_claims:
                 selected_claims = all_claims
         bt = _pbilling_type(platform, uid)
+        # Free users: restrict to single claim
+        if bt == "free" and selected_claims and len(selected_claims) > 1:
+            send_fn("_Free plan — checking first selected claim only. Upgrade for multi-claim checks._")
+            selected_claims = selected_claims[:1]
         if bt == "blocked":
             u = _puser(platform, uid)
             _psend_payment_prompt(platform, uid, u["balance_cents"], send_fn)
@@ -3746,10 +3759,19 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             send_fn(msg)
             return
         claims = assessment["claims"]
+        # Dev bypass: skip confirmation, auto-select all claims
+        if DEV_AUTOSELECT_ON and DEV_AUTOSELECT_NUM and str(uid) == DEV_AUTOSELECT_NUM:
+            send_fn(f"🚀 _Dev: auto-selecting all {len(claims)} claim(s)_")
+            bt = _pbilling_type(platform, uid)
+            threading.Thread(target=run_check_platform,
+                             args=(platform, uid, query, source_type, bt, send_fn),
+                             kwargs={"pre_claims": claims}, daemon=True).start()
+            return
+        bt_now = _pbilling_type(platform, uid)
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims}
-        send_fn(claims_confirm_msg(claims, source_type, cost))
+        send_fn(claims_confirm_msg(claims, source_type, cost, is_free=(bt_now == "free")))
     else:
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type,
@@ -3782,7 +3804,7 @@ def process(from_num, message):
             send(from_num, HELP_MSG)
             return
         is_cancel = body_upper in ("NO", "N")
-        is_check_all = body_upper in ("YES", "Y", "ALL")
+        is_check_all = body_upper in ("YES", "Y", "ALL", "A")
         is_selection = bool(re.match(r'^[\d][,\s\d]*$', body_upper.strip()))
         is_pending_response = is_cancel or is_check_all or is_selection
         with pending_lock: has_p = pkey in pending; data = pending.get(pkey)
@@ -3802,6 +3824,10 @@ def process(from_num, message):
                     selected_claims = all_claims
             # ── Billing gate ───────────────────────────────────────────────
             bt = _wa_billing_type(from_num)
+            # Free users: restrict to single claim
+            if bt == "free" and selected_claims and len(selected_claims) > 1:
+                send(from_num, "_Free plan — checking first selected claim only. Upgrade for multi-claim checks._")
+                selected_claims = selected_claims[:1]
             if bt == "blocked":
                 u = _wa_user(from_num)
                 _send_payment_prompt(from_num, u["balance_cents"])
@@ -4357,12 +4383,22 @@ def process(from_num, message):
             send(from_num, msg)
             return
         claims = assessment["claims"]
+        # Dev bypass: skip confirmation, auto-select all claims
+        if DEV_AUTOSELECT_ON and DEV_AUTOSELECT_NUM and from_num == DEV_AUTOSELECT_NUM:
+            send(from_num, f"🚀 _Dev: auto-selecting all {len(claims)} claim(s)_")
+            bt_dev = _wa_billing_type(from_num)
+            threading.Thread(target=run_check, args=(from_num, query, source_type, image_bytes, cost),
+                             kwargs={"billing_type": bt_dev, "pre_claims": claims,
+                                     "post_date": post_date, "source_url": urls[0] if urls else "",
+                                     "msg_id": msg_id}, daemon=True).start()
+            return
+        bt_now = _wa_billing_type(from_num)
         with pending_lock:
             pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims,
                              "post_date": post_date, "source_url": urls[0] if urls else "",
                              "msg_id": msg_id}
-        send(from_num, claims_confirm_msg(claims, source_type, cost))
+        send(from_num, claims_confirm_msg(claims, source_type, cost, is_free=(bt_now == "free")))
     else:
         # document — no claim extraction, show raw preview
         with pending_lock:
