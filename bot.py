@@ -34,6 +34,7 @@ SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Paymen
 BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
 DEV_AUTOSELECT_NUM  = os.getenv("DEV_AUTOSELECT_NUM", "")               # Phone number that skips claim selection (dev only)
 DEV_AUTOSELECT_ON   = os.getenv("DEV_AUTOSELECT_ON", "false").lower() == "true"  # Toggle dev auto-select
+WA_CONVERSATION_COST = float(os.getenv("WA_CONVERSATION_COST", "0.041"))  # WhatsApp per-conversation charge (Europe/Spain rate)
 
 # ── Multi-platform config ──────────────────────────────────────────────────────
 MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page Access Token (Messenger + Instagram DMs)
@@ -3146,7 +3147,7 @@ def _trunc(text, limit):
     cut = chunk.rsplit(' ', 1)[0].rstrip('.,;:—- ')
     return cut + '…'
 
-def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None):
+def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None, wa_cost=0.0):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -3214,7 +3215,12 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
     version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
-    footer = ["──────────────────────", f"Cost: ${cost:.4f}  •  {version}"]
+    if wa_cost > 0:
+        total = cost + wa_cost
+        cost_str = f"Cost: ${total:.4f} (AI ${cost:.4f} + WA ${wa_cost:.4f})"
+    else:
+        cost_str = f"Cost: ${cost:.4f}"
+    footer = ["──────────────────────", f"{cost_str}  •  {version}"]
     if a.get("_debate_pro"):
         footer.append("⚖️ pro/con debate")
     footer.append(f"🌐 {WEBSITE_URL}")
@@ -3520,7 +3526,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
                            source_content=query if st in ("url", "video") else None)
         all_ratings.append(a.get("rating", "UNVERIFIABLE"))
         ad = get_random_ad() if show_ad else None
-        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint)
+        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST)
         _log_request("whatsapp", from_num, st, query, claim, a, report, cost)
         log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
