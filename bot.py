@@ -5220,12 +5220,15 @@ def api_contact():
             msg["Subject"] = f"[Fred] Contact: {ctype} — {name}"
             msg["From"] = gmail_user
             msg["To"] = "omartanveeraslam@gmail.com"
-            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+            with smtplib.SMTP("smtp.gmail.com", 587) as s:
+                s.ehlo()
+                s.starttls()
                 s.login(gmail_user, gmail_pass)
                 s.sendmail(gmail_user, "omartanveeraslam@gmail.com", msg.as_string())
     except Exception as e:
         log.error("contact email error: %s", e)
-    return jsonify({"ok": True})
+        return jsonify({"ok": True, "email_error": str(e)})
+    return jsonify({"ok": True, "email_sent": True})
 
 @app.route("/fred.vcf", methods=["GET"])
 def contact_card():
