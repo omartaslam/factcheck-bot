@@ -5208,23 +5208,24 @@ def api_contact():
                       (name, email, org, ctype, message, int(__import__('time').time())))
     except Exception as e:
         log.error("contact DB error: %s", e)
-    # Email notification
+    # Email notification via SendGrid
     try:
-        import smtplib, os
-        from email.mime.text import MIMEText
-        gmail_user = os.environ.get("GMAIL_USER")
-        gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
-        if gmail_user and gmail_pass:
-            body = f"Name: {name}\nEmail: {email}\nOrg: {org}\nType: {ctype}\n\n{message}"
-            msg = MIMEText(body)
-            msg["Subject"] = f"[Fred] Contact: {ctype} — {name}"
-            msg["From"] = gmail_user
-            msg["To"] = "omartanveeraslam@gmail.com"
-            with smtplib.SMTP("smtp.gmail.com", 587) as s:
-                s.ehlo()
-                s.starttls()
-                s.login(gmail_user, gmail_pass)
-                s.sendmail(gmail_user, "omartanveeraslam@gmail.com", msg.as_string())
+        import urllib.request, json as _json
+        sg_key = os.environ.get("SENDGRID_API_KEY")
+        if sg_key:
+            payload = _json.dumps({
+                "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com"}]}],
+                "from": {"email": "hello@fredcheck.com", "name": "Fred Fact Check"},
+                "subject": f"[Fred] Contact: {ctype} — {name}",
+                "content": [{"type": "text/plain", "value": f"Name: {name}\nEmail: {email}\nOrg: {org}\nType: {ctype}\n\n{message}"}]
+            }).encode()
+            req = urllib.request.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=payload,
+                headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
+                method="POST"
+            )
+            urllib.request.urlopen(req, timeout=10)
     except Exception as e:
         log.error("contact email error: %s", e)
         return jsonify({"ok": True, "email_error": str(e)})
