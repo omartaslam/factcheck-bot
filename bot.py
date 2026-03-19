@@ -3213,11 +3213,11 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
             if days > 180:
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
-    version = "Fred Check _*(Beta)*_" if BETA_MODE else "Fred Check"
-    footer = ["──────────────────────", f"_Cost: ${cost:.4f}  •  {version}_"]
+    version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
+    footer = ["──────────────────────", f"Cost: ${cost:.4f}  •  {version}"]
     if a.get("_debate_pro"):
-        footer.append("_⚖️ pro/con debate_")
-    footer.append(f"_🌐 {WEBSITE_URL}_")
+        footer.append("⚖️ pro/con debate")
+    footer.append(f"🌐 {WEBSITE_URL}")
     lines += footer
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
