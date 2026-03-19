@@ -623,7 +623,7 @@ def _post_age_label(date_str):
         if days < 0:
             return None
         friendly = posted.strftime("%-d %b %Y")
-        if days == 0:   age = "today"
+        if days == 0:   age = ""
         elif days < 7:  age = f"{days}d ago"
         elif days < 60: age = f"{days // 7}wk ago"
         elif days < 730: age = f"{days // 30}mo ago"
@@ -3142,7 +3142,8 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
     badge = badge_map.get(rating, f"VERDICT: {rating}")
-    lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{claim}_","",f"*{badge}*","",meter_visual(rating),""]
+    hdr_beta = " _(Beta)_" if BETA_MODE else ""
+    lines = [f"*Fred Check*{hdr_beta}  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{claim}_","",f"*{badge}*","",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
     lines += ["*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
@@ -3199,14 +3200,16 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         age = _post_age_label(post_date)
         if age:
             friendly, days, age_str = age
-            lines += [f"📅 *Posted: {friendly}* _{age_str}_"]
+            lines += [f"📅 *Posted: {friendly}*" + (f" _{age_str}_" if age_str else "")]
             if days > 180:
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
-    debate_indicator = "⚖️ pro/con debate" if a.get("_debate_pro") else "single-pass"
-    version = "Fred BETA" if BETA_MODE else "Fred"
-    lines += ["─────────────────────────────", f"_Cost: ${cost:.4f}  •  {version}  •  {debate_indicator}_",
-              f"_🌐 {WEBSITE_URL}_"]
+    version = "Fred Check _*(Beta)*_" if BETA_MODE else "Fred Check"
+    footer = ["──────────────────────", f"_Cost: ${cost:.4f}  •  {version}_"]
+    if a.get("_debate_pro"):
+        footer.append("_⚖️ pro/con debate_")
+    footer.append(f"_🌐 {WEBSITE_URL}_")
+    lines += footer
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
     return "\n".join(lines)
@@ -5361,12 +5364,12 @@ def _qc_worker(from_num, msg_text):
                 # Check if latest message looks like the final fact-check report
                 with _qc_lock:
                     last_msg = _qc_jobs[from_num]["messages"][-1] if _qc_jobs[from_num]["messages"] else ""
-                if "Fred BETA" in last_msg or "•  Fred" in last_msg or "FactCheck Pro v3" in last_msg:
+                if "Fred Check" in last_msg or "•  Fred" in last_msg or "FactCheck Pro v3" in last_msg:
                     t.sleep(8)  # allow any trailing multi-claim messages to arrive
                     with _qc_lock:
                         # For multi-claim jobs, only stop if last N messages all have the footer
                         recent = _qc_jobs[from_num]["messages"][-1]
-                    if "Fred BETA" in recent or "•  Fred" in recent or "FactCheck Pro v3" in recent:
+                    if "Fred Check" in recent or "•  Fred" in recent or "FactCheck Pro v3" in recent:
                         break
     except Exception as e:
         log.error("QC worker error: %s", e)
