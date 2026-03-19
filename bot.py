@@ -193,6 +193,7 @@ def _cors(response):
 @app.route("/api/register", methods=["OPTIONS"])
 @app.route("/api/login", methods=["OPTIONS"])
 @app.route("/api/me", methods=["OPTIONS"])
+@app.route("/api/contact", methods=["OPTIONS"])
 def _preflight():
     return "", 204
 
@@ -5187,6 +5188,44 @@ def setup_twitter_webhook():
 @app.route("/", methods=["GET"])
 def index():
     return send_from_directory("static", "index.html")
+
+@app.route("/api/contact", methods=["POST"])
+def api_contact():
+    data = request.get_json() or {}
+    name    = (data.get("name") or "").strip()[:100]
+    email   = (data.get("email") or "").strip()[:200]
+    org     = (data.get("org") or "").strip()[:200]
+    ctype   = (data.get("type") or "").strip()[:50]
+    message = (data.get("message") or "").strip()[:2000]
+    if not name or not email or "@" not in email:
+        return jsonify({"error": "name and valid email required"}), 400
+    try:
+        with _db() as c:
+            c.execute("""CREATE TABLE IF NOT EXISTS contact_requests
+                         (id INTEGER PRIMARY KEY, name TEXT, email TEXT, org TEXT,
+                          type TEXT, message TEXT, created_at INTEGER)""")
+            c.execute("INSERT INTO contact_requests (name,email,org,type,message,created_at) VALUES (?,?,?,?,?,?)",
+                      (name, email, org, ctype, message, int(__import__('time').time())))
+    except Exception as e:
+        log.error("contact DB error: %s", e)
+    # Email notification
+    try:
+        import smtplib, os
+        from email.mime.text import MIMEText
+        gmail_user = os.environ.get("GMAIL_USER")
+        gmail_pass = os.environ.get("GMAIL_APP_PASSWORD")
+        if gmail_user and gmail_pass:
+            body = f"Name: {name}\nEmail: {email}\nOrg: {org}\nType: {ctype}\n\n{message}"
+            msg = MIMEText(body)
+            msg["Subject"] = f"[Fred] Contact: {ctype} — {name}"
+            msg["From"] = gmail_user
+            msg["To"] = "omartanveeraslam@gmail.com"
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465) as s:
+                s.login(gmail_user, gmail_pass)
+                s.sendmail(gmail_user, "omartanveeraslam@gmail.com", msg.as_string())
+    except Exception as e:
+        log.error("contact email error: %s", e)
+    return jsonify({"ok": True})
 
 @app.route("/fred.vcf", methods=["GET"])
 def contact_card():

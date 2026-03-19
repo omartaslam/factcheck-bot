@@ -510,6 +510,66 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   font-size:0.78rem;color:#ccc;cursor:pointer;
 }
 .modal-close:hover{color:#888}
+
+/* ── LOGO TAGLINE ── */
+.logo-tagline{font-size:0.72rem;font-weight:500;letter-spacing:1.5px;color:#999;margin-left:1px}
+
+/* ── ROTATING BADGE ── */
+.hero-badge{position:relative;min-height:28px;display:inline-flex;align-items:center;justify-content:center;min-width:200px}
+.badge-phrase{
+  position:absolute;left:50%;transform:translateX(-50%);
+  white-space:nowrap;transition:opacity 0.7s ease;
+  font-size:0.75rem;font-weight:700;letter-spacing:0.4px;color:#7a6000;
+}
+.badge-phrase.hidden{opacity:0}
+.badge-phrase.visible{opacity:1}
+
+/* ── TYPEWRITER ── */
+.typewriter-cursor{
+  display:inline-block;width:2px;height:0.85em;
+  background:var(--gold);margin-left:2px;vertical-align:middle;
+  animation:blink 0.75s step-end infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── CONTACT FORM ── */
+.contact-form{
+  max-width:520px;margin:0 auto;text-align:left;
+}
+.contact-form .form-row{display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;margin-bottom:0.75rem}
+.contact-form .form-field{margin-bottom:0.75rem}
+.contact-form label{display:block;font-size:0.72rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.4);margin-bottom:0.4rem}
+.contact-form input,.contact-form select,.contact-form textarea{
+  display:block;width:100%;padding:10px 13px;
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(255,255,255,0.12);border-radius:9px;
+  color:#fff;font-family:'Inter',sans-serif;font-size:0.875rem;
+  outline:none;transition:border-color 0.15s;
+}
+.contact-form input::placeholder,.contact-form textarea::placeholder{color:rgba(255,255,255,0.25)}
+.contact-form input:focus,.contact-form select:focus,.contact-form textarea:focus{border-color:rgba(255,255,255,0.35)}
+.contact-form select{color:rgba(255,255,255,0.7);appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='12' height='8' viewBox='0 0 12 8' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l5 5 5-5' stroke='rgba(255,255,255,0.4)' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.contact-form select option{background:#111;color:#fff}
+.contact-form textarea{resize:none;height:90px}
+.contact-form .form-submit{
+  width:100%;padding:12px;border-radius:10px;
+  background:var(--gold);color:var(--black);
+  font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:800;
+  border:none;cursor:pointer;transition:opacity 0.15s;margin-top:0.5rem;
+}
+.contact-form .form-submit:hover{opacity:0.88}
+.contact-form .form-submit:disabled{opacity:0.5;cursor:not-allowed}
+.form-email-link{
+  display:block;text-align:center;margin-top:1.25rem;
+  font-size:0.8rem;color:rgba(255,255,255,0.3);
+}
+.form-email-link a{color:rgba(255,255,255,0.55);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.2)}
+.form-email-link a:hover{color:rgba(255,255,255,0.8)}
+.form-success{
+  display:none;text-align:center;padding:2rem 0;
+}
+.form-success h3{font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:0.5rem}
+.form-success p{font-size:0.9rem;color:rgba(255,255,255,0.45)}
 </style>
 </head>
 <body>
@@ -518,7 +578,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 <nav>
   <a href="#" class="logo">
     <img src="/static/fred-logo.png" alt="Fred">
-    <span class="logo-text">FRED</span>
+    <span class="logo-text">FRED <span class="logo-tagline">• Fact Check</span></span>
   </a>
   <div class="nav-links">
     <a href="#features">Features</a>
@@ -536,8 +596,13 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 
 <!-- HERO -->
 <div class="hero">
-  <div class="hero-badge">Truth without borders</div>
-  <h1>Fact check<br>without <em>the bias.</em></h1>
+  <div class="hero-badge" id="heroBadge">
+    <span class="badge-phrase visible" id="bp0">Truth without borders</span>
+    <span class="badge-phrase hidden" id="bp1">No default narrative</span>
+    <span class="badge-phrase hidden" id="bp2">65+ sources · 6 regions</span>
+    <span class="badge-phrase hidden" id="bp3">Verified in under 60 seconds</span>
+  </div>
+  <h1 id="heroH1"><span id="twLine1"></span><br><span id="twLine2"></span><span class="typewriter-cursor" id="twCursor"></span></h1>
   <p class="hero-sub">65+ sources across Western, Arabic, Spanish and French media — searched simultaneously, held to the same standard. Multi-perspective verdicts in under 60 seconds.</p>
 
   <!-- SEARCH BOX -->
@@ -961,16 +1026,51 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 </div>
 
 
-<!-- DEMO / CONTACT CTA -->
+<!-- CONTACT FORM -->
 <div class="demo-section" id="contact">
   <div class="demo-inner">
     <h2>See Fred in<br><em>your</em> newsroom.</h2>
-    <p>Book a 30-minute demo and we'll show you exactly how Fred works with your team's workflow — from WhatsApp to CMS integration.</p>
-    <div class="demo-actions">
-      <a href="mailto:hello@fredcheck.com?subject=Demo%20request" class="btn-demo-large">Book a demo →</a>
-      <a href="mailto:hello@fredcheck.com" class="btn-outline-white">Email us</a>
+    <p>Book a 30-minute demo or get in touch. We'll show you exactly how Fred works with your team's workflow.</p>
+
+    <div class="contact-form" id="contactForm">
+      <div class="form-row">
+        <div class="form-field">
+          <label>First name</label>
+          <input type="text" id="cf-name" placeholder="Jane" required>
+        </div>
+        <div class="form-field">
+          <label>Organisation</label>
+          <input type="text" id="cf-org" placeholder="Reuters, Freelance…">
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Email</label>
+        <input type="email" id="cf-email" placeholder="jane@newsroom.com" required>
+      </div>
+      <div class="form-field">
+        <label>I'm interested in</label>
+        <select id="cf-type">
+          <option value="demo">Book a demo</option>
+          <option value="newsroom">Newsroom plan</option>
+          <option value="api">API / Enterprise</option>
+          <option value="individual">Individual plan</option>
+          <option value="other">General enquiry</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Message <span style="font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></label>
+        <textarea id="cf-message" placeholder="Tell us about your team or what you need…"></textarea>
+      </div>
+      <button class="form-submit" id="cfSubmit" onclick="submitContact()">Send message →</button>
+      <p class="form-email-link">Or email us directly: <a href="mailto:hello@fredcheck.com">hello@fredcheck.com</a></p>
+      <p style="margin-top:1rem;text-align:center;font-size:0.78rem;color:rgba(255,255,255,0.18)">Also on WhatsApp: <a href="https://wa.me/447863795638" style="color:rgba(255,255,255,0.3);text-decoration:none">wa.me/447863795638</a></p>
     </div>
-    <p style="margin-top:2rem;font-size:0.78rem;color:rgba(255,255,255,0.2)">Or message Fred on WhatsApp: <a href="https://wa.me/447863795638" style="color:rgba(255,255,255,0.35);text-decoration:none">wa.me/447863795638</a></p>
+
+    <div class="form-success" id="formSuccess">
+      <h3>Message sent.</h3>
+      <p>We'll be in touch within one business day.<br>In the meantime, try Fred on WhatsApp.</p>
+      <a href="https://wa.me/447863795638" class="btn-demo-large" style="margin-top:1.5rem;display:inline-block">Message Fred →</a>
+    </div>
   </div>
 </div>
 
@@ -1019,7 +1119,9 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 </footer>
 
 <script>
-const API = 'https://web-production-1f0a4.up.railway.app';
+const API = window.location.hostname === 'localhost' || window.location.protocol === 'file:'
+  ? 'https://web-production-1f0a4.up.railway.app'
+  : '';
 const FREE_KEY = 'fred_free_used';
 
 // Auto-grow textarea
@@ -1164,6 +1266,91 @@ document.getElementById('gateModal').addEventListener('click', function(e){
 // Reflect prior usage on page load
 if(localStorage.getItem(FREE_KEY)){
   document.getElementById('searchHint').textContent = 'Free check used · Sign up for more';
+}
+
+// ── TYPEWRITER ─────────────────────────────────────────────
+(function(){
+  const line1 = 'Fact check';
+  const line2plain = 'without ';
+  const line2gold = 'the bias.';
+  const el1 = document.getElementById('twLine1');
+  const el2 = document.getElementById('twLine2');
+  const cursor = document.getElementById('twCursor');
+  let i = 0, phase = 1; // phase 1 = line1, phase 2 = line2plain, phase 3 = line2gold
+
+  function tick(){
+    if(phase === 1){
+      el1.textContent = line1.slice(0, i+1);
+      i++;
+      if(i >= line1.length){ i = 0; phase = 2; setTimeout(tick, 180); return; }
+    } else if(phase === 2){
+      el2.textContent = line2plain.slice(0, i+1);
+      i++;
+      if(i >= line2plain.length){
+        i = 0; phase = 3; setTimeout(tick, 60); return;
+      }
+    } else {
+      const em = document.createElement('em');
+      em.textContent = line2gold.slice(0, i+1);
+      el2.innerHTML = line2plain;
+      el2.appendChild(em);
+      i++;
+      if(i >= line2gold.length){ cursor.style.display = 'none'; return; }
+    }
+    setTimeout(tick, phase === 1 ? 75 : 65);
+  }
+  setTimeout(tick, 400);
+})();
+
+// ── ROTATING BADGE ─────────────────────────────────────────
+(function(){
+  const phrases = document.querySelectorAll('.badge-phrase');
+  let cur = 0;
+  setInterval(function(){
+    phrases[cur].classList.remove('visible');
+    phrases[cur].classList.add('hidden');
+    cur = (cur + 1) % phrases.length;
+    phrases[cur].classList.remove('hidden');
+    phrases[cur].classList.add('visible');
+  }, 4000);
+})();
+
+// ── CONTACT FORM ───────────────────────────────────────────
+async function submitContact(){
+  const name    = document.getElementById('cf-name').value.trim();
+  const email   = document.getElementById('cf-email').value.trim();
+  const org     = document.getElementById('cf-org').value.trim();
+  const type    = document.getElementById('cf-type').value;
+  const message = document.getElementById('cf-message').value.trim();
+
+  if(!name || !email || !email.includes('@')){
+    document.getElementById('cf-email').focus();
+    return;
+  }
+
+  const btn = document.getElementById('cfSubmit');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const res = await fetch(API + '/api/contact', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, email, org, type, message})
+    });
+    if(res.ok){
+      document.getElementById('contactForm').style.display = 'none';
+      document.getElementById('formSuccess').style.display = 'block';
+    } else {
+      btn.disabled = false;
+      btn.textContent = 'Send message →';
+      alert('Something went wrong. Please email hello@fredcheck.com directly.');
+    }
+  } catch(e){
+    btn.disabled = false;
+    btn.textContent = 'Send message →';
+    alert('Could not send. Please email hello@fredcheck.com directly.');
+  }
 }
 </script>
 </body>
