@@ -364,7 +364,7 @@ def meter_visual(r):
     if r not in patterns: return labels.get(r, r)
     red, green = patterns[r]
     bar = "🟩" * green + "🟥" * red
-    return f"\n{bar}\n{labels[r]}\n"
+    return bar
 
 def html_text(html, lim=2000):
     class P(HTMLParser):
@@ -3142,10 +3142,10 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
     badge = badge_map.get(rating, f"VERDICT: {rating}")
-    lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*{badge}*",meter_visual(rating),""]
+    lines = [f"*FACTCHECK PRO*  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{claim}_","",f"*{badge}*","",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
-    lines += ["*CLAIM*",f"_{claim}_","","*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
+    lines += ["*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
     if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f,180)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
     # Perspectives — single summary sentence across all regions
     persp = a.get("perspectives", "")
