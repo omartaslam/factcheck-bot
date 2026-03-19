@@ -1,1204 +1,1169 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fred — Truth Beyond Borders</title>
-<meta name="description" content="Fred fact-checks claims on WhatsApp and the web from every perspective — Western, Arabic, regional and global. No default narrative. Just facts.">
-<meta property="og:title" content="Fred — Truth Beyond Borders">
-<meta property="og:description" content="Multi-perspective fact-checking on WhatsApp & web. English, Arabic & Spanish. Western, Regional & Latin American voices. Free to try.">
-<meta property="og:image" content="/static/og-image.png">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred — Fact Check Without the Bias</title>
+<meta name="description" content="Multi-perspective fact checking for journalists and newsrooms. 65+ sources across Western, Arabic, Spanish and French media. No default narrative. Verdicts in under 60 seconds.">
+
+<!-- Open Graph / WhatsApp preview -->
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fredcheck.com">
+<meta property="og:title" content="Fred — Fact Check Without the Bias">
+<meta property="og:description" content="Multi-perspective fact checking for journalists and newsrooms. 65+ sources, no default narrative. Verdicts in under 60 seconds.">
+<meta property="og:image" content="https://fredcheck.com/static/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:site_name" content="Fred">
+
+<!-- Twitter / X -->
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Fred — Fact Check Without the Bias">
+<meta name="twitter:description" content="Multi-perspective fact checking for journalists and newsrooms. 65+ sources, no default narrative.">
+<meta name="twitter:image" content="https://fredcheck.com/static/og-image.png">
+
+<!-- Favicon -->
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16.png">
+<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Cairo:wght@400;500;600;700;800;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
 <style>
-:root {
-  --navy:        #0A1628;
-  --navy-mid:    #0F2040;
-  --navy-card:   #122038;
-  --gold:        #D4AF37;
-  --gold-light:  #F0D060;
-  --white:       #FFFFFF;
-  --off-white:   #F7F8FA;
-  --text:        #1A1A2E;
-  --muted:       #6B7280;
-  --wa:          #25D366;
-  --wa-dark:     #128C7E;
-  --border:      rgba(212,175,55,0.15);
-  --radius:      14px;
-  --red:         #EF4444;
-  --green:       #22C55E;
-}
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
-body{font-family:'Inter',system-ui,sans-serif;background:var(--white);color:var(--text);overflow-x:hidden}
-body.ar{font-family:'Cairo',system-ui,sans-serif;direction:rtl;text-align:right}
-h1,h2,h3{line-height:1.2;font-weight:800}
-p{line-height:1.7}
-a{text-decoration:none;color:inherit}
+body{font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a;overflow-x:hidden}
+
+/* ── TOKENS ── */
+:root{
+  --gold:#D4AF37;
+  --gold-dim:rgba(212,175,55,0.12);
+  --gold-border:rgba(212,175,55,0.25);
+  --black:#0a0a0a;
+  --off:#f7f7f7;
+  --border:#ebebeb;
+  --muted:#888;
+  --radius:12px;
+}
 
 /* ── NAV ── */
-nav{position:sticky;top:0;z-index:100;background:rgba(10,22,40,0.97);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 5vw}
-.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;gap:1rem}
-.nav-logo{display:flex;align-items:center;gap:10px;cursor:pointer}
-.nav-logo svg{flex-shrink:0}
-.nav-logo-text{font-size:1.25rem;font-weight:900;color:var(--white);letter-spacing:1px}
-.nav-logo-text span{color:var(--gold)}
-.nav-links{display:flex;gap:1.75rem}
-.nav-links a{color:rgba(255,255,255,0.7);font-size:0.88rem;font-weight:500;transition:color 0.2s;white-space:nowrap}
-.nav-links a:hover{color:var(--gold)}
-.nav-links a.nav-highlight{color:var(--gold);border:1px solid rgba(212,175,55,0.3);padding:4px 12px;border-radius:6px}
-.nav-links a.nav-highlight:hover{background:rgba(212,175,55,0.1)}
-.nav-right{display:flex;align-items:center;gap:0.6rem}
-.lang-toggle{display:flex;background:rgba(255,255,255,0.08);border-radius:8px;padding:2px;gap:2px}
-.lang-btn{padding:4px 12px;border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.6);transition:all 0.2s}
-.lang-btn.active{background:var(--gold);color:var(--navy)}
-.btn-login{padding:7px 16px;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.8);transition:all 0.2s}
-.btn-login:hover{border-color:var(--gold);color:var(--gold)}
-.nav-cta{display:inline-flex;align-items:center;gap:8px;background:var(--wa);color:#000;font-weight:700;font-size:0.85rem;padding:8px 16px;border-radius:8px;white-space:nowrap;transition:background 0.2s}
-.nav-cta:hover{background:#1ebe5c}
-@media(max-width:900px){.nav-links{display:none}}
-@media(max-width:600px){.nav-logo-text{font-size:1.1rem}.btn-login{display:none}}
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 4rem;height:92px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:rgba(255,255,255,0.96);
+  backdrop-filter:blur(8px);z-index:100;
+}
+.logo{display:flex;align-items:center;gap:14px;text-decoration:none}
+.logo img{width:80px;height:80px;border-radius:50%;object-fit:cover;box-shadow:0 3px 16px rgba(0,0,0,0.22)}
+.logo-text{font-size:1.25rem;font-weight:900;letter-spacing:4px;color:var(--black)}
+.nav-links{display:flex;gap:2rem}
+.nav-links a{color:#555;font-size:0.855rem;text-decoration:none;font-weight:500;transition:color 0.15s}
+.nav-links a:hover{color:var(--black)}
+.nav-right{display:flex;gap:0.6rem;align-items:center}
+.btn-ghost{padding:7px 16px;border:1px solid var(--border);border-radius:8px;color:#444;font-size:0.82rem;font-weight:600;cursor:pointer;background:#fff;font-family:inherit;transition:border-color 0.15s}
+.btn-ghost:hover{border-color:#bbb}
+.btn-demo{padding:8px 18px;border-radius:8px;background:var(--gold);color:var(--black);font-size:0.82rem;font-weight:800;cursor:pointer;border:none;font-family:inherit;letter-spacing:0.2px;transition:opacity 0.15s}
+.btn-demo:hover{opacity:0.88}
 
 /* ── HERO ── */
-.hero{background:var(--navy);min-height:88vh;display:flex;align-items:center;padding:5rem 5vw 4rem;position:relative;overflow:hidden}
-.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 50% 0%, rgba(212,175,55,0.08) 0%, transparent 60%);pointer-events:none}
-.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(212,175,55,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(212,175,55,0.04) 1px,transparent 1px);background-size:60px 60px;pointer-events:none}
-.hero-content{max-width:680px;position:relative;z-index:1}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(212,175,55,0.12);border:1px solid rgba(212,175,55,0.3);color:var(--gold);font-size:0.82rem;font-weight:600;padding:6px 16px;border-radius:20px;margin-bottom:1.75rem;letter-spacing:0.5px}
-.hero h1{font-size:clamp(2.6rem,6vw,4.2rem);color:var(--white);margin-bottom:1.5rem;font-weight:900}
-.hero h1 em{font-style:normal;background:linear-gradient(135deg,var(--gold),var(--gold-light));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-sub{font-size:clamp(1rem,2.5vw,1.2rem);color:rgba(255,255,255,0.72);margin-bottom:2.5rem;max-width:560px}
-.hero-actions{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;margin-bottom:2rem}
-.btn-wa{display:inline-flex;align-items:center;gap:10px;background:var(--wa);color:#000;font-weight:700;font-size:1.05rem;padding:14px 28px;border-radius:10px;transition:all 0.2s;border:none;cursor:pointer}
-.btn-wa:hover{background:#1ebe5c;transform:translateY(-1px);box-shadow:0 8px 24px rgba(37,211,102,0.3)}
-.btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;color:rgba(255,255,255,0.8);font-weight:600;font-size:1rem;padding:13px 24px;border-radius:10px;border:1px solid rgba(255,255,255,0.2);cursor:pointer;transition:all 0.2s}
-.btn-outline:hover{border-color:var(--gold);color:var(--gold)}
-.hero-note{font-size:0.82rem;color:rgba(255,255,255,0.4)}
+.hero{
+  max-width:820px;margin:0 auto;
+  text-align:center;padding:5rem 2rem 3.5rem;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--gold-dim);border:1px solid var(--gold-border);
+  color:#7a6000;font-size:0.75rem;font-weight:700;
+  padding:5px 14px;border-radius:20px;margin-bottom:1.75rem;letter-spacing:0.4px;
+}
+.hero h1{
+  font-size:4rem;font-weight:900;letter-spacing:-2.5px;line-height:1.04;
+  margin-bottom:1.25rem;color:var(--black);
+}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero-sub{
+  font-size:1.05rem;color:#666;line-height:1.7;
+  max-width:560px;margin:0 auto 2.25rem;
+}
+.hero-actions{display:flex;justify-content:center;gap:0.85rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.btn-primary{
+  padding:13px 28px;border-radius:10px;background:var(--black);color:#fff;
+  font-size:0.92rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;
+  transition:opacity 0.15s;letter-spacing:0.1px;
+}
+.btn-primary:hover{opacity:0.82}
+.btn-secondary{
+  padding:13px 28px;border-radius:10px;border:1.5px solid var(--border);
+  background:#fff;color:#444;font-size:0.92rem;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:border-color 0.15s;
+}
+.btn-secondary:hover{border-color:#bbb}
+.hero-note{font-size:0.78rem;color:#bbb}
+.hero-note a{color:#25D366;font-weight:600;text-decoration:none}
 
-/* ── TRUST STRIP ── */
-.trust-strip{background:var(--navy-mid);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:1.1rem 5vw;overflow-x:auto}
-.trust-inner{display:flex;gap:2.5rem;align-items:center;min-width:max-content;margin:0 auto;justify-content:center}
-.trust-item{display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.65);font-size:0.85rem;font-weight:500;white-space:nowrap}
-.trust-item strong{color:var(--gold)}
-.trust-sep{width:1px;height:20px;background:var(--border)}
+/* ── LOGO STRIP ── */
+.logo-strip{
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:1.75rem 4rem;text-align:center;background:var(--off);
+}
+.strip-label{font-size:0.68rem;font-weight:700;color:#ccc;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1.1rem}
+.strip-row{display:flex;justify-content:center;flex-wrap:wrap;gap:0.5rem;align-items:center}
+.strip-pill{
+  background:#fff;border:1px solid var(--border);
+  padding:5px 13px;border-radius:6px;
+  font-size:0.75rem;font-weight:700;color:#999;letter-spacing:0.3px;
+}
 
-/* ── SECTION WRAPPERS ── */
-section{padding:5rem 5vw}
-.section-tag{display:inline-block;background:rgba(212,175,55,0.1);color:var(--gold);font-size:0.78rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;padding:5px 14px;border-radius:20px;margin-bottom:1rem;border:1px solid rgba(212,175,55,0.2)}
-.section-title{font-size:clamp(1.75rem,4vw,2.5rem);margin-bottom:0.75rem}
-.section-sub{font-size:1.05rem;color:var(--muted);max-width:560px;margin-bottom:3rem}
-.center{text-align:center}
-.center .section-sub{margin-left:auto;margin-right:auto}
+/* ── USP DARK ── */
+.usp-section{background:var(--black);padding:5.5rem 4rem}
+.usp-inner{max-width:840px;margin:0 auto;text-align:center}
+.usp-kicker{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem}
+.usp-inner blockquote{
+  font-size:1.9rem;font-weight:700;color:#fff;line-height:1.5;letter-spacing:-0.5px;
+}
+.usp-inner blockquote em{font-style:normal;color:var(--gold)}
+.usp-inner p.usp-sub{
+  margin-top:1.75rem;font-size:0.875rem;color:rgba(255,255,255,0.38);
+  letter-spacing:0.5px;text-transform:uppercase;font-weight:600;
+}
+@media(max-width:768px){
+  .usp-section{padding:3.5rem 1.5rem}
+  .usp-inner blockquote{font-size:1.35rem}
+}
 
-/* ── TRY FRED (WEB INTERFACE) ── */
-.try-section{background:var(--off-white)}
-.try-box{max-width:760px;margin:0 auto}
-.try-tabs{display:flex;gap:0.5rem;margin-bottom:1.5rem}
-.try-tab{padding:8px 20px;border-radius:8px;font-size:0.88rem;font-weight:600;cursor:pointer;border:1px solid #E5E7EB;background:var(--white);color:var(--muted);transition:all 0.2s}
-.try-tab.active{background:var(--navy);color:var(--white);border-color:var(--navy)}
-.try-input-wrap{position:relative}
-.try-textarea{width:100%;min-height:120px;padding:1.25rem;border:2px solid #E5E7EB;border-radius:var(--radius);font-size:1rem;font-family:inherit;resize:vertical;transition:border-color 0.2s;background:var(--white);color:var(--text);line-height:1.6}
-.try-textarea:focus{outline:none;border-color:var(--gold)}
-.try-footer{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;flex-wrap:wrap;gap:0.75rem}
-.try-note{font-size:0.82rem;color:var(--muted)}
-.try-note a{color:var(--gold);font-weight:600;cursor:pointer}
-.btn-check{display:inline-flex;align-items:center;gap:10px;background:var(--navy);color:var(--white);font-weight:700;font-size:1rem;padding:13px 28px;border-radius:10px;border:none;cursor:pointer;transition:all 0.2s}
-.btn-check:hover{background:var(--navy-mid);transform:translateY(-1px)}
-.btn-check:disabled{opacity:0.5;cursor:not-allowed;transform:none}
+/* ── STATS ── */
+.stats-section{padding:5rem 4rem;background:#fff}
+.stats-inner{max-width:1040px;margin:0 auto}
+.section-header{text-align:center;margin-bottom:3.5rem}
+.section-tag{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:0.9rem}
+.section-header h2{font-size:2.4rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:0.65rem;color:var(--black)}
+.section-header p{font-size:0.97rem;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.7}
 
-/* ── RESULT CARD ── */
-.result-area{margin-top:2rem;display:none}
-.result-area.visible{display:block}
-.result-card{background:var(--white);border:1px solid #E5E7EB;border-radius:var(--radius);padding:2rem;margin-bottom:1.25rem;position:relative}
-.result-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.25rem;flex-wrap:wrap}
-.verdict-badge{display:inline-flex;align-items:center;gap:8px;padding:8px 18px;border-radius:20px;font-weight:800;font-size:1rem;letter-spacing:0.3px}
-.verdict-TRUE{background:#DCFCE7;color:#166534}
-.verdict-MOSTLY_TRUE{background:#DCFCE7;color:#166534}
-.verdict-HALF_TRUE{background:#FEF9C3;color:#854D0E}
-.verdict-MOSTLY_FALSE{background:#FFEDD5;color:#9A3412}
-.verdict-FALSE{background:#FEE2E2;color:#991B1B}
-.verdict-PANTS_ON_FIRE{background:#FEE2E2;color:#7F1D1D}
-.verdict-UNVERIFIABLE,.verdict-MISLEADING,.verdict-NEEDS_CONTEXT{background:#F3F4F6;color:#374151}
-.conf-badge{font-size:0.8rem;font-weight:600;padding:4px 12px;border-radius:12px}
-.conf-HIGH{background:#DCFCE7;color:#166534}
-.conf-MEDIUM{background:#FEF9C3;color:#854D0E}
-.conf-LOW{background:#FEE2E2;color:#991B1B}
-.result-claim{font-size:0.88rem;color:var(--muted);font-style:italic;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid #F3F4F6}
-.result-section-label{font-size:0.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem;margin-top:1.25rem}
-.result-text{font-size:0.95rem;line-height:1.7;color:var(--text)}
-.result-list{list-style:none;display:grid;gap:0.4rem;margin-top:0.35rem}
-.result-list li{font-size:0.92rem;color:var(--text);padding-left:1.2rem;position:relative}
-.result-list li::before{content:'•';position:absolute;left:0;color:var(--gold)}
-body.ar .result-list li{padding-left:0;padding-right:1.2rem}
-body.ar .result-list li::before{left:auto;right:0}
-.persp-block{display:grid;gap:0.75rem;margin-top:0.4rem}
-.persp-item{padding:0.75rem 1rem;border-radius:8px;font-size:0.9rem;line-height:1.6}
-.persp-western{background:#EFF6FF;border-left:3px solid #3B82F6}
-.persp-regional{background:#F0FDF4;border-left:3px solid #22C55E}
-.persp-latam{background:#FDF4FF;border-left:3px solid #A855F7}
-.persp-consensus{background:#FFF7ED;border-left:3px solid var(--gold)}
-body.ar .persp-western,.persp-western{border-left:3px solid #3B82F6}
-.score-bar{display:flex;align-items:center;gap:0.75rem;margin-top:0.4rem}
-.score-track{flex:1;height:8px;background:#F3F4F6;border-radius:4px;overflow:hidden}
-.score-fill{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--gold),var(--green));transition:width 0.6s ease}
-.score-num{font-size:0.85rem;font-weight:700;color:var(--text);white-space:nowrap;min-width:3rem;text-align:right}
-.result-sources{display:flex;flex-wrap:wrap;gap:0.4rem;margin-top:0.4rem}
-.source-chip{background:var(--off-white);border:1px solid #E5E7EB;border-radius:6px;padding:3px 10px;font-size:0.78rem;color:var(--muted)}
-.spinner{display:inline-block;width:20px;height:20px;border:2px solid rgba(255,255,255,0.3);border-top-color:var(--white);border-radius:50%;animation:spin 0.7s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.try-error{background:#FEE2E2;color:#991B1B;padding:1rem 1.25rem;border-radius:10px;font-size:0.9rem;margin-top:1rem}
-
-/* ── WHY FRED ── */
-.why-section{background:var(--white)}
-.why-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem}
-.why-card{background:var(--off-white);border:1px solid #E5E7EB;border-radius:var(--radius);padding:2rem;transition:all 0.25s;position:relative;overflow:hidden}
-.why-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--gold),var(--gold-light));transform:scaleX(0);transform-origin:left;transition:transform 0.3s}
-.why-card:hover{box-shadow:0 8px 32px rgba(0,0,0,0.08);transform:translateY(-3px)}
-.why-card:hover::before{transform:scaleX(1)}
-.why-icon{width:48px;height:48px;background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(212,175,55,0.05));border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:1.25rem}
-.why-card h3{font-size:1.05rem;margin-bottom:0.6rem;color:var(--navy)}
-.why-card p{font-size:0.92rem;color:var(--muted);line-height:1.65}
+.stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  box-shadow:0 4px 24px rgba(0,0,0,0.04);
+}
+.stat-box{
+  background:#fff;padding:2.5rem 2rem;
+  border-right:1px solid var(--border);position:relative;
+}
+.stat-box:last-child{border-right:none}
+.stat-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:4px;
+  background:var(--gold);
+}
+.stat-num{font-size:3.5rem;font-weight:900;letter-spacing:-2px;color:var(--black);line-height:1;margin-bottom:0.65rem}
+.stat-num .gold{color:var(--gold)}
+.stat-title{font-size:0.9rem;font-weight:800;color:var(--black);margin-bottom:0.35rem}
+.stat-desc{font-size:0.8rem;color:#aaa;line-height:1.55}
+@media(max-width:900px){.stats-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.stats-section{padding:3.5rem 1.25rem}}
 
 /* ── HOW IT WORKS ── */
-.steps-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:2rem;counter-reset:step}
-.step{position:relative;padding-left:4rem}
-.step::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:0;width:40px;height:40px;background:linear-gradient(135deg,var(--navy),var(--navy-mid));color:var(--gold);font-size:1.1rem;font-weight:800;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
-body.ar .step{padding-left:0;padding-right:4rem}
-body.ar .step::before{left:auto;right:0}
-.step h3{font-size:1.05rem;margin-bottom:0.5rem;color:var(--navy)}
-.step p{font-size:0.92rem;color:var(--muted);line-height:1.65}
+.how-section{background:var(--off);padding:5rem 4rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.how-inner{max-width:1040px;margin:0 auto}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;position:relative;margin-top:1rem}
+.steps::before{
+  content:'';position:absolute;top:27px;
+  left:calc(16.66% + 1rem);right:calc(16.66% + 1rem);height:1px;
+  background:linear-gradient(90deg,var(--border),var(--gold),var(--border));z-index:0;
+}
+.step{text-align:center;position:relative;z-index:1}
+.step-num{
+  width:54px;height:54px;border-radius:50%;background:#fff;border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;
+}
+.step h3{font-size:0.97rem;font-weight:800;margin-bottom:0.5rem;color:var(--black)}
+.step p{font-size:0.84rem;color:var(--muted);line-height:1.7;max-width:230px;margin:0 auto}
+@media(max-width:768px){
+  .how-section{padding:3.5rem 1.25rem}
+  .steps{grid-template-columns:1fr;gap:1.75rem}
+  .steps::before{display:none}
+}
 
-/* ── CONTENT TYPES ── */
-.types-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem}
-.type-card{background:var(--white);border:1px solid #E5E7EB;border-radius:10px;padding:1.25rem 1rem;text-align:center;transition:all 0.2s}
-.type-card:hover{border-color:var(--gold);background:rgba(212,175,55,0.04)}
-.type-icon{font-size:1.75rem;margin-bottom:0.5rem}
-.type-label{font-size:0.85rem;font-weight:600;color:var(--navy)}
+/* ── FEATURES ── */
+.features-section{padding:5.5rem 4rem;max-width:1100px;margin:0 auto}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;margin-top:0}
+.feat-card{
+  border:1px solid var(--border);border-radius:16px;padding:2rem;
+  background:#fff;position:relative;overflow:hidden;transition:all 0.22s;
+  box-shadow:0 2px 8px rgba(0,0,0,0.03);
+}
+.feat-card::after{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:transparent;transition:background 0.22s;
+}
+.feat-card:hover{border-color:#d8d8d8;box-shadow:0 10px 36px rgba(0,0,0,0.08);transform:translateY(-3px)}
+.feat-card:hover::after{background:var(--gold)}
+.feat-icon{
+  width:52px;height:52px;background:var(--gold-dim);border:1.5px solid var(--gold-border);
+  border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1.4rem;
+}
+.feat-card h3{font-size:1rem;font-weight:800;margin-bottom:0.5rem;color:var(--black);letter-spacing:-0.3px}
+.feat-card p{font-size:0.85rem;color:#6b6b6b;line-height:1.75}
+@media(max-width:1024px){.feat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){
+  .features-section{padding:3.5rem 1.25rem}
+  .feat-grid{grid-template-columns:1fr}
+}
 
-/* ── MANIFESTO ── */
-.manifesto{background:var(--navy);color:var(--white)}
-.manifesto .section-title{color:var(--white)}
-.manifesto-body{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:start}
-.manifesto-text{font-size:1.05rem;color:rgba(255,255,255,0.75);line-height:1.85}
-.manifesto-text p+p{margin-top:1rem}
-.manifesto-text strong{color:var(--gold)}
-.manifesto-stats{display:grid;gap:1.25rem}
-.stat-item{background:var(--navy-card);border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem}
-.stat-num{font-size:2rem;font-weight:900;color:var(--gold);line-height:1}
-.stat-label{font-size:0.9rem;color:rgba(255,255,255,0.65);margin-top:0.35rem}
-@media(max-width:768px){.manifesto-body{grid-template-columns:1fr}}
+/* ── FOR NEWSROOMS (split layout) ── */
+.newsroom-section{background:var(--off);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:6rem 4rem}
+.newsroom-inner{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.newsroom-copy .section-tag{text-align:left;margin-bottom:1rem}
+.newsroom-copy h2{font-size:2.5rem;font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:1rem;color:var(--black)}
+.newsroom-copy p{font-size:0.97rem;color:#666;line-height:1.75;margin-bottom:2rem}
+.check-list{list-style:none;display:flex;flex-direction:column;gap:0.85rem;margin-bottom:2rem}
+.check-list li{display:flex;align-items:flex-start;gap:10px;font-size:0.9rem;color:#444;font-weight:500;line-height:1.55}
+.check-list li::before{
+  content:'';display:block;flex-shrink:0;
+  width:18px;height:18px;margin-top:1px;
+  background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:50%;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='8' viewBox='0 0 10 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 4l2.5 2.5L9 1' stroke='%23D4AF37' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;
+}
+.newsroom-panel{
+  background:var(--black);border-radius:16px;padding:2.5rem;
+  border:1px solid #222;
+}
+.panel-title{font-size:0.7rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem}
+.panel-item{
+  background:#111;border-radius:10px;padding:1.25rem;margin-bottom:0.85rem;
+  border:1px solid #222;
+}
+.panel-item:last-child{margin-bottom:0}
+.panel-item-head{display:flex;align-items:center;gap:8px;margin-bottom:0.4rem}
+.panel-item-head svg{color:var(--gold)}
+.panel-item-head span{font-size:0.875rem;font-weight:700;color:#fff}
+.panel-item p{font-size:0.8rem;color:rgba(255,255,255,0.45);line-height:1.6}
+@media(max-width:900px){
+  .newsroom-section{padding:4rem 1.5rem}
+  .newsroom-inner{grid-template-columns:1fr;gap:3rem}
+}
+
+/* ── API SECTION ── */
+.api-section{padding:6rem 4rem;max-width:1040px;margin:0 auto}
+.api-inner{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.api-copy .section-tag{text-align:left;margin-bottom:1rem}
+.api-copy h2{font-size:2.5rem;font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:1rem;color:var(--black)}
+.api-copy p{font-size:0.97rem;color:#666;line-height:1.75;margin-bottom:1.5rem}
+.api-code{
+  background:var(--black);border-radius:14px;padding:1.75rem 2rem;
+  font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.78rem;
+  line-height:1.8;color:#ccc;border:1px solid #222;overflow-x:auto;
+}
+.api-code .c-key{color:var(--gold)}
+.api-code .c-str{color:#98d4a3}
+.api-code .c-punct{color:#555}
+.api-code .c-val{color:#7ec8e3}
+.api-code .c-comment{color:#444}
+@media(max-width:900px){
+  .api-section{padding:4rem 1.5rem}
+  .api-inner{grid-template-columns:1fr;gap:3rem}
+}
 
 /* ── PRICING ── */
-.pricing-section{background:var(--off-white)}
-.pricing-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.5rem;max-width:960px;margin:0 auto}
-.price-card{background:var(--white);border:1px solid #E5E7EB;border-radius:var(--radius);padding:2rem;position:relative;transition:all 0.25s}
-.price-card.featured{border-color:var(--gold);box-shadow:0 8px 32px rgba(212,175,55,0.15)}
-.price-card:hover{transform:translateY(-3px);box-shadow:0 8px 32px rgba(0,0,0,0.08)}
-.price-card.featured:hover{box-shadow:0 12px 40px rgba(212,175,55,0.25)}
-.price-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);font-size:0.75rem;font-weight:800;padding:4px 16px;border-radius:12px;letter-spacing:0.5px;white-space:nowrap}
-.soon-badge{background:var(--navy);color:var(--gold)}
-.price-name{font-size:1rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:0.75rem}
-.price-amount{font-size:2.5rem;font-weight:900;color:var(--navy);line-height:1}
-.price-amount span{font-size:1rem;font-weight:500;color:var(--muted)}
-.price-desc{font-size:0.88rem;color:var(--muted);margin-top:0.5rem;margin-bottom:1.5rem}
-.price-features{list-style:none;display:grid;gap:0.6rem;margin-bottom:1.75rem}
-.price-features li{display:flex;align-items:flex-start;gap:10px;font-size:0.9rem;color:var(--text)}
-.price-features li::before{content:'✓';color:var(--wa);font-weight:700;flex-shrink:0;margin-top:2px}
-.price-features li.dim::before{content:'–';color:var(--muted)}
-.price-features li.dim{color:var(--muted)}
-.btn-price{width:100%;padding:12px;border-radius:8px;font-weight:700;font-size:0.95rem;cursor:pointer;transition:all 0.2s;border:none;display:block;text-align:center}
-.btn-price-main{background:var(--navy);color:var(--white)}
-.btn-price-main:hover{background:var(--navy-mid)}
-.btn-price-gold{background:var(--gold);color:var(--navy)}
-.btn-price-gold:hover{background:var(--gold-light)}
-.btn-price-ghost{background:transparent;color:var(--muted);border:1px solid #E5E7EB}
+.pricing-section{background:var(--off);border-top:1px solid var(--border);padding:6rem 4rem}
+.pricing-inner{max-width:1040px;margin:0 auto}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:1rem}
+.price-card{
+  background:#fff;border:1px solid var(--border);border-radius:16px;
+  padding:2.25rem;position:relative;display:flex;flex-direction:column;
+}
+.price-card.featured{
+  border-color:var(--gold);border-width:1.5px;
+  box-shadow:0 12px 40px rgba(212,175,55,0.12);
+}
+.price-badge{
+  display:inline-block;background:var(--gold);color:var(--black);
+  font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:20px;
+  letter-spacing:0.4px;margin-bottom:1.25rem;
+}
+.plan-name{font-size:0.7rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem}
+.plan-price{font-size:2.75rem;font-weight:900;letter-spacing:-2px;color:var(--black);line-height:1;margin-bottom:0.25rem}
+.plan-price span{font-size:1rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.plan-desc{font-size:0.84rem;color:var(--muted);line-height:1.6;margin-bottom:2rem;min-height:3.5em}
+.plan-divider{border:none;border-top:1px solid var(--border);margin-bottom:1.5rem}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:0.75rem;margin-bottom:2rem;flex:1}
+.plan-features li{display:flex;align-items:flex-start;gap:9px;font-size:0.85rem;color:#444;line-height:1.5}
+.plan-features li::before{
+  content:'';display:block;flex-shrink:0;
+  width:16px;height:16px;margin-top:1px;
+  background-image:url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='7.25' stroke='%23D4AF37' stroke-width='1.25'/%3E%3Cpath d='M5 8.5l2 2 4-4' stroke='%23D4AF37' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;background-size:contain;
+}
+.plan-features li.dimmed{color:#bbb}
+.plan-features li.dimmed::before{
+  background-image:url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='7.25' stroke='%23ddd' stroke-width='1.25'/%3E%3Cpath d='M5.5 10.5l5-5M10.5 10.5l-5-5' stroke='%23ddd' stroke-width='1.25' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.plan-cta{
+  display:block;width:100%;padding:12px;border-radius:10px;
+  font-size:0.88rem;font-weight:700;font-family:inherit;cursor:pointer;
+  text-align:center;transition:all 0.15s;border:1.5px solid var(--border);
+  background:#fff;color:var(--black);text-decoration:none;
+}
+.plan-cta:hover{border-color:#bbb}
+.plan-cta.dark{background:var(--black);color:#fff;border-color:var(--black)}
+.plan-cta.dark:hover{opacity:0.84}
+.plan-cta.gold{background:var(--gold);color:var(--black);border-color:var(--gold)}
+.plan-cta.gold:hover{opacity:0.88}
+@media(max-width:900px){
+  .pricing-section{padding:4rem 1.5rem}
+  .pricing-grid{grid-template-columns:1fr}
+}
 
-/* ── CONTACT ── */
-.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:start}
-.contact-info h3{font-size:1.5rem;margin-bottom:0.75rem}
-.contact-info p{color:var(--muted);font-size:0.97rem;line-height:1.7;margin-bottom:1.5rem}
-.contact-links{display:grid;gap:0.75rem}
-.contact-link{display:flex;align-items:center;gap:12px;padding:0.85rem 1rem;background:var(--off-white);border:1px solid #E5E7EB;border-radius:10px;font-size:0.92rem;font-weight:600;color:var(--text);transition:all 0.2s}
-.contact-link:hover{border-color:var(--gold);background:rgba(212,175,55,0.05)}
-.contact-link .cl-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-.contact-form{background:var(--off-white);border:1px solid #E5E7EB;border-radius:var(--radius);padding:2rem}
-.form-row{margin-bottom:1.25rem}
-.form-row label{display:block;font-size:0.85rem;font-weight:600;color:var(--navy);margin-bottom:0.4rem}
-.form-row input,.form-row textarea,.form-row select{width:100%;padding:0.75rem 1rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:0.95rem;font-family:inherit;background:var(--white);color:var(--text);transition:border-color 0.2s}
-.form-row input:focus,.form-row textarea:focus,.form-row select:focus{outline:none;border-color:var(--gold)}
-.form-row textarea{min-height:100px;resize:vertical}
-.btn-submit{background:var(--navy);color:var(--white);font-weight:700;font-size:0.95rem;padding:12px 28px;border-radius:8px;border:none;cursor:pointer;transition:all 0.2s}
-.btn-submit:hover{background:var(--navy-mid)}
-.form-success{background:#DCFCE7;color:#166534;padding:1rem;border-radius:8px;font-size:0.9rem;margin-top:1rem;display:none}
-@media(max-width:768px){.contact-grid{grid-template-columns:1fr}}
-
-/* ── CONTACT CARD ── */
-.card-section{background:var(--white)}
-.vcard-preview{background:var(--navy);border-radius:20px;padding:2rem;max-width:360px;margin:0 auto;color:var(--white);text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.15)}
-.vcard-logo{margin:0 auto 1rem;display:block}
-.vcard-name{font-size:1.5rem;font-weight:900;letter-spacing:1px;margin-bottom:0.25rem}
-.vcard-tagline{font-size:0.85rem;color:var(--gold);font-weight:600;margin-bottom:1.25rem}
-.vcard-detail{font-size:0.85rem;color:rgba(255,255,255,0.6);margin-bottom:0.4rem}
-.vcard-detail strong{color:rgba(255,255,255,0.9)}
-.vcard-divider{border:none;border-top:1px solid var(--border);margin:1.25rem 0}
-.btn-download{display:inline-flex;align-items:center;gap:8px;background:var(--gold);color:var(--navy);font-weight:700;font-size:0.95rem;padding:12px 24px;border-radius:8px;transition:all 0.2s;margin-top:1rem;border:none;cursor:pointer;width:100%;justify-content:center}
-.btn-download:hover{background:var(--gold-light)}
-.card-layout{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
-.card-copy h3{font-size:1.5rem;margin-bottom:0.75rem}
-.card-copy p{color:var(--muted);font-size:0.97rem;margin-bottom:1rem;line-height:1.7}
-.card-copy ul{list-style:none;display:grid;gap:0.6rem}
-.card-copy li{display:flex;align-items:flex-start;gap:10px;font-size:0.92rem;color:var(--muted)}
-.card-copy li::before{content:'✓';color:var(--wa);font-weight:700;flex-shrink:0;margin-top:2px}
-@media(max-width:768px){.card-layout{grid-template-columns:1fr}}
-
-/* ── FINAL CTA ── */
-.final-cta{background:linear-gradient(135deg,var(--navy),#0D2B50);text-align:center;color:var(--white)}
-.final-cta h2{font-size:clamp(1.75rem,4vw,2.75rem);margin-bottom:1rem;color:var(--white)}
-.final-cta p{color:rgba(255,255,255,0.65);font-size:1.05rem;margin-bottom:2rem;max-width:520px;margin-left:auto;margin-right:auto}
-.btn-wa-large{display:inline-flex;align-items:center;gap:12px;background:var(--wa);color:#000;font-weight:800;font-size:1.15rem;padding:18px 36px;border-radius:12px;transition:all 0.25s;border:none;cursor:pointer}
-.btn-wa-large:hover{background:#1ebe5c;transform:translateY(-2px);box-shadow:0 12px 40px rgba(37,211,102,0.35)}
-.cta-note{margin-top:1.25rem;font-size:0.83rem;color:rgba(255,255,255,0.4)}
+/* ── DEMO CTA ── */
+.demo-section{background:var(--black);padding:7rem 4rem;text-align:center}
+.demo-inner{max-width:640px;margin:0 auto}
+.demo-inner h2{font-size:2.75rem;font-weight:900;letter-spacing:-2px;color:#fff;line-height:1.1;margin-bottom:1rem}
+.demo-inner h2 em{font-style:normal;color:var(--gold)}
+.demo-inner p{font-size:1rem;color:rgba(255,255,255,0.45);line-height:1.7;margin-bottom:2.5rem}
+.demo-actions{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap}
+.btn-demo-large{
+  padding:14px 32px;border-radius:10px;background:var(--gold);
+  color:var(--black);font-size:0.95rem;font-weight:800;
+  cursor:pointer;border:none;font-family:inherit;letter-spacing:0.1px;
+  transition:opacity 0.15s;text-decoration:none;display:inline-block;
+}
+.btn-demo-large:hover{opacity:0.88}
+.btn-outline-white{
+  padding:14px 32px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.18);
+  color:rgba(255,255,255,0.75);font-size:0.95rem;font-weight:600;
+  cursor:pointer;background:transparent;font-family:inherit;
+  transition:border-color 0.15s;text-decoration:none;display:inline-block;
+}
+.btn-outline-white:hover{border-color:rgba(255,255,255,0.4)}
+@media(max-width:768px){
+  .demo-section{padding:5rem 1.5rem}
+  .demo-inner h2{font-size:2rem}
+}
 
 /* ── FOOTER ── */
-footer{background:var(--navy-mid);border-top:1px solid var(--border);padding:2.5rem 5vw;color:rgba(255,255,255,0.5)}
-.footer-inner{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1.5rem}
-.footer-logo{display:flex;align-items:center;gap:10px}
-.footer-logo-text{font-size:1rem;font-weight:800;color:var(--white);letter-spacing:1px}
-.footer-links{display:flex;gap:1.5rem;font-size:0.85rem;flex-wrap:wrap}
-.footer-links a{color:rgba(255,255,255,0.5);transition:color 0.2s}
-.footer-links a:hover{color:var(--gold)}
-.footer-copy{font-size:0.8rem;text-align:center;width:100%;margin-top:1rem;padding-top:1.25rem;border-top:1px solid var(--border)}
-
-/* ── FLOAT BUTTON ── */
-.wa-float{position:fixed;bottom:1.5rem;right:1.5rem;z-index:50;width:58px;height:58px;background:var(--wa);border-radius:50%;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 20px rgba(37,211,102,0.4);transition:transform 0.2s;cursor:pointer}
-.wa-float:hover{transform:scale(1.1)}
-body.ar .wa-float{right:auto;left:1.5rem}
-
-/* ── MODAL ── */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:200;display:none;align-items:center;justify-content:center;padding:1rem}
-.modal-overlay.open{display:flex}
-.modal{background:var(--white);border-radius:20px;padding:2.5rem;width:100%;max-width:420px;position:relative;animation:modalIn 0.25s ease}
-@keyframes modalIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
-.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--muted);line-height:1}
-.modal h3{font-size:1.4rem;margin-bottom:0.4rem}
-.modal-sub{font-size:0.88rem;color:var(--muted);margin-bottom:1.75rem}
-.modal-tabs{display:flex;gap:0;margin-bottom:1.75rem;border-bottom:2px solid #E5E7EB}
-.modal-tab{flex:1;padding:10px;text-align:center;font-weight:600;font-size:0.9rem;cursor:pointer;border:none;background:none;color:var(--muted);transition:all 0.2s;border-bottom:2px solid transparent;margin-bottom:-2px}
-.modal-tab.active{color:var(--navy);border-bottom-color:var(--navy)}
-.modal-field{margin-bottom:1.1rem}
-.modal-field label{display:block;font-size:0.82rem;font-weight:600;color:var(--navy);margin-bottom:0.35rem}
-.modal-field input{width:100%;padding:0.75rem 1rem;border:1.5px solid #E5E7EB;border-radius:8px;font-size:0.95rem;font-family:inherit;transition:border-color 0.2s}
-.modal-field input:focus{outline:none;border-color:var(--gold)}
-.btn-modal-submit{width:100%;padding:13px;background:var(--navy);color:var(--white);font-weight:700;font-size:1rem;border-radius:8px;border:none;cursor:pointer;transition:background 0.2s;margin-top:0.5rem}
-.btn-modal-submit:hover{background:var(--navy-mid)}
-.modal-error{background:#FEE2E2;color:#991B1B;padding:0.75rem 1rem;border-radius:8px;font-size:0.88rem;margin-top:0.75rem;display:none}
-.modal-success{background:#DCFCE7;color:#166534;padding:0.75rem 1rem;border-radius:8px;font-size:0.88rem;margin-top:0.75rem;display:none}
-.user-nav{display:none;align-items:center;gap:8px;color:rgba(255,255,255,0.8);font-size:0.85rem;font-weight:600}
-.user-nav .user-email{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.btn-signout{padding:6px 12px;border-radius:6px;font-size:0.8rem;font-weight:600;border:1px solid rgba(255,255,255,0.2);background:transparent;color:rgba(255,255,255,0.6);cursor:pointer;transition:all 0.2s}
-.btn-signout:hover{border-color:var(--red);color:var(--red)}
-
-/* ── CAMEL LOGO ── */
-.nav-logo-img{width:36px;height:36px;border-radius:8px;object-fit:cover;flex-shrink:0}
-.footer-logo-img{width:28px;height:28px;border-radius:6px;object-fit:cover}
-.vcard-logo-img{width:72px;height:72px;border-radius:14px;object-fit:cover;display:block;margin:0 auto 1rem}
-
-/* ── SVG ICON STYLE ── */
-.why-icon{width:48px;height:48px;background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(212,175,55,0.05));border-radius:12px;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem}
-
-/* ── CONTENT TYPES V2 ── */
-.types-grid-v2{display:grid;grid-template-columns:repeat(3,1fr);gap:0.85rem;max-width:900px;margin:0 auto}
-.type-card-v2{background:var(--white);border:1px solid #E5E7EB;border-radius:10px;padding:1rem 1.25rem;display:flex;align-items:center;gap:0.85rem;transition:all 0.2s}
-.type-card-v2:hover{border-color:var(--gold);background:rgba(212,175,55,0.04)}
-.type-icon-v2{width:38px;height:38px;background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(212,175,55,0.05));border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.type-label-v2{font-size:0.9rem;font-weight:600;color:var(--navy)}
-.type-desc-v2{font-size:0.76rem;color:var(--muted);margin-top:2px;line-height:1.4}
-@media(max-width:768px){.types-grid-v2{grid-template-columns:1fr 1fr}}
-@media(max-width:480px){.types-grid-v2{grid-template-columns:1fr}}
-
-/* ── UTILITIES ── */
-.text-gold{color:var(--gold)}
-.d-en{display:block}.d-ar{display:none}
-body.ar .d-en{display:none}
-body.ar .d-ar{display:block}
-
-/* ── RESPONSIVE ── */
-@media(max-width:600px){
-  section{padding:3.5rem 5vw}
-  .hero{min-height:auto;padding:4rem 5vw 3rem}
-  .why-grid,.types-grid{grid-template-columns:1fr 1fr}
-  .trust-inner{gap:1.5rem}
-  .pricing-grid{grid-template-columns:1fr}
-  .try-footer{flex-direction:column;align-items:stretch}
-  .btn-check{justify-content:center}
+footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
+.footer-inner{max-width:1040px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem}
+.footer-brand .logo-text{font-size:0.95rem;font-weight:900;letter-spacing:3px;color:#fff;display:block;margin-bottom:0.75rem}
+.footer-brand p{font-size:0.82rem;color:#555;line-height:1.7;max-width:220px}
+.footer-col h4{font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:1rem}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.6rem}
+.footer-col ul li a{font-size:0.84rem;color:#555;text-decoration:none;transition:color 0.15s}
+.footer-col ul li a:hover{color:#888}
+.footer-bottom{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid #111;padding-top:1.5rem;
 }
+.footer-bottom p{font-size:0.78rem;color:#333}
+.footer-bottom a{color:#444;text-decoration:none}
+.footer-bottom a:hover{color:#666}
+@media(max-width:768px){
+  footer{padding:3rem 1.5rem 2rem}
+  .footer-top{grid-template-columns:1fr 1fr;gap:2rem}
+  .footer-bottom{flex-direction:column;gap:1rem;text-align:center}
+}
+@media(max-width:480px){.footer-top{grid-template-columns:1fr}}
+
+/* ── RESPONSIVE NAV ── */
+@media(max-width:1024px){nav{padding:0 2rem}}
+@media(max-width:768px){
+  .nav-links{display:none}
+  nav{padding:0 1.25rem}
+}
+
+/* ── SEARCH BOX ── */
+.search-outer{max-width:660px;margin:0 auto 1rem}
+.search-box{
+  background:#fff;border:1.5px solid #e2e2e2;border-radius:16px;
+  box-shadow:0 4px 24px rgba(0,0,0,0.07);
+  transition:border-color 0.2s,box-shadow 0.2s;overflow:hidden;
+}
+.search-box:focus-within{
+  border-color:#c0c0c0;
+  box-shadow:0 8px 36px rgba(0,0,0,0.11);
+}
+.search-textarea{
+  display:block;width:100%;border:none;outline:none;resize:none;
+  font-family:'Inter',sans-serif;font-size:0.97rem;line-height:1.6;
+  color:#0a0a0a;background:transparent;
+  padding:1.2rem 1.4rem 0.5rem;
+  min-height:64px;max-height:180px;overflow-y:auto;
+}
+.search-textarea::placeholder{color:#bbb}
+.search-footer{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:0.65rem 1rem 0.85rem 1.4rem;
+}
+.search-hint{font-size:0.73rem;color:#ccc;font-weight:500}
+.search-btn{
+  display:inline-flex;align-items:center;gap:7px;
+  padding:8px 18px;border-radius:10px;
+  background:var(--black);color:#fff;
+  font-family:'Inter',sans-serif;font-size:0.83rem;font-weight:700;
+  border:none;cursor:pointer;transition:opacity 0.15s;
+  letter-spacing:0.1px;
+}
+.search-btn:hover{opacity:0.78}
+.search-btn:disabled{opacity:0.4;cursor:not-allowed}
+.search-btn svg{flex-shrink:0}
+
+/* ── LOADING STATE ── */
+.search-loading{
+  display:none;padding:1.5rem 1.4rem;
+  border-top:1px solid #f0f0f0;
+}
+.search-loading.visible{display:block}
+.loading-label{font-size:0.82rem;color:#aaa;font-weight:500;margin-bottom:0.85rem}
+.loading-steps{display:flex;flex-direction:column;gap:0.5rem}
+.loading-step{
+  display:flex;align-items:center;gap:9px;
+  font-size:0.79rem;color:#ccc;
+}
+.loading-step.active{color:#555}
+.loading-step.done{color:var(--gold)}
+.step-dot{
+  width:6px;height:6px;border-radius:50%;background:#e5e5e5;flex-shrink:0;
+}
+.loading-step.active .step-dot{
+  background:var(--black);
+  animation:pulse 1s ease-in-out infinite;
+}
+.loading-step.done .step-dot{background:var(--gold)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+
+/* ── RESULT PANEL ── */
+.result-panel{
+  display:none;border-top:1px solid #f0f0f0;padding:1.5rem 1.4rem;
+}
+.result-panel.visible{display:block}
+.result-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+.verdict-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 12px;border-radius:20px;
+  font-size:0.73rem;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;
+}
+.verdict-chip.TRUE{background:#dcfce7;color:#15803d}
+.verdict-chip.FALSE{background:#fee2e2;color:#b91c1c}
+.verdict-chip.MISLEADING{background:#ffedd5;color:#c2410c}
+.verdict-chip.UNVERIFIABLE{background:#f3f4f6;color:#6b7280}
+.verdict-chip.PARTIALLY{background:#fef9c3;color:#a16207}
+.confidence-tag{font-size:0.72rem;color:#bbb;font-weight:600}
+.result-verdict{font-size:0.9rem;color:#333;line-height:1.7;margin-bottom:1rem}
+.result-sources{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.85rem}
+.result-source-pill{
+  background:#f7f7f7;border:1px solid #ebebeb;
+  padding:3px 10px;border-radius:5px;
+  font-size:0.72rem;font-weight:600;color:#888;
+}
+.result-cta{
+  font-size:0.78rem;color:#aaa;
+  border-top:1px solid #f5f5f5;padding-top:0.85rem;
+  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;
+}
+.result-cta a{color:var(--black);font-weight:700;text-decoration:none;font-size:0.8rem}
+.result-cta a:hover{text-decoration:underline}
+
+/* ── GATE MODAL ── */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);
+  z-index:999;align-items:center;justify-content:center;padding:1.5rem;
+}
+.modal-overlay.visible{display:flex}
+.modal-card{
+  background:#fff;border-radius:20px;padding:2.5rem;
+  max-width:440px;width:100%;
+  box-shadow:0 24px 80px rgba(0,0,0,0.18);
+  animation:modalIn 0.25s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+.modal-card h3{font-size:1.5rem;font-weight:900;letter-spacing:-0.75px;margin-bottom:0.6rem;color:var(--black)}
+.modal-card h3 em{font-style:normal;color:var(--gold)}
+.modal-card p{font-size:0.88rem;color:#888;line-height:1.65;margin-bottom:1.75rem}
+.modal-email{
+  display:block;width:100%;padding:11px 14px;
+  border:1.5px solid var(--border);border-radius:10px;
+  font-family:'Inter',sans-serif;font-size:0.9rem;color:var(--black);
+  outline:none;margin-bottom:0.75rem;transition:border-color 0.15s;
+}
+.modal-email:focus{border-color:#aaa}
+.modal-submit{
+  display:block;width:100%;padding:12px;
+  background:var(--black);color:#fff;
+  border:none;border-radius:10px;
+  font-family:'Inter',sans-serif;font-size:0.9rem;font-weight:700;
+  cursor:pointer;margin-bottom:1rem;transition:opacity 0.15s;
+}
+.modal-submit:hover{opacity:0.82}
+.modal-divider{text-align:center;font-size:0.75rem;color:#ddd;margin-bottom:1rem}
+.modal-wa{
+  display:block;width:100%;padding:11px;
+  background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;
+  border-radius:10px;font-family:'Inter',sans-serif;
+  font-size:0.87rem;font-weight:700;cursor:pointer;
+  text-align:center;text-decoration:none;transition:opacity 0.15s;
+}
+.modal-wa:hover{opacity:0.82}
+.modal-close{
+  display:block;text-align:center;margin-top:1rem;
+  font-size:0.78rem;color:#ccc;cursor:pointer;
+}
+.modal-close:hover{color:#888}
 </style>
 </head>
 <body>
 
-<!-- ── MODAL: LOGIN / SIGNUP ── -->
-<div class="modal-overlay" id="authModal">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal()">✕</button>
-    <h3 class="d-en">Welcome back</h3>
-    <h3 class="d-ar" style="display:none">مرحباً بعودتك</h3>
-    <p class="modal-sub d-en">Sign in to save your fact-check history and access more checks.</p>
-    <p class="modal-sub d-ar" style="display:none">سجّل الدخول لحفظ سجل فحوصاتك والوصول إلى المزيد.</p>
-    <div class="modal-tabs">
-      <button class="modal-tab active" id="tab-signin" onclick="switchTab('signin')">
-        <span class="d-en">Sign In</span><span class="d-ar" style="display:none">تسجيل الدخول</span>
-      </button>
-      <button class="modal-tab" id="tab-signup" onclick="switchTab('signup')">
-        <span class="d-en">Create Account</span><span class="d-ar" style="display:none">إنشاء حساب</span>
-      </button>
-    </div>
-    <div class="modal-field">
-      <label class="d-en">Email address</label>
-      <label class="d-ar" style="display:none">البريد الإلكتروني</label>
-      <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email">
-    </div>
-    <div class="modal-field">
-      <label class="d-en">Password</label>
-      <label class="d-ar" style="display:none">كلمة المرور</label>
-      <input type="password" id="auth-pw" placeholder="••••••••" autocomplete="current-password">
-    </div>
-    <button class="btn-modal-submit" id="auth-submit-btn" onclick="submitAuth()">
-      <span class="d-en">Sign In</span><span class="d-ar" style="display:none">دخول</span>
-    </button>
-    <div class="modal-error" id="auth-error"></div>
-    <div class="modal-success" id="auth-success"></div>
-  </div>
-</div>
-
-<!-- ── NAVIGATION ── -->
+<!-- NAV -->
 <nav>
-  <div class="nav-inner">
-    <a class="nav-logo" href="/">
-      <img class="nav-logo-img" src="/static/fred-logo.png" alt="Fred">
-      <span class="nav-logo-text">FRED<span>.</span></span>
-    </a>
-    <div class="nav-links">
-      <a href="#try" class="d-en">Try Fred</a>
-      <a href="#try" class="d-ar" style="display:none">جرّب فريد</a>
-      <a href="#why" class="d-en">Features</a>
-      <a href="#why" class="d-ar" style="display:none">المميزات</a>
-      <a href="#how" class="d-en">How It Works</a>
-      <a href="#how" class="d-ar" style="display:none">كيف يعمل</a>
-      <a href="#pricing" class="d-en">Pricing</a>
-      <a href="#pricing" class="d-ar" style="display:none">الأسعار</a>
-      <a href="#for-teams" class="d-en nav-highlight">For Teams</a>
-      <a href="#contact" class="d-en">Contact</a>
-      <a href="#contact" class="d-ar" style="display:none">تواصل</a>
-    </div>
-    <div class="nav-right">
-      <div class="lang-toggle">
-        <button class="lang-btn active" id="btn-en" onclick="setLang('en')">EN</button>
-        <button class="lang-btn" id="btn-ar" onclick="setLang('ar')">عربي</button>
-      </div>
-      <div class="user-nav" id="userNav">
-        <span class="user-email" id="userEmail"></span>
-        <button class="btn-signout" onclick="signOut()">Sign out</button>
-      </div>
-      <button class="btn-login d-en" id="loginBtn" onclick="openModal()">Sign In</button>
-      <a href="https://wa.me/447863795638?text=Hello%20Fred" class="nav-cta" target="_blank">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        <span class="d-en">Try on WhatsApp</span>
-        <span class="d-ar" style="display:none">جرّب على واتساب</span>
-      </a>
-    </div>
+  <a href="#" class="logo">
+    <img src="https://web-production-1f0a4.up.railway.app/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#newsrooms">For Newsrooms</a>
+    <a href="#api">API</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn-ghost">Sign in</button>
+    <button class="btn-demo" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book a demo →</button>
   </div>
 </nav>
 
-<!-- ── HERO ── -->
-<section class="hero" id="hero">
-  <div class="hero-grid"></div>
-  <div class="hero-content">
-    <div class="hero-badge">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
-      <span class="d-en">Professional Fact-Checking Intelligence</span>
-      <span class="d-ar" style="display:none">التحقق الاحترافي متعدد المنظورات</span>
-    </div>
-    <h1>
-      <span class="d-en">Truth<br><em>Beyond Borders</em></span>
-      <span class="d-ar" style="display:none">الحقيقة<br><em>بلا حدود</em></span>
-    </h1>
-    <p class="hero-sub d-en">The fact-checking tool built for journalists, investigators, newsrooms and activists. Multi-perspective verdicts across Western, Arabic and Latin American sources — in under 60 seconds.</p>
-    <p class="hero-sub d-ar" style="display:none">أداة التحقق المصممة للصحفيين والمحققين والمؤسسات الإعلامية والناشطين. أحكام متعددة المنظورات من مصادر غربية وعربية ولاتينية — في أقل من 60 ثانية.</p>
-    <div class="hero-actions">
-      <a href="#try" class="btn-wa">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span class="d-en">Try Fred Free</span>
-        <span class="d-ar" style="display:none">جرّب فريد مجاناً</span>
-      </a>
-      <a href="#for-teams" class="btn-outline d-en">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-        For Teams &amp; Newsrooms
-      </a>
-      <a href="https://wa.me/447863795638?text=Hello%20Fred" class="btn-outline" target="_blank">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-        <span class="d-en">Use on WhatsApp</span>
-        <span class="d-ar" style="display:none">استخدم على واتساب</span>
-      </a>
-    </div>
-    <p class="hero-note d-en">Free to try · Web &amp; WhatsApp · English, Arabic &amp; Spanish</p>
-    <p class="hero-note d-ar" style="display:none">مجاني للتجربة · ويب وواتساب · عربي وإنجليزي</p>
-  </div>
-</section>
 
-<!-- ── TRUST STRIP ── -->
-<div class="trust-strip">
-  <div class="trust-inner">
-    <div class="trust-item"><strong>65+</strong> <span class="d-en">Sources</span><span class="d-ar" style="display:none">مصدر</span></div>
-    <div class="trust-sep"></div>
-    <div class="trust-item"><strong class="d-en">EN · AR · ES</strong><strong class="d-ar" style="display:none">عربي · إنجليزي · إسباني</strong></div>
-    <div class="trust-sep"></div>
-    <div class="trust-item"><strong>3</strong> <span class="d-en">Perspectives Per Verdict</span><span class="d-ar" style="display:none">منظورات لكل حكم</span></div>
-    <div class="trust-sep"></div>
-    <div class="trust-item"><strong class="d-en">No Default Narrative</strong><strong class="d-ar" style="display:none">بلا رواية افتراضية</strong></div>
-    <div class="trust-sep"></div>
-    <div class="trust-item"><strong>&lt;60s</strong> <span class="d-en">Verdict</span><span class="d-ar" style="display:none">حكم فوري</span></div>
-    <div class="trust-sep"></div>
-    <div class="trust-item"><strong class="d-en">Built for Journalists &amp; Media</strong></div>
-    <div class="trust-sep"></div>
-    <div class="trust-item"><strong class="d-en">Powered by Claude AI</strong><strong class="d-ar" style="display:none">مدعوم بكلود AI</strong></div>
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">Truth without borders</div>
+  <h1>Fact check<br>without <em>the bias.</em></h1>
+  <p class="hero-sub">65+ sources across Western, Arabic, Spanish and French media — searched simultaneously, held to the same standard. Multi-perspective verdicts in under 60 seconds.</p>
+
+  <!-- SEARCH BOX -->
+  <div class="search-outer">
+    <div class="search-box" id="searchBox">
+      <textarea
+        id="claimInput"
+        class="search-textarea"
+        placeholder="Paste a claim, URL, quote or social media post…"
+        rows="2"
+      ></textarea>
+      <div class="search-footer">
+        <span class="search-hint" id="searchHint">1 free check · No account needed</span>
+        <button class="search-btn" id="checkBtn" onclick="runCheck()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Check it
+        </button>
+      </div>
+
+      <!-- Loading -->
+      <div class="search-loading" id="searchLoading">
+        <div class="loading-label">Searching across 6 regions…</div>
+        <div class="loading-steps">
+          <div class="loading-step" id="ls1"><div class="step-dot"></div>Querying Western &amp; global sources</div>
+          <div class="loading-step" id="ls2"><div class="step-dot"></div>Searching Arabic, Spanish &amp; French media</div>
+          <div class="loading-step" id="ls3"><div class="step-dot"></div>Cross-checking fact check organisations</div>
+          <div class="loading-step" id="ls4"><div class="step-dot"></div>Synthesising verdict</div>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="result-panel" id="resultPanel">
+        <div class="result-header">
+          <div class="verdict-chip" id="verdictChip"></div>
+          <span class="confidence-tag" id="confidenceTag"></span>
+        </div>
+        <div class="result-verdict" id="resultVerdict"></div>
+        <div class="result-sources" id="resultSources"></div>
+        <div class="result-cta">
+          <span id="resultCtaNote"></span>
+          <a href="#contact">For full audit trail &amp; PDF export → Book a demo</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hero-note">For newsrooms &amp; teams — <a href="#contact" style="color:var(--gold);font-weight:700">book a demo →</a> &nbsp;·&nbsp; Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
+</div>
+
+<!-- GATE MODAL -->
+<div class="modal-overlay" id="gateModal">
+  <div class="modal-card">
+    <h3>Get <em>3 more</em> free checks.</h3>
+    <p>You've used your free check. Create a free account to get 3 more — or subscribe for unlimited access for journalists and newsrooms.</p>
+    <input type="email" class="modal-email" id="modalEmail" placeholder="your@email.com">
+    <button class="modal-submit" onclick="modalSignup()">Create free account →</button>
+    <div class="modal-divider">or</div>
+    <a href="https://wa.me/447863795638" class="modal-wa">Continue on WhatsApp →</a>
+    <span class="modal-close" onclick="closeModal()">No thanks, I'll come back later</span>
   </div>
 </div>
 
-<!-- ── TRY FRED ── -->
-<section class="try-section" id="try">
-  <div class="center" style="margin-bottom:2.5rem">
-    <div class="section-tag d-en">Try It Now</div>
-    <div class="section-tag d-ar" style="display:none">جرّب الآن</div>
-    <h2 class="section-title d-en">Fact-check anything — right here</h2>
-    <h2 class="section-title d-ar" style="display:none">تحقق من أي شيء — هنا مباشرة</h2>
-    <p class="section-sub d-en">Paste a URL, a social media post, a quote, or type any claim. No account required to start.</p>
-    <p class="section-sub d-ar" style="display:none">الصق رابطاً أو منشوراً أو اكتب أي ادعاء. لا حساب مطلوب للبدء.</p>
-  </div>
-  <div class="try-box">
-    <textarea class="try-textarea" id="tryInput" placeholder="Paste a URL, quote, news headline, or any claim you want to verify...
-&#10;Examples:
-• https://www.bbc.com/news/...
-• &quot;Iran has closed the Strait of Hormuz&quot;
-• Paste a WhatsApp forward here"></textarea>
-    <div class="try-footer">
-      <p class="try-note d-en" id="anonNote">5 free checks per day · <a onclick="openModal()">Sign in</a> for history &amp; more</p>
-      <p class="try-note d-ar" id="anonNoteAr" style="display:none">5 فحوصات مجانية يومياً · <a onclick="openModal()">سجّل دخولك</a> لتاريخ أكثر</p>
-      <p class="try-note d-en" id="signedNote" style="display:none">Signed in · <a onclick="signOut()" style="color:var(--muted)">Sign out</a></p>
-      <button class="btn-check" id="checkBtn" onclick="runCheck()">
-        <span id="checkBtnLabel">🔍 <span class="d-en">Check It</span><span class="d-ar" style="display:none">تحقق</span></span>
-      </button>
-    </div>
-    <div id="tryError" class="try-error" style="display:none"></div>
-    <div class="result-area" id="resultArea"></div>
-  </div>
-</section>
 
-<!-- ── WHY FRED ── -->
-<section class="why-section" id="why">
-  <div class="center">
-    <div class="section-tag d-en">Why Fred</div>
-    <div class="section-tag d-ar" style="display:none">لماذا فريد</div>
-    <h2 class="section-title d-en">Three voices. One verdict.</h2>
-    <h2 class="section-title d-ar" style="display:none">ثلاثة أصوات. حكم واحد.</h2>
-    <p class="section-sub d-en">Western, Arabic, and Latin American perspectives — sourced, compared, and synthesised into every verdict. No single narrative dominates.</p>
-    <p class="section-sub d-ar" style="display:none">منظورات غربية وعربية ولاتينية — مصدرها مقارنة وتوليفها في كل حكم. لا رواية واحدة تهيمن.</p>
+<!-- SOURCE STRIP -->
+<div class="logo-strip">
+  <div class="strip-label">Searches across</div>
+  <div class="strip-row">
+    <span class="strip-pill">BBC</span>
+    <span class="strip-pill">Reuters</span>
+    <span class="strip-pill">Al Jazeera</span>
+    <span class="strip-pill">Haaretz</span>
+    <span class="strip-pill">Chequeado</span>
+    <span class="strip-pill">Snopes</span>
+    <span class="strip-pill">HRW</span>
+    <span class="strip-pill">Amnesty</span>
+    <span class="strip-pill">FullFact</span>
+    <span class="strip-pill">AFP Fact Check</span>
+    <span class="strip-pill">Bellingcat</span>
+    <span class="strip-pill">Dawn</span>
+    <span class="strip-pill">Geo News</span>
+    <span class="strip-pill">Maldita</span>
+    <span class="strip-pill">RFI</span>
+    <span class="strip-pill">France 24</span>
+    <span class="strip-pill">BBC Swahili</span>
+    <span class="strip-pill">+ 48 more</span>
   </div>
-  <div class="why-grid">
-    <div class="why-card">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
-      <h3 class="d-en">No Default Narrative</h3>
-      <h3 class="d-ar" style="display:none">لا رواية افتراضية</h3>
-      <p class="d-en">Most fact-checkers treat Western media as the neutral baseline. Fred doesn't. BBC, Reuters, and CNN are held to the same standard as Al Jazeera and Press TV — every source is scrutinised equally.</p>
-      <p class="d-ar" style="display:none">معظم مدققي الحقائق يعتبرون وسائل الإعلام الغربية كخط محايد. فريد لا يفعل ذلك. المصادر الغربية تخضع لنفس معايير الجزيرة وبريس تي في.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
-      <h3 class="d-en">English, Arabic &amp; Spanish Sources</h3>
-      <h3 class="d-ar" style="display:none">مصادر إنجليزية وعربية وإسبانية</h3>
-      <p class="d-en">Fred searches English, Arabic, and Spanish news in real time — surfacing perspectives that Western fact-checkers miss entirely. Chequeado, Telesur, Al Jazeera, and Maldita are primary evidence, not footnotes.</p>
-      <p class="d-ar" style="display:none">يبحث فريد في الأخبار الإنجليزية والعربية والإسبانية في الوقت الفعلي. المصادر من الجزيرة وتيليسور وتشيكيادو دليل أساسي، وليست هامشاً.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
-      <h3 class="d-en">Social Media in Real Time</h3>
-      <h3 class="d-ar" style="display:none">وسائل التواصل في الوقت الفعلي</h3>
-      <p class="d-en">Fred monitors what's trending on Twitter, Reddit and beyond — so you know when a claim is going viral before it spreads further. Disinformation moves fast; Fred moves faster.</p>
-      <p class="d-ar" style="display:none">يراقب فريد ما يتداول على تويتر وريديت وغيرها — حتى تعرف متى تنتشر ادعاءات كاذبة قبل انتشارها أكثر.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M5 7l7-5 7 5"/><path d="M3 10l4 8a5 5 0 008 0l4-8"/></svg></div>
-      <h3 class="d-en">Governed by International Law</h3>
-      <h3 class="d-ar" style="display:none">يحكمه القانون الدولي</h3>
-      <p class="d-en">ICJ rulings, Geneva Conventions, UN resolutions — applied consistently to all parties. Not selectively. State violence and non-state violence are analysed with identical rigour.</p>
-      <p class="d-ar" style="display:none">أحكام محكمة العدل الدولية، اتفاقيات جنيف، قرارات الأمم المتحدة — تُطبَّق بثبات على جميع الأطراف. العنف الحكومي وغير الحكومي يُحلَّل بنفس الصرامة.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
-      <h3 class="d-en">Balanced Verdicts</h3>
-      <h3 class="d-ar" style="display:none">أحكام متوازنة</h3>
-      <p class="d-en">When Al Jazeera and BBC disagree, Fred shows you both, explains why, and lets you decide. Every verdict explicitly names the Western perspective AND the regional perspective — separately.</p>
-      <p class="d-ar" style="display:none">عندما تختلف الجزيرة وبي بي سي، يُظهر فريد كلا الرأيين ويشرح السبب. كل حكم يذكر صراحةً المنظور الغربي والإقليمي بشكل منفصل.</p>
-    </div>
-    <div class="why-card">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg></div>
-      <h3 class="d-en">Powered by Claude AI</h3>
-      <h3 class="d-ar" style="display:none">مدعوم بكلود للذكاء الاصطناعي</h3>
-      <p class="d-en">Fred uses Anthropic's Claude to synthesise evidence from 65+ sources across 8 parallel searches in English, Arabic, and Spanish, running a structured pro/con debate before delivering a verdict — all in under a minute.</p>
-      <p class="d-ar" style="display:none">يستخدم فريد كلود من أنثروبيك لتجميع الأدلة من أكثر من 65 مصدراً عبر 6 عمليات بحث متوازية، مع إجراء نقاش منظم قبل إصدار الحكم — كل ذلك في أقل من دقيقة.</p>
-    </div>
-  </div>
-</section>
+</div>
 
-<!-- ── FOR PROFESSIONALS ── -->
-<section id="for-teams" style="background:var(--navy);color:var(--white);padding:5rem 5vw">
-  <div class="center" style="margin-bottom:3rem">
-    <div class="section-tag">For Professionals</div>
-    <h2 class="section-title d-en" style="color:var(--white)">Built for the people who need it most</h2>
-    <p class="section-sub d-en" style="color:rgba(255,255,255,0.65);margin-left:auto;margin-right:auto">Fred is designed for those who publish, investigate, and hold power to account — where accuracy isn't optional.</p>
-  </div>
-  <div class="why-grid" style="max-width:1100px;margin:0 auto">
-    <div class="why-card" style="background:var(--navy-card);border-color:var(--border)">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
-      <h3 style="color:var(--white)">Journalists &amp; Investigators</h3>
-      <p style="color:rgba(255,255,255,0.65)">Verify claims before publication. Cross-reference sources across Western, Arabic and Latin American media simultaneously. Get a structured verdict with cited sources you can stand behind — in under 60 seconds.</p>
-    </div>
-    <div class="why-card" style="background:var(--navy-card);border-color:var(--border)">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
-      <h3 style="color:var(--white)">Newsrooms &amp; Media Outlets</h3>
-      <p style="color:rgba(255,255,255,0.65)">Deploy Fred across your editorial team. Shared check history, team accounts, and API access let your newsroom fact-check at scale — without hiring a dedicated team. Especially valuable for breaking news and conflict coverage.</p>
-    </div>
-    <div class="why-card" style="background:var(--navy-card);border-color:var(--border)">
-      <div class="why-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-      <h3 style="color:var(--white)">Activists &amp; NGOs</h3>
-      <p style="color:rgba(255,255,255,0.65)">Counter disinformation campaigns with evidence-backed verdicts. Fred surfaces non-Western sources and applies international law consistently — giving activists and human rights organisations the ammunition to push back against state narratives.</p>
-    </div>
-  </div>
-  <div class="center" style="margin-top:3rem">
-    <a href="#contact" class="btn-wa" style="background:var(--gold);color:var(--navy);font-size:1rem;padding:14px 32px">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
-      Enquire about Team &amp; Newsroom Plans
-    </a>
-    <p style="margin-top:1rem;font-size:0.85rem;color:rgba(255,255,255,0.4)">API access · White-label options · Volume pricing available</p>
-  </div>
-</section>
 
-<!-- ── HOW IT WORKS ── -->
-<section id="how" style="background:var(--off-white)">
-  <div class="center">
-    <div class="section-tag d-en">How It Works</div>
-    <div class="section-tag d-ar" style="display:none">كيف يعمل</div>
-    <h2 class="section-title d-en">Three steps to the truth</h2>
-    <h2 class="section-title d-ar" style="display:none">ثلاث خطوات للحقيقة</h2>
-    <p class="section-sub d-en">Works on the web above, or on WhatsApp — no app download required.</p>
-    <p class="section-sub d-ar" style="display:none">يعمل على الويب أعلاه أو على واتساب — لا تطبيق مطلوب.</p>
+<!-- USP DARK -->
+<div class="usp-section">
+  <div class="usp-inner">
+    <div class="usp-kicker">The Fred Standard</div>
+    <blockquote>Most fact checkers have a <em>default narrative.</em> Fred doesn't. BBC and Reuters are held to the same standard as Al Jazeera and Telesur. No outlet gets automatic authority — because truth doesn't come with a <em>passport.</em></blockquote>
+    <p class="usp-sub">65+ sources · Western, Arabic, Spanish &amp; French · 0 default narratives</p>
   </div>
-  <div class="steps-grid">
-    <div class="step">
-      <h3 class="d-en">Send Fred a claim</h3>
-      <h3 class="d-ar" style="display:none">أرسل لفريد ادعاءً</h3>
-      <p class="d-en">Type or paste anything — a URL, text claim, social media post, image, audio, or video link. Web or WhatsApp, Fred accepts it all.</p>
-      <p class="d-ar" style="display:none">اكتب أو الصق أي شيء — رابطاً أو ادعاءً نصياً أو منشوراً أو صورة أو صوتاً أو رابط فيديو. على الويب أو واتساب، فريد يقبل كل شيء.</p>
-    </div>
-    <div class="step">
-      <h3 class="d-en">Choose what to check</h3>
-      <h3 class="d-ar" style="display:none">اختر ما تريد التحقق منه</h3>
-      <p class="d-en">Fred extracts the verifiable claims and ranks them by importance. Pick the ones you care about — one claim, a few, or all of them.</p>
-      <p class="d-ar" style="display:none">يستخرج فريد الادعاءات القابلة للتحقق ويرتبها حسب الأهمية. اختر ما تريده — ادعاء واحد أو عدة ادعاءات أو جميعها.</p>
-    </div>
-    <div class="step">
-      <h3 class="d-en">Receive your verdict</h3>
-      <h3 class="d-ar" style="display:none">تلقَّ حكمك</h3>
-      <p class="d-en">A balanced verdict with Western AND regional perspectives, truth score, red flags, who benefits, and cited sources — delivered in under 60 seconds.</p>
-      <p class="d-ar" style="display:none">حكم متوازن يعرض المنظور الغربي والإقليمي، مع درجة الحقيقة والأعلام الحمراء ومن يستفيد — في أقل من 60 ثانية.</p>
-    </div>
-  </div>
-</section>
+</div>
 
-<!-- ── CONTENT TYPES ── -->
-<section style="background:var(--white);padding-top:4rem;padding-bottom:4rem">
-  <div class="center">
-    <div class="section-tag d-en">What You Can Send</div>
-    <div class="section-tag d-ar" style="display:none">ما يمكنك إرساله</div>
-    <h2 class="section-title d-en">Fred handles everything</h2>
-    <h2 class="section-title d-ar" style="display:none">فريد يتعامل مع كل شيء</h2>
-    <p class="section-sub" style="margin-bottom:2.5rem"></p>
-  </div>
-  <div class="types-grid-v2">
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></div>
-      <div><div class="type-label-v2 d-en">Text Claims</div><div class="type-desc-v2 d-en">Quotes, headlines, WhatsApp forwards</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></div>
-      <div><div class="type-label-v2 d-en">Images</div><div class="type-desc-v2 d-en">Screenshots, infographics, photos</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></div>
-      <div><div class="type-label-v2 d-en">Article URLs</div><div class="type-desc-v2 d-en">News articles, blog posts, web pages</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg></div>
-      <div><div class="type-label-v2 d-en">Voice Notes</div><div class="type-desc-v2 d-en">WhatsApp audio, recorded speech</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></div>
-      <div><div class="type-label-v2 d-en">Videos</div><div class="type-desc-v2 d-en">MP4, clips, shared video files</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-      <div><div class="type-label-v2 d-en">Documents</div><div class="type-desc-v2 d-en">PDF, Word, reports, statements</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></div>
-      <div><div class="type-label-v2 d-en">Facebook Posts</div><div class="type-desc-v2 d-en">Post URLs, viral shares</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-      <div><div class="type-label-v2 d-en">TikTok</div><div class="type-desc-v2 d-en">Video links, trending clips</div></div>
-    </div>
-    <div class="type-card-v2">
-      <div class="type-icon-v2"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 00-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 001.46 6.42 29 29 0 001 12a29 29 0 00.46 5.58A2.78 2.78 0 003.41 19.6C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 001.95-1.95A29 29 0 0023 12a29 29 0 00-.46-5.58z"/><polygon points="9.75 15.02 15.5 12 9.75 8.98 9.75 15.02"/></svg></div>
-      <div><div class="type-label-v2 d-en">YouTube</div><div class="type-desc-v2 d-en">Video links, embedded content</div></div>
-    </div>
-  </div>
-</section>
 
-<!-- ── MANIFESTO ── -->
-<section class="manifesto">
-  <div class="section-tag">The Fred Standard</div>
-  <div class="manifesto-body">
-    <div>
-      <h2 class="section-title d-en" style="color:var(--white);margin-bottom:1.5rem">The truth doesn't<br>have a nationality.</h2>
-      <h2 class="section-title d-ar" style="display:none;color:var(--white);margin-bottom:1.5rem">الحقيقة ليس لها جنسية.</h2>
-      <div class="manifesto-text d-en">
-        <p>Western governments and mainstream media are <strong>not the default neutral</strong>. Official statements from the Pentagon, Downing Street, or the Knesset require corroboration — just like any other source.</p>
-        <p>Palestinian, Arab, Muslim, African, and Global South voices carry <strong>equal epistemic weight</strong> to Western ones. The absence of Western coverage does not mean an event did not happen.</p>
-        <p>When sources disagree along geopolitical lines, Fred reports <strong>both framings honestly</strong>. It does not silently adopt the Western framing as objective fact.</p>
-        <p>International law — the Geneva Conventions, ICJ rulings, UN resolutions — provides an <strong>objective reference frame</strong>, applied consistently to all parties, not selectively.</p>
-      </div>
-      <div class="manifesto-text d-ar" style="display:none">
-        <p>الحكومات الغربية ووسائل الإعلام السائدة <strong>ليست المرجع المحايد الافتراضي</strong>. البيانات الرسمية من البنتاغون أو داونينج ستريت تحتاج إلى تأكيد — تماماً مثل أي مصدر آخر.</p>
-        <p>الأصوات الفلسطينية والعربية والمسلمة والأفريقية تحمل <strong>وزناً معرفياً مساوياً</strong> للأصوات الغربية. غياب التغطية الغربية لا يعني أن الحدث لم يقع.</p>
-        <p>عندما تختلف المصادر على خطوط جيوسياسية، يُبلّغ فريد عن <strong>كلا الروايتين بصدق</strong>. لا يتبنى الرواية الغربية بصمت باعتبارها حقيقة موضوعية.</p>
-        <p>القانون الدولي — اتفاقيات جنيف، أحكام محكمة العدل الدولية — يوفر <strong>إطاراً مرجعياً موضوعياً</strong>، مطبقاً بثبات على جميع الأطراف.</p>
-      </div>
+<!-- STATS -->
+<div class="stats-section" id="features">
+  <div class="stats-inner">
+    <div class="section-header">
+      <div class="section-tag">Why Fred</div>
+      <h2>Built for depth.<br>Designed for deadlines.</h2>
+      <p>Up to 8 parallel searches across 6 world regions, synthesised into a single structured verdict — fast enough for breaking news.</p>
     </div>
-    <div class="manifesto-stats">
-      <div class="stat-item">
-        <div class="stat-num">65+</div>
-        <div class="stat-label d-en">Sources across Western, regional, Arabic, Spanish/LatAm, independent &amp; social media</div>
-        <div class="stat-label d-ar" style="display:none">مصدراً عبر وسائل الإعلام الغربية والإقليمية والعربية والإسبانية والمستقلة</div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-num">65<span class="gold">+</span></div>
+        <div class="stat-title">Global sources</div>
+        <div class="stat-desc">Western, Arabic, Spanish, French &amp; regional media — searched simultaneously</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num">8</div>
-        <div class="stat-label d-en">Parallel searches per claim — English, Arabic &amp; Spanish simultaneously</div>
-        <div class="stat-label d-ar" style="display:none">عمليات بحث متوازية لكل ادعاء — إنجليزي وعربي وإسباني في آن واحد</div>
+      <div class="stat-box">
+        <div class="stat-num">6</div>
+        <div class="stat-title">World regions</div>
+        <div class="stat-desc">No single narrative dominates. Every region gets equal evidential weight</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num">&lt;60s</div>
-        <div class="stat-label d-en">Average verdict delivery — powered by Claude AI</div>
-        <div class="stat-label d-ar" style="display:none">متوسط وقت تسليم الحكم — مدعوم بكلود للذكاء الاصطناعي</div>
+      <div class="stat-box">
+        <div class="stat-num"><span class="gold">&lt;60</span>s</div>
+        <div class="stat-title">Per verdict</div>
+        <div class="stat-desc">Fast enough for publication deadlines and live breaking-news coverage</div>
       </div>
-      <div class="stat-item">
-        <div class="stat-num">3×</div>
-        <div class="stat-label d-en">Perspectives in every report — Western, Regional/Arabic AND Latin American</div>
-        <div class="stat-label d-ar" style="display:none">ثلاثة منظورات في كل تقرير — غربي وإقليمي/عربي ولاتيني أمريكي</div>
+      <div class="stat-box">
+        <div class="stat-num"><span class="gold">0</span></div>
+        <div class="stat-title">Default narratives</div>
+        <div class="stat-desc">No political home. No advertisers. No editorial line to protect</div>
       </div>
     </div>
   </div>
-</section>
+</div>
 
-<!-- ── PRICING ── -->
-<section class="pricing-section" id="pricing">
-  <div class="center">
-    <div class="section-tag d-en">Pricing</div>
-    <div class="section-tag d-ar" style="display:none">الأسعار</div>
-    <h2 class="section-title d-en">Simple, transparent pricing</h2>
-    <h2 class="section-title d-ar" style="display:none">أسعار بسيطة وشفافة</h2>
-    <p class="section-sub d-en">Start free. Upgrade when you need more. No surprise charges.</p>
-    <p class="section-sub d-ar" style="display:none">ابدأ مجاناً. ارقِّ عند الحاجة. بلا رسوم مفاجئة.</p>
+
+<!-- HOW IT WORKS -->
+<div class="how-section">
+  <div class="how-inner">
+    <div class="section-header">
+      <div class="section-tag">How it works</div>
+      <h2>Three steps.<br>One verdict.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <h3>Submit any claim</h3>
+        <p>Paste a URL, quote, social post, image, audio or video. Web portal or WhatsApp — Fred accepts anything.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </div>
+        <h3>Fred searches 6 regions</h3>
+        <p>8 parallel searches across every major world region — Western, Arabic, Spanish, French and regional sources at once.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <h3>Receive your verdict</h3>
+        <p>A structured verdict with sources cited, regional perspectives noted, confidence level and exportable audit trail.</p>
+      </div>
+    </div>
   </div>
-  <div class="pricing-grid">
-    <div class="price-card">
-      <div class="price-name d-en">Free</div>
-      <div class="price-name d-ar" style="display:none">مجاني</div>
-      <div class="price-amount">$0<span class="d-en">/month</span><span class="d-ar" style="display:none">/شهر</span></div>
-      <div class="price-desc d-en">Perfect for occasional fact-checking</div>
-      <div class="price-desc d-ar" style="display:none">مثالي للتحقق العرضي</div>
-      <ul class="price-features">
-        <li class="d-en">5 free checks per day (web)</li>
-        <li class="d-ar" style="display:none">5 فحوصات مجانية يومياً (ويب)</li>
-        <li class="d-en">3 free WhatsApp checks</li>
-        <li class="d-ar" style="display:none">3 فحوصات واتساب مجانية</li>
-        <li class="d-en">English, Arabic &amp; Spanish results</li>
-        <li class="d-ar" style="display:none">نتائج بالعربية والإنجليزية والإسبانية</li>
-        <li class="d-en dim">No check history</li>
-        <li class="d-ar dim" style="display:none">بدون سجل فحوصات</li>
-        <li class="d-en dim">No priority processing</li>
-        <li class="d-ar dim" style="display:none">بدون معالجة ذات أولوية</li>
+</div>
+
+
+<!-- FEATURES -->
+<div class="features-section">
+  <div class="section-header">
+    <div class="section-tag">Capabilities</div>
+    <h2>The tool journalists<br>actually need</h2>
+    <p class="section-header p">Most fact checkers treat Western media as the neutral baseline. Fred doesn't.</p>
+  </div>
+  <div class="feat-grid" style="margin-top:3.5rem">
+    <div class="feat-card">
+      <div class="feat-icon">
+        <!-- Layered newspaper / multi-source -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="6" width="16" height="13" rx="2"/>
+          <path d="M6 6V4a2 2 0 012-2h12a2 2 0 012 2v11a2 2 0 01-2 2h-2"/>
+          <line x1="6" y1="10" x2="14" y2="10"/>
+          <line x1="6" y1="13" x2="14" y2="13"/>
+          <line x1="6" y1="16" x2="10" y2="16"/>
+        </svg>
+      </div>
+      <h3>65+ Sources. 6 Regions.</h3>
+      <p>Western, Arabic, Spanish and French media — all searched simultaneously. Not sequentially. Not as an afterthought.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <!-- Scales of justice -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="3" x2="12" y2="21"/>
+          <path d="M3 6l4 8a4 4 0 008 0l4-8"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <line x1="8" y1="21" x2="16" y2="21"/>
+        </svg>
+      </div>
+      <h3>No Default Narrative</h3>
+      <p>International law applied consistently to all parties. ICJ rulings, Geneva Conventions and UN resolutions — not selectively, not depending on who's involved.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <!-- Clock with bolt — speed -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="9"/>
+          <polyline points="12 7 12 12 15 14"/>
+          <path d="M10 2h4"/>
+        </svg>
+      </div>
+      <h3>Breaking News Ready</h3>
+      <p>Verdicts in under 60 seconds. Fast enough for publication deadlines and live coverage — live web aggregation bridges knowledge gaps in real time.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <!-- Document with verified badge -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="9" y1="13" x2="15" y2="13"/>
+          <polyline points="9 17 11 19 15 15"/>
+        </svg>
+      </div>
+      <h3>Rich, Structured Verdicts</h3>
+      <p>Verdict label, confidence level, key evidence, source citations, regional perspectives, omissions noted and a full audit trail. PDF export ready.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <!-- Building / newsroom -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="9" width="18" height="13" rx="1"/>
+          <path d="M8 9V5a2 2 0 012-2h4a2 2 0 012 2v4"/>
+          <line x1="12" y1="12" x2="12" y2="16"/>
+          <line x1="10" y1="14" x2="14" y2="14"/>
+        </svg>
+      </div>
+      <h3>Team &amp; Newsroom Ready</h3>
+      <p>Shared check history, team seats and role management. Deploy Fred across your editorial team without needing dedicated fact checking staff.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <!-- API / terminal -->
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="16" rx="2"/>
+          <path d="M8 10l-3 3 3 3"/>
+          <path d="M16 10l3 3-3 3"/>
+          <line x1="11" y1="19" x2="13" y2="19"/>
+        </svg>
+      </div>
+      <h3>API Access</h3>
+      <p>Integrate Fred directly into your CMS, editorial workflow or publishing platform. REST API with full documentation, webhooks and SDKs available on request.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- FOR NEWSROOMS -->
+<div class="newsroom-section" id="newsrooms">
+  <div class="newsroom-inner">
+    <div class="newsroom-copy">
+      <div class="section-tag">For newsrooms</div>
+      <h2>One tool for your<br>entire editorial team</h2>
+      <p>Fred is built for the speed and rigour of a working newsroom. One seat or fifty — every journalist on your team gets the same multi-perspective verification tool, without the overhead of a dedicated fact checking unit.</p>
+      <ul class="check-list">
+        <li>Shared check history across your team</li>
+        <li>Role-based access — editors, reporters, researchers</li>
+        <li>Audit trail for every verdict, exportable as PDF</li>
+        <li>Bulk claim submission for investigations</li>
+        <li>WhatsApp channel for field journalists</li>
+        <li>API integration with your CMS or editorial tools</li>
+        <li>Monthly usage reports and analytics</li>
+        <li>Priority support with named account manager</li>
       </ul>
-      <button class="btn-price btn-price-main" onclick="openModal()">
-        <span class="d-en">Get Started Free</span>
-        <span class="d-ar" style="display:none">ابدأ مجاناً</span>
-      </button>
+      <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book a newsroom demo →</button>
     </div>
-    <div class="price-card featured">
-      <div class="price-badge soon-badge d-en">Coming Soon</div>
-      <div class="price-badge soon-badge d-ar" style="display:none">قريباً</div>
-      <div class="price-name d-en">Pro</div>
-      <div class="price-name d-ar" style="display:none">احترافي</div>
-      <div class="price-amount">$9<span class="d-en">.99/month</span><span class="d-ar" style="display:none">.99/شهر</span></div>
-      <div class="price-desc d-en">For journalists, researchers &amp; activists</div>
-      <div class="price-desc d-ar" style="display:none">للصحفيين والباحثين والناشطين</div>
-      <ul class="price-features">
-        <li class="d-en">Unlimited web fact-checks</li>
-        <li class="d-ar" style="display:none">فحوصات ويب غير محدودة</li>
-        <li class="d-en">Unlimited WhatsApp checks</li>
-        <li class="d-ar" style="display:none">فحوصات واتساب غير محدودة</li>
-        <li class="d-en">Full check history &amp; export</li>
-        <li class="d-ar" style="display:none">سجل كامل وتصدير</li>
-        <li class="d-en">Priority processing queue</li>
-        <li class="d-ar" style="display:none">معالجة ذات أولوية</li>
-        <li class="d-en">API access (100 calls/day)</li>
-        <li class="d-ar" style="display:none">وصول API (100 طلب/يوم)</li>
+    <div class="newsroom-panel">
+      <div class="panel-title">Newsroom Dashboard</div>
+      <div class="panel-item">
+        <div class="panel-item-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span>Verdict: TRUE — HIGH confidence</span>
+        </div>
+        <p>47 sources checked · Western, Arabic, Spanish · 38s · Exported PDF</p>
+      </div>
+      <div class="panel-item">
+        <div class="panel-item-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Verdict: MISLEADING — HIGH confidence</span>
+        </div>
+        <p>62 sources checked · 6 regions · Context omitted · 51s</p>
+      </div>
+      <div class="panel-item">
+        <div class="panel-item-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          <span>Team · 12 checks today</span>
+        </div>
+        <p>4 journalists active · 3 pending review · 0 flagged</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- API -->
+<div class="api-section" id="api">
+  <div class="api-inner">
+    <div class="api-copy">
+      <div class="section-tag">API access</div>
+      <h2>Integrate Fred into<br>your workflow</h2>
+      <p>Plug multi-perspective fact checking directly into your CMS, editorial platform or internal tools. REST API with JSON responses, webhook support and full source attribution.</p>
+      <ul class="check-list" style="margin-bottom:2rem">
+        <li>REST API with full OpenAPI documentation</li>
+        <li>Webhook support for async processing</li>
+        <li>Structured JSON — verdicts, sources, confidence</li>
+        <li>Volume pricing and SLA guarantees on Enterprise</li>
+        <li>White-label options available</li>
       </ul>
-      <button class="btn-price btn-price-ghost" disabled>
-        <span class="d-en">Notify Me</span>
-        <span class="d-ar" style="display:none">أخبرني عند الإطلاق</span>
-      </button>
+      <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Request API access →</button>
     </div>
-    <div class="price-card">
-      <div class="price-badge soon-badge d-en">Coming Soon</div>
-      <div class="price-name d-en">Newsroom</div>
-      <div class="price-name d-ar" style="display:none">فريق</div>
-      <div class="price-amount">$<span class="d-en">49/month</span><span class="d-ar" style="display:none">49/شهر</span></div>
-      <div class="price-desc d-en">For editorial teams &amp; media organisations</div>
-      <div class="price-desc d-ar" style="display:none">للفرق التحريرية والمؤسسات الإعلامية</div>
-      <ul class="price-features">
-        <li class="d-en">Everything in Pro</li>
-        <li class="d-en">Up to 10 team seats</li>
-        <li class="d-en">Shared check history &amp; audit trail</li>
-        <li class="d-en">Admin dashboard</li>
-        <li class="d-en">Full API access (unlimited calls)</li>
-        <li class="d-en">PDF report export</li>
-        <li class="d-en">Priority support</li>
-      </ul>
-      <button class="btn-price btn-price-ghost" disabled>
-        <span class="d-en">Notify Me</span>
-        <span class="d-ar" style="display:none">أخبرني عند الإطلاق</span>
-      </button>
-    </div>
-  </div>
-  <div class="center" style="margin-top:2.5rem;padding:1.5rem 2rem;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:var(--radius);max-width:700px;margin-left:auto;margin-right:auto">
-    <p style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:0.4rem">🏢 Enterprise &amp; White-Label</p>
-    <p style="font-size:0.92rem;color:var(--muted);margin-bottom:1rem">Custom pricing for large newsrooms, media groups, NGOs and government bodies. Includes API integration, white-labelling, volume pricing, and dedicated support.</p>
-    <a href="#contact" class="btn-price btn-price-gold" style="display:inline-block;width:auto;padding:10px 28px">Contact us for Enterprise pricing</a>
-  </div>
-</section>
+    <div class="api-code">
+<span class="c-comment">// POST /api/v1/check</span>
+{
+  <span class="c-key">"claim"</span><span class="c-punct">:</span> <span class="c-str">"ICJ issued a ceasefire order against Israel"</span><span class="c-punct">,</span>
+  <span class="c-key">"language"</span><span class="c-punct">:</span> <span class="c-str">"en"</span><span class="c-punct">,</span>
+  <span class="c-key">"regions"</span><span class="c-punct">:</span> <span class="c-val">["western","arabic","latam"]</span>
+}
 
-<!-- ── CONTACT ── -->
-<section id="contact" style="background:var(--white)">
-  <div class="center" style="margin-bottom:3rem">
-    <div class="section-tag d-en">Contact</div>
-    <div class="section-tag d-ar" style="display:none">تواصل</div>
-    <h2 class="section-title d-en">Get in touch</h2>
-    <h2 class="section-title d-ar" style="display:none">تواصل معنا</h2>
-    <p class="section-sub d-en">Journalists, newsrooms, NGOs, or enterprise enquiries — we'd love to hear from you. Individual users can message Fred directly on WhatsApp.</p>
-    <p class="section-sub d-ar" style="display:none">أسئلة، ملاحظات، استفسارات صحفية، أو مقترحات شراكة — يسعدنا سماعك.</p>
-  </div>
-  <div class="contact-grid" style="max-width:900px;margin:0 auto">
-    <div class="contact-info">
-      <h3 class="d-en">Reach Fred</h3>
-      <h3 class="d-ar" style="display:none">تواصل مع فريد</h3>
-      <p class="d-en">The fastest way to experience Fred is to message him directly. For business enquiries, use the form or email below.</p>
-      <p class="d-ar" style="display:none">أسرع طريقة لتجربة فريد هي مراسلته مباشرة. للاستفسارات التجارية، استخدم النموذج أو البريد الإلكتروني أدناه.</p>
-      <div class="contact-links">
-        <a href="https://wa.me/447863795638?text=Hello%20Fred" class="contact-link" target="_blank">
-          <div class="cl-icon" style="background:#DCFCE7">💬</div>
-          <div>
-            <div style="font-weight:700;color:var(--navy)" class="d-en">WhatsApp</div>
-            <div style="font-weight:700;color:var(--navy)" class="d-ar" style="display:none">واتساب</div>
-            <div style="font-size:0.82rem;color:var(--muted);font-weight:400">+44 7863 795638</div>
-          </div>
-        </a>
-        <a href="mailto:hello@fredcheck.com" class="contact-link">
-          <div class="cl-icon" style="background:#EFF6FF">✉️</div>
-          <div>
-            <div style="font-weight:700;color:var(--navy)">Email</div>
-            <div style="font-size:0.82rem;color:var(--muted);font-weight:400">hello@fredcheck.com</div>
-          </div>
-        </a>
-        <a href="/static/Fred.vcf" download="Fred-FactCheck.vcf" class="contact-link">
-          <div class="cl-icon" style="background:rgba(212,175,55,0.12)">📇</div>
-          <div>
-            <div style="font-weight:700;color:var(--navy)" class="d-en">Download Contact Card</div>
-            <div style="font-weight:700;color:var(--navy)" class="d-ar" style="display:none">تنزيل بطاقة الاتصال</div>
-            <div style="font-size:0.82rem;color:var(--muted);font-weight:400" class="d-en">Save Fred to your phone</div>
-            <div style="font-size:0.82rem;color:var(--muted);font-weight:400" class="d-ar" style="display:none">احفظ فريد على هاتفك</div>
-          </div>
-        </a>
-      </div>
-    </div>
-    <div class="contact-form" id="contactForm">
-      <div class="form-row">
-        <label class="d-en">Your name</label>
-        <label class="d-ar" style="display:none">اسمك</label>
-        <input type="text" id="cf-name" placeholder="Jane Smith">
-      </div>
-      <div class="form-row">
-        <label class="d-en">Email address</label>
-        <label class="d-ar" style="display:none">بريدك الإلكتروني</label>
-        <input type="email" id="cf-email" placeholder="jane@example.com">
-      </div>
-      <div class="form-row">
-        <label class="d-en">I am a…</label>
-        <select id="cf-orgtype">
-          <option value="">Select your role</option>
-          <option value="journalist">Journalist / Investigator</option>
-          <option value="newsroom">Newsroom / Media outlet</option>
-          <option value="activist">Activist / Campaigner</option>
-          <option value="ngo">NGO / Human rights organisation</option>
-          <option value="individual">Individual user</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="d-en">Subject</label>
-        <label class="d-ar" style="display:none">الموضوع</label>
-        <select id="cf-subject">
-          <option value="general">General enquiry</option>
-          <option value="team">Team / Newsroom plan</option>
-          <option value="enterprise">Enterprise &amp; white-label</option>
-          <option value="api">API access</option>
-          <option value="feedback">Feedback / Bug report</option>
-          <option value="press">Press &amp; media</option>
-          <option value="partnership">Partnership / Business</option>
-          <option value="beta">Beta testing</option>
-        </select>
-      </div>
-      <div class="form-row">
-        <label class="d-en">Message</label>
-        <label class="d-ar" style="display:none">رسالتك</label>
-        <textarea id="cf-message" placeholder="Tell us what's on your mind..."></textarea>
-      </div>
-      <button class="btn-submit" onclick="submitContact()">
-        <span class="d-en">Send Message</span>
-        <span class="d-ar" style="display:none">إرسال</span>
-      </button>
-      <div class="form-success" id="cf-success">
-        <span class="d-en">✓ Message sent! We'll get back to you soon.</span>
-        <span class="d-ar" style="display:none">✓ تم الإرسال! سنتواصل معك قريباً.</span>
-      </div>
+<span class="c-comment">// Response</span>
+{
+  <span class="c-key">"verdict"</span><span class="c-punct">:</span> <span class="c-str">"MISLEADING"</span><span class="c-punct">,</span>
+  <span class="c-key">"confidence"</span><span class="c-punct">:</span> <span class="c-str">"HIGH"</span><span class="c-punct">,</span>
+  <span class="c-key">"summary"</span><span class="c-punct">:</span> <span class="c-str">"The ICJ issued provisional measures, not a ceasefire order..."</span><span class="c-punct">,</span>
+  <span class="c-key">"sources"</span><span class="c-punct">:</span> <span class="c-val">[...]</span><span class="c-punct">,</span>
+  <span class="c-key">"regions_searched"</span><span class="c-punct">:</span> <span class="c-val">6</span><span class="c-punct">,</span>
+  <span class="c-key">"sources_searched"</span><span class="c-punct">:</span> <span class="c-val">61</span><span class="c-punct">,</span>
+  <span class="c-key">"duration_ms"</span><span class="c-punct">:</span> <span class="c-val">47200</span>
+}
     </div>
   </div>
-</section>
+</div>
 
-<!-- ── CONTACT CARD ── -->
-<section class="card-section" id="card" style="background:var(--off-white)">
-  <div class="card-layout">
-    <div class="card-copy">
-      <div class="section-tag d-en">Beta Access</div>
-      <div class="section-tag d-ar" style="display:none">وصول تجريبي</div>
-      <h3 class="d-en">Save Fred to your contacts.<br>Share him with friends.</h3>
-      <h3 class="d-ar" style="display:none">احفظ فريد في جهات اتصالك.<br>شاركه مع أصدقائك.</h3>
-      <p class="d-en">Download Fred's contact card and save it directly to your phone. One tap and Fred is in your WhatsApp — ready to fact-check anything you send him.</p>
-      <p class="d-ar" style="display:none">نزّل بطاقة اتصال فريد واحفظها مباشرة على هاتفك. بنقرة واحدة يكون فريد في واتساب — جاهز للتحقق من أي شيء ترسله.</p>
-      <p class="d-en">Share the card with anyone who forwards you suspect news — activists, journalists, family group chats.</p>
-      <p class="d-ar" style="display:none">شارك البطاقة مع كل من يرسل لك أخباراً مشبوهة — ناشطون، صحفيون، مجموعات عائلية.</p>
-      <ul>
-        <li class="d-en">Free checks included — no credit card</li>
-        <li class="d-ar" style="display:none">فحوصات مجانية — بدون بطاقة ائتمان</li>
-        <li class="d-en">Works on all WhatsApp versions</li>
-        <li class="d-ar" style="display:none">يعمل على جميع إصدارات واتساب</li>
-        <li class="d-en">English, Arabic &amp; Spanish supported</li>
-        <li class="d-ar" style="display:none">اللغات الإنجليزية والعربية والإسبانية مدعومة</li>
-        <li class="d-en">Instant fact-checks in under 60 seconds</li>
-        <li class="d-ar" style="display:none">تحقق فوري في أقل من 60 ثانية</li>
-      </ul>
+
+<!-- PRICING -->
+<div class="pricing-section" id="pricing">
+  <div class="pricing-inner">
+    <div class="section-header">
+      <div class="section-tag">Pricing</div>
+      <h2>Transparent pricing.<br>No surprises.</h2>
+      <p>From solo journalists to global newsrooms. Every plan includes Fred's full multi-perspective search engine — no feature gates on source coverage.</p>
     </div>
-    <div>
-      <div class="vcard-preview">
-        <img class="vcard-logo-img" src="/static/fred-logo.png" alt="Fred">
-        <div class="vcard-name">FRED</div>
-        <div class="vcard-tagline d-en">Truth Beyond Borders</div>
-        <div class="vcard-tagline d-ar" style="display:none">الحقيقة بلا حدود</div>
-        <hr class="vcard-divider">
-        <div class="vcard-detail"><strong>WhatsApp</strong><br>+44 7863 795638</div>
-        <a href="/static/Fred.vcf" download="Fred-FactCheck.vcf" class="btn-download">
-          ⬇ <span class="d-en">Download Contact Card</span><span class="d-ar" style="display:none">تنزيل بطاقة الاتصال</span>
-        </a>
-        <a href="https://wa.me/447863795638?text=Hello%20Fred" class="btn-download" style="background:var(--wa);color:#000;margin-top:0.5rem" target="_blank">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-          <span class="d-en">Message Fred Now</span><span class="d-ar" style="display:none">راسل فريد الآن</span>
-        </a>
+    <div class="pricing-grid" style="margin-top:3.5rem">
+
+      <!-- Individual -->
+      <div class="price-card">
+        <div class="plan-name">Individual</div>
+        <div class="plan-price">£29<span>/mo</span></div>
+        <p class="plan-desc">For freelance journalists and independent reporters who need a reliable, balanced fact checking tool.</p>
+        <hr class="plan-divider">
+        <ul class="plan-features">
+          <li>200 fact checks per month</li>
+          <li>Full 65+ source coverage</li>
+          <li>All 6 regional search passes</li>
+          <li>Text, image, audio &amp; URL</li>
+          <li>WhatsApp access included</li>
+          <li>PDF export per verdict</li>
+          <li>30-day check history</li>
+          <li class="dimmed">Team seats</li>
+          <li class="dimmed">API access</li>
+          <li class="dimmed">Audit trail export</li>
+        </ul>
+        <a href="#contact" class="plan-cta dark">Get started →</a>
       </div>
+
+      <!-- Newsroom — featured -->
+      <div class="price-card featured">
+        <div class="price-badge">Most popular</div>
+        <div class="plan-name">Newsroom</div>
+        <div class="plan-price">£149<span>/mo</span></div>
+        <p class="plan-desc">For editorial teams and media organisations. Shared workspace, team management and full audit trail.</p>
+        <hr class="plan-divider">
+        <ul class="plan-features">
+          <li>1,500 fact checks per month</li>
+          <li>Full 65+ source coverage</li>
+          <li>All 6 regional search passes</li>
+          <li>Text, image, audio, video &amp; URL</li>
+          <li>Up to 10 team seats</li>
+          <li>Shared check history</li>
+          <li>Role-based access control</li>
+          <li>Bulk claim submission</li>
+          <li>Full audit trail &amp; PDF export</li>
+          <li class="dimmed">API access</li>
+        </ul>
+        <a href="#contact" class="plan-cta gold">Book a demo →</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="price-card">
+        <div class="plan-name">Enterprise &amp; API</div>
+        <div class="plan-price" style="font-size:2rem;letter-spacing:-1px">Custom</div>
+        <p class="plan-desc">For large media organisations, wire services and teams that need API integration, white-label or volume pricing.</p>
+        <hr class="plan-divider">
+        <ul class="plan-features">
+          <li>Unlimited fact checks</li>
+          <li>Full 65+ source coverage</li>
+          <li>All 6 regional search passes</li>
+          <li>Unlimited team seats</li>
+          <li>Full REST API access</li>
+          <li>Webhook &amp; CMS integration</li>
+          <li>White-label options</li>
+          <li>Custom source lists</li>
+          <li>SLA with uptime guarantee</li>
+          <li>Dedicated account manager</li>
+        </ul>
+        <a href="#contact" class="plan-cta">Contact us →</a>
+      </div>
+
     </div>
+    <p style="text-align:center;margin-top:2rem;font-size:0.82rem;color:#bbb">All plans include a 14-day free trial. Pay monthly or annually (2 months free). Annual invoicing available for newsrooms.</p>
   </div>
-</section>
+</div>
 
-<!-- ── FINAL CTA ── -->
-<section class="final-cta">
-  <h2 class="d-en">Start finding the truth today</h2>
-  <h2 class="d-ar" style="display:none">هل أنت مستعد لمعرفة الحقيقة؟</h2>
-  <p class="d-en">For journalists, newsrooms and investigators — or anyone who wants facts without borders. Try Fred free, no sign-up required.</p>
-  <p class="d-ar" style="display:none">أرسل لفريد أي ادعاء أو صورة أو فيديو أو رابط — احصل على حكم متوازن في أقل من 60 ثانية. مجاني للبدء.</p>
-  <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
-    <a href="#try" class="btn-wa-large" style="background:var(--gold);color:var(--navy)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <span class="d-en">Try Fred Free</span><span class="d-ar" style="display:none">جرّب على الويب</span>
-    </a>
-    <a href="#for-teams" class="btn-wa-large d-en" style="background:transparent;border:2px solid rgba(255,255,255,0.3);color:var(--white)">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
-      For Teams &amp; Newsrooms
-    </a>
-    <a href="https://wa.me/447863795638?text=Hello%20Fred" class="btn-wa-large" target="_blank">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-      <span class="d-en">Use on WhatsApp</span><span class="d-ar" style="display:none">استخدم على واتساب</span>
-    </a>
+
+<!-- DEMO / CONTACT CTA -->
+<div class="demo-section" id="contact">
+  <div class="demo-inner">
+    <h2>See Fred in<br><em>your</em> newsroom.</h2>
+    <p>Book a 30-minute demo and we'll show you exactly how Fred works with your team's workflow — from WhatsApp to CMS integration.</p>
+    <div class="demo-actions">
+      <a href="mailto:hello@fredcheck.com?subject=Demo%20request" class="btn-demo-large">Book a demo →</a>
+      <a href="mailto:hello@fredcheck.com" class="btn-outline-white">Email us</a>
+    </div>
+    <p style="margin-top:2rem;font-size:0.78rem;color:rgba(255,255,255,0.2)">Or message Fred on WhatsApp: <a href="https://wa.me/447863795638" style="color:rgba(255,255,255,0.35);text-decoration:none">wa.me/447863795638</a></p>
   </div>
-  <p class="cta-note d-en" style="margin-top:1.5rem">Free checks included · No sign-up required · Works on web &amp; WhatsApp</p>
-  <p class="cta-note d-ar" style="display:none;margin-top:1.5rem">فحوصات مجانية · لا تسجيل مطلوب · يعمل على الويب وواتساب</p>
-</section>
+</div>
 
-<!-- ── FOOTER ── -->
+
+<!-- FOOTER -->
 <footer>
   <div class="footer-inner">
-    <div class="footer-logo">
-      <img class="footer-logo-img" src="/static/fred-logo.png" alt="Fred">
-      <span class="footer-logo-text">FRED</span>
+    <div class="footer-top">
+      <div class="footer-brand">
+        <span class="logo-text">FRED</span>
+        <p>Multi-perspective fact checking for journalists and newsrooms. Truth beyond borders.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#newsrooms">For Newsrooms</a></li>
+          <li><a href="#api">API</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="mailto:hello@fredcheck.com">hello@fredcheck.com</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <ul>
+          <li><a href="https://wa.me/447863795638">WhatsApp →</a></li>
+          <li><a href="https://fredcheck.com">fredcheck.com</a></li>
+          <li><a href="https://fredcheck.co.uk">fredcheck.co.uk</a></li>
+        </ul>
+      </div>
     </div>
-    <div class="footer-links">
-      <a href="#try" class="d-en">Try Fred</a>
-      <a href="#why" class="d-en">Features</a>
-      <a href="#how" class="d-en">How It Works</a>
-      <a href="#pricing" class="d-en">Pricing</a>
-      <a href="#contact" class="d-en">Contact</a>
-      <a href="#card" class="d-en">Contact Card</a>
-      <a href="https://wa.me/447863795638" target="_blank">WhatsApp</a>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Fred. All rights reserved.</p>
+      <p>Built for journalists. Powered by <a href="#">Claude AI</a>.</p>
     </div>
-    <div class="lang-toggle">
-      <button class="lang-btn active" id="footer-btn-en" onclick="setLang('en')">EN</button>
-      <button class="lang-btn" id="footer-btn-ar" onclick="setLang('ar')">عربي</button>
-    </div>
-  </div>
-  <div class="footer-copy">
-    <span class="d-en">© 2026 Fred — Truth Beyond Borders · Powered by Claude AI · Built for journalists, activists &amp; curious minds</span>
-    <span class="d-ar" style="display:none">© 2026 فريد — الحقيقة بلا حدود · مدعوم بكلود للذكاء الاصطناعي · مبني للصحفيين والناشطين والفضوليين</span>
   </div>
 </footer>
 
-<!-- ── FLOATING WHATSAPP ── -->
-<a href="https://wa.me/447863795638?text=Hello%20Fred" class="wa-float" target="_blank" title="Message Fred on WhatsApp">
-  <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-</a>
-
 <script>
-// ── AUTH STATE ──
-let _token = localStorage.getItem('fred-token');
-let _email = localStorage.getItem('fred-email');
-let _authMode = 'signin';
+const API = 'https://web-production-1f0a4.up.railway.app';
+const FREE_KEY = 'fred_free_used';
 
-function updateNavAuth() {
-  const loginBtn = document.getElementById('loginBtn');
-  const userNav = document.getElementById('userNav');
-  const userEmail = document.getElementById('userEmail');
-  const anonNote = document.getElementById('anonNote');
-  const anonNoteAr = document.getElementById('anonNoteAr');
-  const signedNote = document.getElementById('signedNote');
-  if (_token && _email) {
-    if (loginBtn) loginBtn.style.display = 'none';
-    if (userNav) userNav.style.display = 'flex';
-    if (userEmail) userEmail.textContent = _email;
-    if (anonNote) anonNote.style.display = 'none';
-    if (anonNoteAr) anonNoteAr.style.display = 'none';
-    if (signedNote) signedNote.style.display = 'block';
-  } else {
-    if (loginBtn) loginBtn.style.display = '';
-    if (userNav) userNav.style.display = 'none';
-    if (anonNote) anonNote.style.display = '';
-    if (anonNoteAr) anonNoteAr.style.display = document.body.classList.contains('ar') ? '' : 'none';
-    if (signedNote) signedNote.style.display = 'none';
-  }
-}
-
-function openModal() {
-  document.getElementById('authModal').classList.add('open');
-  document.getElementById('auth-email').focus();
-}
-function closeModal() {
-  document.getElementById('authModal').classList.remove('open');
-  document.getElementById('auth-error').style.display = 'none';
-  document.getElementById('auth-success').style.display = 'none';
-}
-document.getElementById('authModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
+// Auto-grow textarea
+document.getElementById('claimInput').addEventListener('input', function(){
+  this.style.height = 'auto';
+  this.style.height = Math.min(this.scrollHeight, 180) + 'px';
 });
 
-function switchTab(mode) {
-  _authMode = mode;
-  document.getElementById('tab-signin').classList.toggle('active', mode === 'signin');
-  document.getElementById('tab-signup').classList.toggle('active', mode === 'signup');
-  const btn = document.getElementById('auth-submit-btn');
-  btn.querySelector('.d-en').textContent = mode === 'signin' ? 'Sign In' : 'Create Account';
-  document.getElementById('auth-error').style.display = 'none';
-  document.getElementById('auth-success').style.display = 'none';
+// Enter to submit (shift+enter = newline)
+document.getElementById('claimInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); runCheck(); }
+});
+
+function setStep(n, state){
+  for(let i=1;i<=4;i++){
+    const el = document.getElementById('ls'+i);
+    el.classList.remove('active','done');
+    if(i < n) el.classList.add('done');
+    else if(i === n) el.classList.add('active');
+  }
 }
 
-async function submitAuth() {
-  const email = document.getElementById('auth-email').value.trim();
-  const pw = document.getElementById('auth-pw').value;
-  const errEl = document.getElementById('auth-error');
-  const okEl = document.getElementById('auth-success');
-  errEl.style.display = 'none'; okEl.style.display = 'none';
-  if (!email || !pw) { errEl.textContent = 'Please enter email and password.'; errEl.style.display = 'block'; return; }
-  const url = _authMode === 'signin' ? '/api/login' : '/api/register';
-  try {
-    const r = await fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email, password: pw}) });
-    const d = await r.json();
-    if (!r.ok) { errEl.textContent = d.error || 'Something went wrong.'; errEl.style.display = 'block'; return; }
-    _token = d.token; _email = d.email;
-    localStorage.setItem('fred-token', _token);
-    localStorage.setItem('fred-email', _email);
-    okEl.textContent = _authMode === 'signin' ? '✓ Signed in!' : '✓ Account created!';
-    okEl.style.display = 'block';
-    updateNavAuth();
-    setTimeout(closeModal, 1200);
-  } catch(e) { errEl.textContent = 'Network error. Please try again.'; errEl.style.display = 'block'; }
-}
+async function runCheck(){
+  const claim = document.getElementById('claimInput').value.trim();
+  if(!claim) return;
 
-function signOut() {
-  _token = null; _email = null;
-  localStorage.removeItem('fred-token');
-  localStorage.removeItem('fred-email');
-  updateNavAuth();
-}
+  // Gate: show modal if already used free check
+  if(localStorage.getItem(FREE_KEY)){
+    document.getElementById('gateModal').classList.add('visible');
+    return;
+  }
 
-// ── FACT-CHECK ──
-const VERDICT_ICONS = { 'TRUE':'✅','MOSTLY TRUE':'🟢','HALF TRUE':'🟡','MOSTLY FALSE':'🟠','FALSE':'❌','PANTS ON FIRE':'🔥','UNVERIFIABLE':'❓','MISLEADING':'⚠️','NEEDS CONTEXT':'📌' };
-const SCORE_MAP = { 'TRUE':10,'MOSTLY TRUE':8,'HALF TRUE':5,'MOSTLY FALSE':3,'FALSE':1,'PANTS ON FIRE':0 };
-
-function verdictClass(r) { return 'verdict-' + r.replace(/ /g,'_'); }
-
-function buildResultCard(item) {
-  const a = item.analysis || {};
-  const rating = (a.rating || 'UNVERIFIABLE').toUpperCase();
-  const icon = VERDICT_ICONS[rating] || '❓';
-  const score = SCORE_MAP[rating];
-  const conf = (a.confidence || 'LOW').toUpperCase();
-  const persp = a.perspectives || {};
-  let html = `<div class="result-card">`;
-  html += `<div class="result-header">
-    <div class="verdict-badge ${verdictClass(rating)}">${icon} ${rating}</div>
-    <div class="conf-badge conf-${conf}">${conf} CONFIDENCE</div>
-  </div>`;
-  if (item.claim) html += `<div class="result-claim">"${item.claim.slice(0,240)}${item.claim.length>240?'…':''}"</div>`;
-  if (a.verdict) html += `<div class="result-section-label">ANALYSIS</div><div class="result-text">${a.verdict}</div>`;
-  if (score !== undefined) {
-    const pct = score * 10;
-    html += `<div class="result-section-label">TRUTH SCORE — ${score}/10</div>
-    <div class="score-bar"><div class="score-track"><div class="score-fill" style="width:${pct}%"></div></div><div class="score-num">${score}/10</div></div>`;
-  }
-  if (a.key_facts && a.key_facts.length) {
-    html += `<div class="result-section-label">KEY FACTS</div><ul class="result-list">` + a.key_facts.slice(0,4).map(f=>`<li>${f}</li>`).join('') + `</ul>`;
-  }
-  if (persp.western_mainstream || persp.regional_independent || persp.latin_american || persp.consensus) {
-    html += `<div class="result-section-label">PERSPECTIVES</div><div class="persp-block">`;
-    if (persp.western_mainstream) html += `<div class="persp-item persp-western">🌐 <strong>Western:</strong> ${persp.western_mainstream.slice(0,200)}</div>`;
-    if (persp.regional_independent) html += `<div class="persp-item persp-regional">🕌 <strong>Regional/Arabic:</strong> ${persp.regional_independent.slice(0,200)}</div>`;
-    if (persp.latin_american && persp.latin_american !== 'No coverage found') html += `<div class="persp-item persp-latam">🌎 <strong>Latin American:</strong> ${persp.latin_american.slice(0,200)}</div>`;
-    if (persp.consensus) html += `<div class="persp-item persp-consensus">⚖️ <strong>Consensus:</strong> ${persp.consensus.slice(0,160)}</div>`;
-    html += `</div>`;
-  }
-  if (a.red_flags && a.red_flags.length) {
-    html += `<div class="result-section-label">RED FLAGS</div><ul class="result-list">` + a.red_flags.slice(0,2).map(f=>`<li>${f}</li>`).join('') + `</ul>`;
-  }
-  if (a.who_benefits) html += `<div class="result-section-label">WHO BENEFITS?</div><div class="result-text" style="font-style:italic">${a.who_benefits.slice(0,200)}</div>`;
-  if (a.sources && a.sources.length) {
-    html += `<div class="result-section-label">SOURCES CITED</div><div class="result-sources">` + a.sources.slice(0,6).map(s=>`<span class="source-chip">${s}</span>`).join('') + `</div>`;
-  } else if (item.sources_consulted && item.sources_consulted.length) {
-    html += `<div class="result-section-label">SOURCES SEARCHED</div><div class="result-sources">` + item.sources_consulted.slice(0,6).map(s=>`<span class="source-chip">${s}</span>`).join('') + `</div>`;
-  }
-  html += `</div>`;
-  return html;
-}
-
-async function runCheck() {
-  const query = document.getElementById('tryInput').value.trim();
-  if (!query) { document.getElementById('tryInput').focus(); return; }
   const btn = document.getElementById('checkBtn');
-  const errEl = document.getElementById('tryError');
-  const resultArea = document.getElementById('resultArea');
+  const loading = document.getElementById('searchLoading');
+  const resultPanel = document.getElementById('resultPanel');
+
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Checking…`;
-  errEl.style.display = 'none';
-  resultArea.classList.remove('visible');
-  resultArea.innerHTML = '';
+  resultPanel.classList.remove('visible');
+  loading.classList.add('visible');
+
+  // Animate steps
+  setStep(1,'active');
+  const t1 = setTimeout(()=>setStep(2,'active'), 900);
+  const t2 = setTimeout(()=>setStep(3,'active'), 1900);
+  const t3 = setTimeout(()=>setStep(4,'active'), 3200);
+
   try {
-    const headers = { 'Content-Type': 'application/json' };
-    if (_token) headers['Authorization'] = `Bearer ${_token}`;
-    const r = await fetch('/api/factcheck', { method:'POST', headers, body: JSON.stringify({ claim: query }) });
-    const d = await r.json();
-    if (!r.ok) {
-      if (r.status === 429) {
-        errEl.innerHTML = (d.error || 'Daily limit reached.') + ' <a onclick="openModal()" style="color:var(--gold);font-weight:600;cursor:pointer">Sign in for more →</a>';
-      } else {
-        errEl.textContent = d.error || 'Something went wrong. Please try again.';
-      }
-      errEl.style.display = 'block';
+    const res = await fetch(API + '/api/factcheck', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({claim})
+    });
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+    setStep(5,'done'); // mark all done
+
+    const data = await res.json();
+
+    if(data.error){
+      showError(data.error);
       return;
     }
-    const results = d.results || [];
-    if (!results.length) { errEl.textContent = 'No claims found. Try rephrasing your input.'; errEl.style.display = 'block'; return; }
-    resultArea.innerHTML = results.map(buildResultCard).join('');
-    resultArea.classList.add('visible');
-    resultArea.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  } catch(e) {
-    errEl.textContent = 'Network error. Please try again.';
-    errEl.style.display = 'block';
+
+    const analysis = (data.results && data.results[0] && data.results[0].analysis) || {};
+    const rating = analysis.rating || 'UNVERIFIABLE';
+    const confidence = analysis.confidence || '';
+    const verdict = analysis.verdict || analysis.rating_reason || '';
+    const sources = (analysis.sources || []).slice(0, 5);
+
+    // Render result
+    const chip = document.getElementById('verdictChip');
+    const chipClass = rating.includes('PARTIALLY') ? 'PARTIALLY' : rating;
+    chip.className = 'verdict-chip ' + chipClass;
+    chip.textContent = rating.replace('_',' ');
+
+    document.getElementById('confidenceTag').textContent = confidence ? confidence + ' confidence' : '';
+    document.getElementById('resultVerdict').textContent = verdict;
+
+    const srcEl = document.getElementById('resultSources');
+    srcEl.innerHTML = '';
+    sources.forEach(s => {
+      // Extract domain name from URL or use as-is
+      let label = s;
+      try{ label = new URL(s).hostname.replace('www.',''); } catch(e){}
+      const pill = document.createElement('span');
+      pill.className = 'result-source-pill';
+      pill.textContent = label;
+      srcEl.appendChild(pill);
+    });
+
+    // Set gate note
+    document.getElementById('resultCtaNote').textContent = 'Free check used.';
+
+    loading.classList.remove('visible');
+    resultPanel.classList.add('visible');
+
+    // Mark free check used
+    localStorage.setItem(FREE_KEY, '1');
+    document.getElementById('searchHint').textContent = 'Free check used · Sign up for more';
+
+  } catch(err){
+    clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+    showError('Could not reach Fred. Please try again.');
   } finally {
     btn.disabled = false;
-    btn.innerHTML = `<span id="checkBtnLabel">🔍 <span class="d-en">Check It</span><span class="d-ar" style="display:none">تحقق</span></span>`;
   }
 }
 
-// Enter key submits
-document.getElementById('tryInput').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) runCheck();
+function showError(msg){
+  const loading = document.getElementById('searchLoading');
+  const resultPanel = document.getElementById('resultPanel');
+  loading.classList.remove('visible');
+
+  document.getElementById('verdictChip').className = 'verdict-chip UNVERIFIABLE';
+  document.getElementById('verdictChip').textContent = 'ERROR';
+  document.getElementById('confidenceTag').textContent = '';
+  document.getElementById('resultVerdict').textContent = msg;
+  document.getElementById('resultSources').innerHTML = '';
+  document.getElementById('resultCtaNote').textContent = '';
+  resultPanel.classList.add('visible');
+}
+
+function closeModal(){
+  document.getElementById('gateModal').classList.remove('visible');
+}
+
+function modalSignup(){
+  const email = document.getElementById('modalEmail').value.trim();
+  if(!email || !email.includes('@')){
+    document.getElementById('modalEmail').focus();
+    return;
+  }
+  // TODO: wire to /api/register — for now just send to contact section
+  closeModal();
+  document.getElementById('contact').scrollIntoView({behavior:'smooth'});
+}
+
+// Close modal on overlay click
+document.getElementById('gateModal').addEventListener('click', function(e){
+  if(e.target === this) closeModal();
 });
 
-// ── CONTACT FORM ──
-async function submitContact() {
-  const name = document.getElementById('cf-name').value.trim();
-  const email = document.getElementById('cf-email').value.trim();
-  const orgtype = document.getElementById('cf-orgtype').value;
-  const subject = document.getElementById('cf-subject').value;
-  const message = document.getElementById('cf-message').value.trim();
-  const ok = document.getElementById('cf-success');
-  if (!name || !email || !message) { alert('Please fill in all fields.'); return; }
-  // Send to WhatsApp as fallback (no backend form endpoint yet)
-  const text = encodeURIComponent(`[Website Contact]\nName: ${name}\nEmail: ${email}\nRole: ${orgtype}\nSubject: ${subject}\n\n${message}`);
-  window.open(`https://wa.me/447863795638?text=${text}`, '_blank');
-  ok.style.display = 'block';
+// Reflect prior usage on page load
+if(localStorage.getItem(FREE_KEY)){
+  document.getElementById('searchHint').textContent = 'Free check used · Sign up for more';
 }
-
-// ── LANGUAGE ──
-function setLang(lang) {
-  const isAr = lang === 'ar';
-  document.documentElement.lang = lang;
-  document.body.classList.toggle('ar', isAr);
-  document.querySelectorAll('.d-en').forEach(el => el.style.display = isAr ? 'none' : '');
-  document.querySelectorAll('.d-ar').forEach(el => el.style.display = isAr ? '' : 'none');
-  ['btn-en','btn-ar','footer-btn-en','footer-btn-ar'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.classList.toggle('active', id.includes(lang));
-  });
-  localStorage.setItem('fred-lang', lang);
-}
-const savedLang = localStorage.getItem('fred-lang');
-if (savedLang === 'ar') setLang('ar');
-
-updateNavAuth();
 </script>
 </body>
 </html>
