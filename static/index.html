@@ -106,15 +106,13 @@ nav{
 /* ── LOGO STRIP ── */
 .logo-strip{
   border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  padding:1.75rem 4rem;text-align:center;background:var(--off);
+  padding:1.5rem 2rem;text-align:center;background:var(--off);
 }
 .strip-label{font-size:0.68rem;font-weight:700;color:#ccc;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1.1rem}
-.strip-row{display:flex;justify-content:center;flex-wrap:wrap;gap:0.5rem;align-items:center}
-.strip-pill{
-  background:#fff;border:1px solid var(--border);
-  padding:5px 13px;border-radius:6px;
-  font-size:0.75rem;font-weight:700;color:#999;letter-spacing:0.3px;
-}
+.strip-row{display:flex;justify-content:center;flex-wrap:wrap;gap:1.5rem;align-items:center;max-width:860px;margin:0 auto}
+.strip-logo{height:22px;width:auto;filter:grayscale(100%) opacity(0.45);transition:filter 0.2s}
+.strip-logo:hover{filter:grayscale(0%) opacity(1)}
+.strip-more{font-size:0.72rem;font-weight:700;color:#aaa;letter-spacing:0.5px}
 
 /* ── USP DARK ── */
 .usp-section{background:var(--black);padding:5.5rem 4rem}
@@ -668,24 +666,19 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 <div class="logo-strip">
   <div class="strip-label">Searches across</div>
   <div class="strip-row">
-    <span class="strip-pill">BBC</span>
-    <span class="strip-pill">Reuters</span>
-    <span class="strip-pill">Al Jazeera</span>
-    <span class="strip-pill">Haaretz</span>
-    <span class="strip-pill">Chequeado</span>
-    <span class="strip-pill">Snopes</span>
-    <span class="strip-pill">HRW</span>
-    <span class="strip-pill">Amnesty</span>
-    <span class="strip-pill">FullFact</span>
-    <span class="strip-pill">AFP Fact Check</span>
-    <span class="strip-pill">Bellingcat</span>
-    <span class="strip-pill">Dawn</span>
-    <span class="strip-pill">Geo News</span>
-    <span class="strip-pill">Maldita</span>
-    <span class="strip-pill">RFI</span>
-    <span class="strip-pill">France 24</span>
-    <span class="strip-pill">BBC Swahili</span>
-    <span class="strip-pill">+ 48 more</span>
+    <img class="strip-logo" src="https://logo.clearbit.com/bbc.com" alt="BBC" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/reuters.com" alt="Reuters" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/aljazeera.net" alt="Al Jazeera" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/france24.com" alt="France 24" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/snopes.com" alt="Snopes" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/fullfact.org" alt="FullFact" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/bellingcat.com" alt="Bellingcat" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/hrw.org" alt="HRW" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/amnesty.org" alt="Amnesty" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/afp.com" alt="AFP" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/dawn.com" alt="Dawn" onerror="this.style.display='none'">
+    <img class="strip-logo" src="https://logo.clearbit.com/haaretz.com" alt="Haaretz" onerror="this.style.display='none'">
+    <span class="strip-more">+ 53 more</span>
   </div>
 </div>
 
