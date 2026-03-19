@@ -47,6 +47,8 @@ nav{position:sticky;top:0;z-index:100;background:rgba(10,22,40,0.97);backdrop-fi
 .nav-links{display:flex;gap:1.75rem}
 .nav-links a{color:rgba(255,255,255,0.7);font-size:0.88rem;font-weight:500;transition:color 0.2s;white-space:nowrap}
 .nav-links a:hover{color:var(--gold)}
+.nav-links a.nav-highlight{color:var(--gold);border:1px solid rgba(212,175,55,0.3);padding:4px 12px;border-radius:6px}
+.nav-links a.nav-highlight:hover{background:rgba(212,175,55,0.1)}
 .nav-right{display:flex;align-items:center;gap:0.6rem}
 .lang-toggle{display:flex;background:rgba(255,255,255,0.08);border-radius:8px;padding:2px;gap:2px}
 .lang-btn{padding:4px 12px;border-radius:6px;font-size:0.82rem;font-weight:600;cursor:pointer;border:none;background:transparent;color:rgba(255,255,255,0.6);transition:all 0.2s}
@@ -375,6 +377,7 @@ body.ar .d-ar{display:block}
       <a href="#how" class="d-ar" style="display:none">كيف يعمل</a>
       <a href="#pricing" class="d-en">Pricing</a>
       <a href="#pricing" class="d-ar" style="display:none">الأسعار</a>
+      <a href="#for-teams" class="d-en nav-highlight">For Teams</a>
       <a href="#contact" class="d-en">Contact</a>
       <a href="#contact" class="d-ar" style="display:none">تواصل</a>
     </div>
@@ -402,19 +405,22 @@ body.ar .d-ar{display:block}
   <div class="hero-grid"></div>
   <div class="hero-content">
     <div class="hero-badge">
-      🌍 <span class="d-en">Multi-perspective fact-checking</span>
-      <span class="d-ar" style="display:none">التحقق متعدد المنظورات</span>
+      🌍 <span class="d-en">Professional Fact-Checking Intelligence</span>
+      <span class="d-ar" style="display:none">التحقق الاحترافي متعدد المنظورات</span>
     </div>
     <h1>
       <span class="d-en">Truth<br><em>Beyond Borders</em></span>
       <span class="d-ar" style="display:none">الحقيقة<br><em>بلا حدود</em></span>
     </h1>
-    <p class="hero-sub d-en">Fred verifies claims from every perspective — Western, Arabic, Latin American and beyond. No default narrative. Just facts.</p>
-    <p class="hero-sub d-ar" style="display:none">يتحقق فريد من الادعاءات من كل المنظورات — الغربية والعربية واللاتينية والعالمية. لا رواية افتراضية. مجرد حقائق.</p>
+    <p class="hero-sub d-en">The fact-checking tool built for journalists, investigators, newsrooms and activists. Multi-perspective verdicts across Western, Arabic and Latin American sources — in under 60 seconds.</p>
+    <p class="hero-sub d-ar" style="display:none">أداة التحقق المصممة للصحفيين والمحققين والمؤسسات الإعلامية والناشطين. أحكام متعددة المنظورات من مصادر غربية وعربية ولاتينية — في أقل من 60 ثانية.</p>
     <div class="hero-actions">
       <a href="#try" class="btn-wa">
         🔍 <span class="d-en">Try Fred Free</span>
         <span class="d-ar" style="display:none">جرّب فريد مجاناً</span>
+      </a>
+      <a href="#for-teams" class="btn-outline d-en">
+        🏢 For Teams &amp; Newsrooms
       </a>
       <a href="https://wa.me/447863795638?text=Hello%20Fred" class="btn-outline" target="_blank">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -439,6 +445,8 @@ body.ar .d-ar{display:block}
     <div class="trust-item"><strong class="d-en">No Default Narrative</strong><strong class="d-ar" style="display:none">بلا رواية افتراضية</strong></div>
     <div class="trust-sep"></div>
     <div class="trust-item"><strong>&lt;60s</strong> <span class="d-en">Verdict</span><span class="d-ar" style="display:none">حكم فوري</span></div>
+    <div class="trust-sep"></div>
+    <div class="trust-item"><strong class="d-en">Built for Journalists &amp; Media</strong></div>
     <div class="trust-sep"></div>
     <div class="trust-item"><strong class="d-en">Powered by Claude AI</strong><strong class="d-ar" style="display:none">مدعوم بكلود AI</strong></div>
   </div>
@@ -526,6 +534,38 @@ body.ar .d-ar{display:block}
       <p class="d-en">Fred uses Anthropic's Claude to synthesise evidence from 65+ sources across 8 parallel searches in English, Arabic, and Spanish, running a structured pro/con debate before delivering a verdict — all in under a minute.</p>
       <p class="d-ar" style="display:none">يستخدم فريد كلود من أنثروبيك لتجميع الأدلة من أكثر من 65 مصدراً عبر 6 عمليات بحث متوازية، مع إجراء نقاش منظم قبل إصدار الحكم — كل ذلك في أقل من دقيقة.</p>
     </div>
+  </div>
+</section>
+
+<!-- ── FOR PROFESSIONALS ── -->
+<section id="for-teams" style="background:var(--navy);color:var(--white);padding:5rem 5vw">
+  <div class="center" style="margin-bottom:3rem">
+    <div class="section-tag">For Professionals</div>
+    <h2 class="section-title d-en" style="color:var(--white)">Built for the people who need it most</h2>
+    <p class="section-sub d-en" style="color:rgba(255,255,255,0.65);margin-left:auto;margin-right:auto">Fred is designed for those who publish, investigate, and hold power to account — where accuracy isn't optional.</p>
+  </div>
+  <div class="why-grid" style="max-width:1100px;margin:0 auto">
+    <div class="why-card" style="background:var(--navy-card);border-color:var(--border)">
+      <div class="why-icon">📰</div>
+      <h3 style="color:var(--white)">Journalists &amp; Investigators</h3>
+      <p style="color:rgba(255,255,255,0.65)">Verify claims before publication. Cross-reference sources across Western, Arabic and Latin American media simultaneously. Get a structured verdict with cited sources you can stand behind — in under 60 seconds.</p>
+    </div>
+    <div class="why-card" style="background:var(--navy-card);border-color:var(--border)">
+      <div class="why-icon">🏛️</div>
+      <h3 style="color:var(--white)">Newsrooms &amp; Media Outlets</h3>
+      <p style="color:rgba(255,255,255,0.65)">Deploy Fred across your editorial team. Shared check history, team accounts, and API access let your newsroom fact-check at scale — without hiring a dedicated team. Especially valuable for breaking news and conflict coverage.</p>
+    </div>
+    <div class="why-card" style="background:var(--navy-card);border-color:var(--border)">
+      <div class="why-icon">✊</div>
+      <h3 style="color:var(--white)">Activists &amp; NGOs</h3>
+      <p style="color:rgba(255,255,255,0.65)">Counter disinformation campaigns with evidence-backed verdicts. Fred surfaces non-Western sources and applies international law consistently — giving activists and human rights organisations the ammunition to push back against state narratives.</p>
+    </div>
+  </div>
+  <div class="center" style="margin-top:3rem">
+    <a href="#contact" class="btn-wa" style="background:var(--gold);color:var(--navy);font-size:1rem;padding:14px 32px">
+      🏢 Enquire about Team &amp; Newsroom Plans
+    </a>
+    <p style="margin-top:1rem;font-size:0.85rem;color:rgba(255,255,255,0.4)">API access · White-label options · Volume pricing available</p>
   </div>
 </section>
 
@@ -689,23 +729,19 @@ body.ar .d-ar{display:block}
     </div>
     <div class="price-card">
       <div class="price-badge soon-badge d-en">Coming Soon</div>
-      <div class="price-badge soon-badge d-ar" style="display:none">قريباً</div>
-      <div class="price-name d-en">Team</div>
+      <div class="price-name d-en">Newsroom</div>
       <div class="price-name d-ar" style="display:none">فريق</div>
-      <div class="price-amount">$<span class="d-en">29/month</span><span class="d-ar" style="display:none">29/شهر</span></div>
-      <div class="price-desc d-en">For newsrooms &amp; organisations</div>
-      <div class="price-desc d-ar" style="display:none">للمؤسسات الإعلامية والمنظمات</div>
+      <div class="price-amount">$<span class="d-en">49/month</span><span class="d-ar" style="display:none">49/شهر</span></div>
+      <div class="price-desc d-en">For editorial teams &amp; media organisations</div>
+      <div class="price-desc d-ar" style="display:none">للفرق التحريرية والمؤسسات الإعلامية</div>
       <ul class="price-features">
         <li class="d-en">Everything in Pro</li>
-        <li class="d-ar" style="display:none">كل مميزات الاحترافي</li>
-        <li class="d-en">Up to 10 team members</li>
-        <li class="d-ar" style="display:none">حتى 10 أعضاء فريق</li>
-        <li class="d-en">Shared check history</li>
-        <li class="d-ar" style="display:none">سجل فحوصات مشترك</li>
+        <li class="d-en">Up to 10 team seats</li>
+        <li class="d-en">Shared check history &amp; audit trail</li>
         <li class="d-en">Admin dashboard</li>
-        <li class="d-ar" style="display:none">لوحة تحكم الإدارة</li>
-        <li class="d-en">Unlimited API access</li>
-        <li class="d-ar" style="display:none">وصول API غير محدود</li>
+        <li class="d-en">Full API access (unlimited calls)</li>
+        <li class="d-en">PDF report export</li>
+        <li class="d-en">Priority support</li>
       </ul>
       <button class="btn-price btn-price-ghost" disabled>
         <span class="d-en">Notify Me</span>
@@ -713,9 +749,11 @@ body.ar .d-ar{display:block}
       </button>
     </div>
   </div>
-  <p class="center" style="margin-top:2rem;font-size:0.85rem;color:var(--muted)" class="d-en">
-    Pay-as-you-go top-ups also available. <a href="#contact" style="color:var(--gold);font-weight:600">Contact us</a> for enterprise pricing.
-  </p>
+  <div class="center" style="margin-top:2.5rem;padding:1.5rem 2rem;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.2);border-radius:var(--radius);max-width:700px;margin-left:auto;margin-right:auto">
+    <p style="font-size:1rem;font-weight:700;color:var(--navy);margin-bottom:0.4rem">🏢 Enterprise &amp; White-Label</p>
+    <p style="font-size:0.92rem;color:var(--muted);margin-bottom:1rem">Custom pricing for large newsrooms, media groups, NGOs and government bodies. Includes API integration, white-labelling, volume pricing, and dedicated support.</p>
+    <a href="#contact" class="btn-price btn-price-gold" style="display:inline-block;width:auto;padding:10px 28px">Contact us for Enterprise pricing</a>
+  </div>
 </section>
 
 <!-- ── CONTACT ── -->
@@ -725,7 +763,7 @@ body.ar .d-ar{display:block}
     <div class="section-tag d-ar" style="display:none">تواصل</div>
     <h2 class="section-title d-en">Get in touch</h2>
     <h2 class="section-title d-ar" style="display:none">تواصل معنا</h2>
-    <p class="section-sub d-en">Questions, feedback, press enquiries, or partnership proposals — we'd love to hear from you.</p>
+    <p class="section-sub d-en">Journalists, newsrooms, NGOs, or enterprise enquiries — we'd love to hear from you. Individual users can message Fred directly on WhatsApp.</p>
     <p class="section-sub d-ar" style="display:none">أسئلة، ملاحظات، استفسارات صحفية، أو مقترحات شراكة — يسعدنا سماعك.</p>
   </div>
   <div class="contact-grid" style="max-width:900px;margin:0 auto">
@@ -773,10 +811,25 @@ body.ar .d-ar{display:block}
         <input type="email" id="cf-email" placeholder="jane@example.com">
       </div>
       <div class="form-row">
+        <label class="d-en">I am a…</label>
+        <select id="cf-orgtype">
+          <option value="">Select your role</option>
+          <option value="journalist">Journalist / Investigator</option>
+          <option value="newsroom">Newsroom / Media outlet</option>
+          <option value="activist">Activist / Campaigner</option>
+          <option value="ngo">NGO / Human rights organisation</option>
+          <option value="individual">Individual user</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-row">
         <label class="d-en">Subject</label>
         <label class="d-ar" style="display:none">الموضوع</label>
         <select id="cf-subject">
           <option value="general">General enquiry</option>
+          <option value="team">Team / Newsroom plan</option>
+          <option value="enterprise">Enterprise &amp; white-label</option>
+          <option value="api">API access</option>
           <option value="feedback">Feedback / Bug report</option>
           <option value="press">Press &amp; media</option>
           <option value="partnership">Partnership / Business</option>
@@ -853,13 +906,16 @@ body.ar .d-ar{display:block}
 
 <!-- ── FINAL CTA ── -->
 <section class="final-cta">
-  <h2 class="d-en">Ready to find out the truth?</h2>
+  <h2 class="d-en">Start finding the truth today</h2>
   <h2 class="d-ar" style="display:none">هل أنت مستعد لمعرفة الحقيقة؟</h2>
-  <p class="d-en">Send Fred any claim, image, video or URL — get a balanced, multi-perspective verdict in under 60 seconds. Free to start.</p>
+  <p class="d-en">For journalists, newsrooms and investigators — or anyone who wants facts without borders. Try Fred free, no sign-up required.</p>
   <p class="d-ar" style="display:none">أرسل لفريد أي ادعاء أو صورة أو فيديو أو رابط — احصل على حكم متوازن في أقل من 60 ثانية. مجاني للبدء.</p>
   <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap">
     <a href="#try" class="btn-wa-large" style="background:var(--gold);color:var(--navy)">
-      🔍 <span class="d-en">Try on the Web</span><span class="d-ar" style="display:none">جرّب على الويب</span>
+      🔍 <span class="d-en">Try Fred Free</span><span class="d-ar" style="display:none">جرّب على الويب</span>
+    </a>
+    <a href="#for-teams" class="btn-wa-large d-en" style="background:transparent;border:2px solid rgba(255,255,255,0.3);color:var(--white)">
+      🏢 For Teams &amp; Newsrooms
     </a>
     <a href="https://wa.me/447863795638?text=Hello%20Fred" class="btn-wa-large" target="_blank">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
@@ -1080,12 +1136,13 @@ document.getElementById('tryInput').addEventListener('keydown', function(e) {
 async function submitContact() {
   const name = document.getElementById('cf-name').value.trim();
   const email = document.getElementById('cf-email').value.trim();
+  const orgtype = document.getElementById('cf-orgtype').value;
   const subject = document.getElementById('cf-subject').value;
   const message = document.getElementById('cf-message').value.trim();
   const ok = document.getElementById('cf-success');
   if (!name || !email || !message) { alert('Please fill in all fields.'); return; }
   // Send to WhatsApp as fallback (no backend form endpoint yet)
-  const text = encodeURIComponent(`[Website Contact]\nName: ${name}\nEmail: ${email}\nSubject: ${subject}\n\n${message}`);
+  const text = encodeURIComponent(`[Website Contact]\nName: ${name}\nEmail: ${email}\nRole: ${orgtype}\nSubject: ${subject}\n\n${message}`);
   window.open(`https://wa.me/447863795638?text=${text}`, '_blank');
   ok.style.display = 'block';
 }
