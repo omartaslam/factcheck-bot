@@ -1,8 +1,8 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-18 (session 7)
-> **Version:** v3.4 BETA
-> **Status:** Live on Railway — 3/3 automated test claims passing with no truncation; verdict quality and claim-origin philosophy fixed
+> **Last updated:** 2026-03-19 (session 8)
+> **Version:** v3.5 BETA
+> **Status:** Live on Railway — B2B website live, contact form working via SendGrid, 3/3 automated tests passing
 
 ---
 
@@ -178,6 +178,14 @@ All logic is in `bot.py`. There is no separate config file — all configuration
 | `HIVE_API_KEY` | Hive V3 API — AI-generated + deepfake detection | ✅ Set |
 
 EXIF and Wayback Machine checks run without any API key.
+
+### Email (SendGrid)
+
+| Variable | Description | Status |
+|---|---|---|
+| `SENDGRID_API_KEY` | SendGrid API key — used by `/api/contact` to email form submissions to `omartanveeraslam@gmail.com` | ✅ Set |
+
+Sends from `hello@fredcheck.com`. Free tier = 100 emails/day. Trial ends 2026-05-18.
 
 ### Monetisation (Stripe — NOT YET SET UP)
 
@@ -788,13 +796,14 @@ VERIFY_TOKEN=factcheck_verify_123 python3 test_format.py
 ## 23. Outstanding Tasks (priority order)
 
 ### Urgent
-1. **FB cookies rotation** — `FB_COOKIES_B64` / `IG_COOKIES_B64` expire ~2026-03-30 (12 days). Refresh via EditThisCookie → base64 → Railway env var.
+1. **FB cookies rotation** — `FB_COOKIES_B64` / `IG_COOKIES_B64` expire ~2026-03-30 (11 days). Refresh via EditThisCookie → base64 → Railway env var.
 
 ### Immediate
 2. **fredcheck.co.uk** — add as custom domain in Railway
 3. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
 4. **Set FREE_CHECKS_LIMIT for beta** — change from 9999 to 5-10 when ready to open to testers
 5. **Stripe setup** — create Payment Links, set all Stripe env vars, reset `FREE_CHECKS_LIMIT=3` for launch
+6. **SendGrid DMARC** — `_dmarc TXT v=DMARC1; p=none;` added to names.co.uk DNS but not yet propagated — verify in SendGrid once DNS propagates (optional, improves deliverability)
 
 ### High Priority
 6. **User feedback system** — reply FEEDBACK or 👍/👎 after a check. Store in DB. Use patterns to refine prompts.
@@ -812,6 +821,18 @@ VERIFY_TOKEN=factcheck_verify_123 python3 test_format.py
 14. **Twitter/X** — activate when ready to pay (~$100/month)
 15. **Turkish/Farsi independent sources** — Cumhuriyet, Bianet, IranWire, Iran International
 16. **Lenz.io integration** — contact for API access (Cloudflare blocks scraping)
+
+### Done this session (2026-03-19 — session 8) ✅
+
+- ~~Contact form email~~ — switched from Gmail SMTP (blocked by Railway) to SendGrid HTTP API ✅
+- ~~SendGrid setup~~ — DNS authenticated (3 CNAMEs on fredcheck.com), 100 emails/day free ✅
+- ~~Email forwarding~~ — `hello@fredcheck.com` → `omartanveeraslam@gmail.com` confirmed ✅
+- ~~B2B website redesign~~ — full redesign targeting journalists/newsrooms live on fredcheck.com ✅
+- ~~Spacing/typography revert~~ — pre-compact values restored, logo kept at 72px ✅
+- ~~Logo tagline~~ — removed "Fact Check" descriptor, back to just "FRED" ✅
+- ~~CORS fix~~ — `/api/factcheck` live search working from fredcheck.com ✅
+- ~~Favicon + OG image~~ — WhatsApp link previews working ✅
+- ~~VCF download~~ — `/fred.vcf` served from Railway ✅
 
 ### Done this session (2026-03-18) ✅
 - ~~Evidence truncation bug~~ — `grouped[:2000]` → `grouped[:10000]` — Claude now sees all outlet snippets ✅
