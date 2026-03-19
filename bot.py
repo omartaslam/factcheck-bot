@@ -3213,17 +3213,17 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
 
 def _welcome_msg():
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
-    beta_line = "\n_🚧 BETA — feedback welcome! Reply HELP for info._" if BETA_MODE else ""
+    beta_line = "\n_🚧 BETA — feedback welcome! Reply HELP for more info._" if BETA_MODE else ""
     return (
-        "*Hi, I'm Fred 👋*\n\n"
-        "_Truth Beyond Borders_ 🌍\n\n"
-        "I fact-check news, claims, and social media posts with balanced, "
-        "multi-perspective analysis — Western, Middle Eastern, Arabic, and independent sources.\n\n"
+        "*Welcome to Fred • Fact Check* 👋\n\n"
+        "I fact-check claims across 65+ sources from 6 world regions — "
+        "with no default Western narrative.\n\n"
         "*Send me any of these:*\n"
-        "• A URL (Facebook, Instagram, TikTok, YouTube, news article)\n"
-        "• A video, image, or voice note\n"
-        "• A text claim or quote\n\n"
-        f"You have *{FREE_CHECKS_LIMIT} free {free_word}* to try it out.\n"
+        "• A claim, headline or quote\n"
+        "• A URL (news article, Facebook, Instagram, TikTok, YouTube)\n"
+        "• An image, video or voice note\n\n"
+        f"You have *{FREE_CHECKS_LIMIT} free {free_word}* to try it out.\n\n"
+        "Type *HELP* anytime for a full guide.\n"
         f"🌐 {WEBSITE_URL}"
         + beta_line
     )

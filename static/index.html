@@ -644,7 +644,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     </div>
   </div>
 
-  <p class="hero-note">For newsrooms &amp; teams — <a href="#contact" style="color:var(--gold);font-weight:700">book a demo →</a> &nbsp;·&nbsp; Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
+  <p class="hero-note">For newsrooms &amp; teams — <a href="#contact" style="color:var(--gold);font-weight:700">book a demo →</a> &nbsp;·&nbsp; Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a> &nbsp;·&nbsp; <a href="#" onclick="shareFred();return false;">Introduce Fred to a colleague →</a></p>
 </div>
 
 <!-- GATE MODAL -->
@@ -1298,6 +1298,20 @@ async function submitContact(){
     btn.textContent = 'Send message →';
     alert('Could not send. Please email hello@fredcheck.com directly.');
   }
+}
+
+// ── SHARE FRED ──────────────────────────────────────────────
+function shareFred(){
+  const msg =
+    '*Introducing Fred \u2022 Fact Check* \uD83D\uDC4B\n\n' +
+    'An AI fact-checker across 65+ sources from 6 world regions \u2014 no default Western narrative.\n\n' +
+    '*Getting started:*\n' +
+    '1\uFE0F\u20E3 Save Fred as a contact \u2192 https://fredcheck.com/fred.vcf\n' +
+    '2\uFE0F\u20E3 Open WhatsApp and message Fred directly\n' +
+    '3\uFE0F\u20E3 Send any claim, headline, image, audio or video\n' +
+    '4\uFE0F\u20E3 Get a structured verdict in under 60 seconds\n\n' +
+    'https://fredcheck.com';
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
 }
 </script>
 </body>
