@@ -5228,8 +5228,7 @@ def api_contact():
             urllib.request.urlopen(req, timeout=10)
     except Exception as e:
         log.error("contact email error: %s", e)
-        return jsonify({"ok": True, "email_error": str(e)})
-    return jsonify({"ok": True, "email_sent": True})
+    return jsonify({"ok": True})
 
 @app.route("/fred.vcf", methods=["GET"])
 def contact_card():
