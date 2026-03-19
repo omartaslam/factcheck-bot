@@ -3215,11 +3215,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
     version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
-    if wa_cost > 0:
-        total = cost + wa_cost
-        cost_str = f"Cost: ${total:.4f} (AI ${cost:.4f} + WA ${wa_cost:.4f})"
-    else:
-        cost_str = f"Cost: ${cost:.4f}"
+    cost_str = f"Cost: ${cost + wa_cost:.4f}"
     footer = ["──────────────────────", f"{cost_str}  •  {version}"]
     if a.get("_debate_pro"):
         footer.append("⚖️ pro/con debate")
