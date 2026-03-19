@@ -106,13 +106,15 @@ nav{
 /* ── LOGO STRIP ── */
 .logo-strip{
   border-top:1px solid var(--border);border-bottom:1px solid var(--border);
-  padding:1.25rem 2rem;text-align:center;background:var(--off);
+  padding:1.75rem 4rem;text-align:center;background:var(--off);
 }
-.strip-label{font-size:0.68rem;font-weight:700;color:#ccc;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:0.9rem}
-.strip-row{display:flex;justify-content:center;flex-wrap:wrap;gap:0 1.6rem;align-items:center;max-width:860px;margin:0 auto}
-.strip-name{font-size:0.78rem;font-weight:600;color:#aaa;letter-spacing:0.2px;white-space:nowrap}
-.strip-name::after{content:" ·";color:#ccc;margin-left:1.6rem}
-.strip-name:last-child::after{content:""}
+.strip-label{font-size:0.68rem;font-weight:700;color:#ccc;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1.1rem}
+.strip-row{display:flex;justify-content:center;flex-wrap:wrap;gap:0.5rem;align-items:center;max-width:600px;margin:0 auto}
+.strip-pill{
+  background:#fff;border:1px solid var(--border);
+  padding:5px 13px;border-radius:6px;
+  font-size:0.75rem;font-weight:700;color:#999;letter-spacing:0.3px;
+}
 
 /* ── USP DARK ── */
 .usp-section{background:var(--black);padding:5.5rem 4rem}
@@ -666,19 +668,24 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 <div class="logo-strip">
   <div class="strip-label">Searches across</div>
   <div class="strip-row">
-    <span class="strip-name">BBC</span>
-    <span class="strip-name">Reuters</span>
-    <span class="strip-name">Al Jazeera</span>
-    <span class="strip-name">Haaretz</span>
-    <span class="strip-name">Snopes</span>
-    <span class="strip-name">FullFact</span>
-    <span class="strip-name">Bellingcat</span>
-    <span class="strip-name">HRW</span>
-    <span class="strip-name">Amnesty</span>
-    <span class="strip-name">AFP</span>
-    <span class="strip-name">Dawn</span>
-    <span class="strip-name">France 24</span>
-    <span class="strip-name">+ 53 more</span>
+    <span class="strip-pill">BBC</span>
+    <span class="strip-pill">Reuters</span>
+    <span class="strip-pill">Al Jazeera</span>
+    <span class="strip-pill">Haaretz</span>
+    <span class="strip-pill">Chequeado</span>
+    <span class="strip-pill">Snopes</span>
+    <span class="strip-pill">HRW</span>
+    <span class="strip-pill">Amnesty</span>
+    <span class="strip-pill">FullFact</span>
+    <span class="strip-pill">AFP Fact Check</span>
+    <span class="strip-pill">Bellingcat</span>
+    <span class="strip-pill">Dawn</span>
+    <span class="strip-pill">Geo News</span>
+    <span class="strip-pill">Maldita</span>
+    <span class="strip-pill">RFI</span>
+    <span class="strip-pill">France 24</span>
+    <span class="strip-pill">BBC Swahili</span>
+    <span class="strip-pill">+ 48 more</span>
   </div>
 </div>
 
