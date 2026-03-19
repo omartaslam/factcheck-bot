@@ -910,6 +910,15 @@ VERIFY_TOKEN=factcheck_verify_123 python3 test_format.py
 15. **Turkish/Farsi independent sources** — Cumhuriyet, Bianet, IranWire, Iran International
 16. **Lenz.io integration** — contact for API access (Cloudflare blocks scraping)
 
+### Done this session (2026-03-19 — session 10) ✅
+
+- ~~Gold dot after FRED logo~~ — `FRED.` with gold full stop in nav, footer, privacy page ✅
+- ~~Facebook domain verification~~ — meta-tag added to index.html; fredcheck.com verified in Meta Business ✅
+- ~~HMRC sole trader registration~~ — Fred Check registered as trading name under Tanveer Aslam (ref: 7IQW 113H J9JS THR) ✅
+- ~~Meta business verification~~ — submitted 2026-03-19; status: **In review** (~2 working days) ✅
+- ~~Domain registrant updated~~ — names.co.uk registrant updated to "Fred Check" (ICANN confirmed) ✅
+- ~~Privacy policy~~ — `/privacy` page live at fredcheck.com/privacy ✅ (done session 9, now linked in footer)
+
 ### Done this session (2026-03-19 — session 9) ✅
 
 - ~~Website branding~~ — OG tags, page title, section headings updated to "Fred • Fact Check" ✅
