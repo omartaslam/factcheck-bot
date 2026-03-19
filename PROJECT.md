@@ -536,6 +536,91 @@ Railway auto-deploys on push to `main`. However, env var changes staged in the R
 
 ---
 
+## 13b. Cost Model & Billing
+
+### Cost per claim (actual, as of 2026-03-18)
+
+| Component | Cost | Notes |
+|---|---|---|
+| Tavily searches | $0.064 | Biggest cost — 58% of total |
+| Claude synthesis (Sonnet) | $0.035 | Hard to cut without quality loss |
+| Claude debate (Haiku ×2) | $0.002 | Cheap |
+| Claude neutralize (Haiku) | $0.0002 | Cheap |
+| Claude claim extraction (Sonnet, shared) | $0.005 | Per claim share |
+| Brave Search | $0.005 | Low impact |
+| **Total text claim** | **~$0.111** | |
+| Image extra (Hive + Vision + OCR) | +$0.008 | ~$0.119 total |
+| Audio extra (Whisper 2min avg) | +$0.012 | ~$0.123 total |
+| Video extra (Whisper 4min avg) | +$0.029 | ~$0.140 total |
+
+**At 100% markup, charge: ~$0.22 text / $0.24 image / $0.25 audio / $0.28 video**
+
+⚠️ **`estimate_cost()` in bot.py has hardcoded values ~12× too low ($0.0085 for text). Must fix before charging real users.**
+
+### Tavily search breakdown per claim
+
+| Search pass | Depth | Credits | Cost | When |
+|---|---|---|---|---|
+| Main | Advanced | 2 | $0.016 | Always |
+| Main retry (thin results) | Advanced | 2 | $0.016 | ~50% of claims |
+| Regional (Al Jazeera etc.) | Advanced | 2 | $0.016 | Always |
+| Social (Twitter/Reddit) | Basic | 1 | $0.008 | Always |
+| Spanish/LatAm | Advanced | 2 | $0.016 | Always (+2 if LATAM) |
+| Arabic | Advanced | 2 | $0.016 | MENA topics only |
+
+Tavily PAYG: $0.008/credit. Project plan: $30/month for 4,000 credits (break-even at ~470 claims/month).
+
+### Tavily alternatives (researched)
+
+| API | Cost/query | Snippet quality | Notes |
+|---|---|---|---|
+| **Brave Search** | $0.005 | Decent | Already in use. Cheaper but shallower |
+| **Perplexity Sonar** | ~$0.005 | AI-summarised, excellent | In codebase, not activated. Bridges Claude Aug-2025 cutoff |
+| **Exa AI** | ~$0.010 | Full content, very good | Neural/semantic — finds relevant articles others miss |
+| **SerpAPI** | ~$0.005 | Short snippets | Google results |
+| **Bing Search API** | ~$0.003 | Good | Cheapest option |
+| **Google Custom Search** | ~$0.005 | Limited | 100/day free, 10k/day paid |
+
+**Key insight:** Tavily's edge is long, clean article snippets at advanced depth. Do NOT replace Tavily main or regional passes — but social and Spanish passes could switch to Brave to save cost.
+
+**Quick win:** Replace social + Spanish Tavily passes with Brave → saves ~$0.022/claim → free claim cost drops $0.111 → **~$0.087**. Not yet implemented — confirm before doing.
+
+### Two-tier search quality (under consideration — NOT yet implemented)
+
+Reduce search passes for free claims to cut cost; keep full suite for paid:
+
+| Pass | Free tier | Paid tier |
+|---|---|---|
+| Tavily main (advanced) | ✅ Keep | ✅ Keep |
+| Tavily regional | ✅ Keep | ✅ Keep |
+| Tavily social | ❌ Remove | ✅ Keep |
+| Tavily Spanish | ❌ Conditional only | ✅ Keep |
+| Brave English | ❌ Remove | ✅ Keep |
+
+**Do not implement until user confirms.**
+
+### Free tier strategy
+
+- 1 free claim: $0.11 CAC — minimal loss, enough to demo product value
+- 3 free claims: $0.33 CAC
+- 3/day: ~$10/month per active freeloader — unsustainable
+- **Decision leaning toward: 1 free claim** to minimise losses
+
+### B2B positioning (decided 2026-03-19)
+
+Target: professional journalists, independent journalists, newsrooms, activists.
+
+**Why:** These users pay reliably, need source diversity (Fred's USP), and unlock per-seat/org pricing with much higher LTV than consumer WhatsApp users.
+
+**Pricing tiers (live on fredcheck.com):**
+- Individual: £29/month
+- Newsroom: £149/month (up to 10 seats)
+- Enterprise: custom
+
+**Future product needs for B2B:** web/API interface (journalists work on desktop), bulk claim upload, PDF export, white-label API access, audit trail.
+
+---
+
 ## 14. Database Schema (SQLite)
 
 Located at `/data/factcheck.db` (Railway Volume — persists across redeploys).
