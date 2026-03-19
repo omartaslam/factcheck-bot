@@ -1,7 +1,7 @@
 # FactCheck Pro — Project Handover Document
 
-> **Last updated:** 2026-03-19 (session 8)
-> **Version:** v3.5 BETA
+> **Last updated:** 2026-03-19 (session 9)
+> **Version:** v3.6 BETA
 > **Status:** Live on Railway — B2B website live, contact form working via SendGrid, 3/3 automated tests passing
 
 ---
@@ -158,6 +158,9 @@ All logic is in `bot.py`. There is no separate config file — all configuration
 | `PROFIT_MARGIN` | `2.0` | Cost multiplier for billing (2.0 = 100% margin) |
 | `APP_BASE_URL` | `https://web-production-1f0a4.up.railway.app` | Used for webhook URLs |
 | `BETA_MODE` | `true` | Shows BETA label in report footer, beta welcome message |
+| `WA_CONVERSATION_COST` | `0.041` | WhatsApp per-conversation charge added to cost display (Europe/Spain rate; UK = 0.058) |
+| `DEV_AUTOSELECT_NUM` | `34643994740` | Phone number that skips claim selection and auto-runs all claims (dev testing) |
+| `DEV_AUTOSELECT_ON` | `true` | Toggle for dev auto-select bypass |
 | `MAX_VIDEO_MINUTES` | `10` | Max video duration — rejects longer videos with friendly message |
 
 ### Real-time Search
@@ -907,6 +910,32 @@ VERIFY_TOKEN=factcheck_verify_123 python3 test_format.py
 15. **Turkish/Farsi independent sources** — Cumhuriyet, Bianet, IranWire, Iran International
 16. **Lenz.io integration** — contact for API access (Cloudflare blocks scraping)
 
+### Done this session (2026-03-19 — session 9) ✅
+
+- ~~Website branding~~ — OG tags, page title, section headings updated to "Fred • Fact Check" ✅
+- ~~Feature card icons~~ — SVG icons replaced with gold numbered labels 01–06 ✅
+- ~~Section heading colours~~ — fixed white-on-light-bg bug (How it works, Capabilities, Pricing) ✅
+- ~~Sign In button~~ — wired to open gate modal ✅
+- ~~Share Fred link~~ — "Introduce Fred to a colleague →" in hero; opens WhatsApp with pre-composed intro + VCF link ✅
+- ~~Bot welcome message~~ — rewritten to new "Fred • Fact Check" branding ✅
+- ~~Claim selection~~ — accepts A/a/All/ALL; free users restricted to 1 claim; `1 2 3` and `1,2,3` both work ✅
+- ~~Dev auto-select~~ — `DEV_AUTOSELECT_NUM` + `DEV_AUTOSELECT_ON` env vars; set for 34643994740 ✅
+- ~~Verdict header~~ — `*FACTCHECK PRO*` → `*Fred Check* _(Beta)_` ✅
+- ~~Footer formatting~~ — no italics, debate on own line, shorter divider, no "today" on same-day posts ✅
+- ~~WA cost in verdicts~~ — `WA_CONVERSATION_COST` ($0.041) added to cost total shown in footer ✅
+- ~~Posted date~~ — "today" removed when post is same day ✅
+
+### Done this session (2026-03-19 — session 8 continued) ✅
+
+- ~~PERSPECTIVES refactor~~ — flattened to single cross-region sentence; schema char limits added ✅
+- ~~CLAIM moved above VERDICT~~ — better reading order ✅
+- ~~Duplicate rating label~~ — removed `🟢 MOSTLY TRUE` line (was showing twice) ✅
+- ~~Truth bar spacing~~ — one blank line between VERDICT badge and bar ✅
+- ~~VCF fix~~ — removed `as_attachment=True` so mobile triggers Add to Contacts natively ✅
+- ~~Source strip~~ — reverted to pills, reduced max-width to 600px for multi-line wrapping ✅
+- ~~Tavily credits~~ — confirmed exhausted (1000/1000 used); PAYG enabled ✅
+- ~~WhatsApp profile~~ — display name updated to "Fred • Fact Check" in Meta Business Manager ✅
+
 ### Done this session (2026-03-19 — session 8) ✅
 
 - ~~Contact form email~~ — switched from Gmail SMTP (blocked by Railway) to SendGrid HTTP API ✅
@@ -918,6 +947,16 @@ VERIFY_TOKEN=factcheck_verify_123 python3 test_format.py
 - ~~CORS fix~~ — `/api/factcheck` live search working from fredcheck.com ✅
 - ~~Favicon + OG image~~ — WhatsApp link previews working ✅
 - ~~VCF download~~ — `/fred.vcf` served from Railway ✅
+
+### Next session — TO DISCUSS ⏳
+
+**Pricing / free claims strategy (business viability):**
+- Cost per claim: ~$0.111 (text), ~$0.119 (image), ~$0.123 (audio), ~$0.140 (video)
+- Need to agree: how many free claims for regular users vs B2B/newsroom users
+- Current `FREE_CHECKS_LIMIT=9999` (unlimited) — must change before any real users
+- Key question: do B2B users (journalists, newsrooms) get a different free allowance / trial than casual users?
+- Does a newsroom trial look different from a consumer trial? (e.g. 10 free vs 3 free, or time-limited)
+- Stripe setup blocked on this decision — need free tier locked in before building paywall
 
 ### Done this session (2026-03-18) ✅
 - ~~Evidence truncation bug~~ — `grouped[:2000]` → `grouped[:10000]` — Claude now sees all outlet snippets ✅
