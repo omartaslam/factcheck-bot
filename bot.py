@@ -3969,6 +3969,125 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
                              "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()}
         send_fn(confirm_msg(source_type, query, cost))
 
+def _send_daily_summary(date_str=None):
+    """
+    Send a daily usage summary to hello@fredcheck.com.
+    date_str: 'YYYY-MM-DD' of the day to report. Defaults to yesterday (UTC).
+    """
+    import datetime as _dt, urllib.request as _ur, json as _json
+    sg_key = os.environ.get("SENDGRID_API_KEY")
+    if not sg_key:
+        log.warning("Daily summary: no SENDGRID_API_KEY, skipping")
+        return
+    if not date_str:
+        date_str = (_dt.date.today() - _dt.timedelta(days=1)).isoformat()
+    # Build epoch range for the target date (UTC)
+    day_start = int(_dt.datetime.strptime(date_str, "%Y-%m-%d").replace(
+        tzinfo=_dt.timezone.utc).timestamp())
+    day_end = day_start + 86400
+
+    try:
+        with _db() as c:
+            # Per-user breakdown
+            rows = c.execute("""
+                SELECT r.uid, r.source_type, r.extracted_claim, r.rating, r.cost_usd,
+                       p.profile_name
+                FROM request_log r
+                LEFT JOIN platform_users p ON p.platform='whatsapp' AND p.platform_id=r.uid
+                WHERE r.platform='whatsapp'
+                  AND r.created_at >= ? AND r.created_at < ?
+                ORDER BY r.uid, r.created_at
+            """, (day_start, day_end)).fetchall()
+
+            # New users that day
+            new_users = c.execute("""
+                SELECT platform_id, profile_name FROM platform_users
+                WHERE platform='whatsapp'
+                  AND created_at >= ? AND created_at < ?
+            """, (day_start, day_end)).fetchall()
+    except Exception as e:
+        log.error("Daily summary DB error: %s", e)
+        return
+
+    total_checks = len(rows)
+    total_cost = sum(r["cost_usd"] or 0 for r in rows)
+
+    # Group by user
+    from collections import defaultdict as _dd
+    by_user = _dd(list)
+    for r in rows:
+        by_user[r["uid"]].append(r)
+
+    lines = [
+        f"Fred Check — Daily Usage Summary",
+        f"Date: {date_str} (UTC)",
+        f"",
+        f"Total checks: {total_checks}",
+        f"Total cost:   ${total_cost:.4f}",
+        f"Active users: {len(by_user)}",
+        f"New users:    {len(new_users)}",
+        f"",
+    ]
+
+    if new_users:
+        lines.append("── New Users ──")
+        for u in new_users:
+            name = u["profile_name"] or "(no name)"
+            lines.append(f"  +{u['platform_id']}  {name}")
+        lines.append("")
+
+    if by_user:
+        lines.append("── Usage by User ──")
+        for uid, checks in sorted(by_user.items(), key=lambda x: -len(x[1])):
+            name = checks[0]["profile_name"] or "(no name)"
+            user_cost = sum(r["cost_usd"] or 0 for r in checks)
+            lines.append(f"\n+{uid}  {name}  ({len(checks)} check{'s' if len(checks)!=1 else ''}, ${user_cost:.4f})")
+            for r in checks:
+                claim = (r["extracted_claim"] or "")[:80]
+                rating = r["rating"] or "—"
+                src = r["source_type"] or "text"
+                lines.append(f"  [{src}] {rating}: {claim}")
+    else:
+        lines.append("No checks recorded for this date.")
+
+    lines += ["", "Fred Check"]
+    body = "\n".join(lines)
+
+    try:
+        payload = _json.dumps({
+            "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+            "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+            "subject": f"📊 Fred daily summary — {date_str} ({total_checks} checks, {len(by_user)} users)",
+            "content": [{"type": "text/plain", "value": body}]
+        }).encode()
+        req = _ur.Request(
+            "https://api.sendgrid.com/v3/mail/send",
+            data=payload,
+            headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        _ur.urlopen(req, timeout=15)
+        log.info("Daily summary sent for %s (%d checks)", date_str, total_checks)
+    except Exception as e:
+        log.error("Daily summary email failed: %s", e)
+
+
+def _daily_summary_scheduler():
+    """Background thread: sends daily summary at 07:00 UTC every day."""
+    import datetime as _dt
+    last_sent = None
+    while True:
+        try:
+            now = _dt.datetime.utcnow()
+            today = now.date().isoformat()
+            if now.hour >= 7 and last_sent != today:
+                _send_daily_summary()
+                last_sent = today
+        except Exception as e:
+            log.error("Daily summary scheduler error: %s", e)
+        t.sleep(3600)  # check every hour
+
+
 def _notify_new_user(wa_id, profile_name):
     """Email hello@fredcheck.com when a new WhatsApp user is detected."""
     try:
@@ -4817,6 +4936,7 @@ def init_db():
     log.info("DB initialised at %s", DB_PATH)
 
 init_db()
+threading.Thread(target=_daily_summary_scheduler, daemon=True).start()
 
 def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd):
     """Log a fact-check request and Fred's response to request_log."""
@@ -5749,6 +5869,16 @@ def _qc_worker(from_num, msg_text):
         with _qc_lock:
             _qc_jobs[from_num]["done"] = True
         log.info("QC job done: %s (%d messages)", from_num, len(_qc_jobs[from_num]["messages"]))
+
+@app.route("/admin/daily-summary", methods=["POST"])
+def admin_daily_summary():
+    """Manually trigger the daily summary email. Body: {"date": "YYYY-MM-DD"} optional."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    date_str = (request.get_json() or {}).get("date")
+    threading.Thread(target=_send_daily_summary, args=(date_str,), daemon=True).start()
+    return jsonify({"ok": True, "date": date_str or "yesterday"})
+
 
 @app.route("/admin/qc", methods=["POST"])
 def admin_qc_start():
