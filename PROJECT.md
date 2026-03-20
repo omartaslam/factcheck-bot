@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-20 (session 10)
+**Last updated:** 2026-03-20 (session 11)
 
 ---
 
@@ -248,7 +248,7 @@ Type HELP anytime for a full guide.
 ## 11. Outstanding Tasks (Priority Order)
 
 ### Urgent
-1. **FB/IG cookies rotation** — expires ~2026-03-30 (~10 days). Extract fresh cookies from browser after logging into Facebook.
+1. **FB/IG cookies rotation** — expires ~2026-03-30 (~10 days). Automated refresh built (`scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml`, commit `94a2ce4`). **Blocked on push** — GitHub PAT needs `workflow` scope. Once pushed, add GitHub secrets: `FB_EMAIL`, `FB_PASSWORD`, `IG_USERNAME`, `IG_PASSWORD`, `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_ID`, `RAILWAY_SERVICE_ID`, `SENDGRID_API_KEY`. Requires dedicated FB/IG account with 2FA disabled.
 
 ### Blocked / Pending Decision
 2. **Pricing / free claims strategy** — must decide before Stripe:
@@ -271,9 +271,19 @@ Type HELP anytime for a full guide.
 
 ---
 
-## 12. Recently Completed Work (Session 10 — 2026-03-20)
+## 12. Recently Completed Work (Session 11 — 2026-03-20)
 
-- **Holistic content unavailability detection** — fully implemented across all platforms:
+- **Automated FB/IG cookie refresh** (`scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml`):
+  - Playwright headless browser logs into FB and IG with stored credentials
+  - Exports cookies in Netscape format (yt-dlp compatible), base64-encodes, pushes to Railway via GraphQL API
+  - Runs every Monday 03:00 UTC — well within ~14-day cookie lifespan
+  - On failure: emails hello@fredcheck.com via SendGrid + uploads login screenshots as GitHub artifacts
+  - Supports `workflow_dispatch` manual trigger with per-platform skip options
+  - Committed as `94a2ce4` but **not yet pushed** — GitHub PAT needs `workflow` scope added first
+
+### Previously (Session 10 — 2026-03-20)
+
+- **Holistic content unavailability detection** — fully implemented (session 10) across all platforms:
   - Expanded `_UNAVAIL_TITLE_PHRASES`, `_UNAVAIL_DESC_PHRASES`, `_UNAVAIL_URL_FRAGMENTS` to cover FB/IG, Twitter/X, YouTube, TikTok, generic HTTP errors
   - Added `_UNAVAIL_HTTP_CODES = {403, 404, 410, 451}`
   - Added `_check_url_unavailable(url)` — lightweight GET + HTTP code + og:tag check for platforms with no scrape data
