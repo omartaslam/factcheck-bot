@@ -3412,17 +3412,20 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     return "\n".join(lines)
 
 def _welcome_msg():
-    free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
-    beta_line = "\n_🚧 BETA — feedback welcome! Reply HELP for more info._" if BETA_MODE else ""
+    beta_suffix = " _(BETA)_" if BETA_MODE else ""
+    beta_line = (
+        "\n_🚧 Fred Check BETA — feedback welcome - "
+        "WhatsApp +34643994740 or email hello@fredcheck.com. "
+        "Reply HELP for more info._"
+    ) if BETA_MODE else ""
     return (
-        "*Welcome to Fred • Fact Check* 👋\n\n"
-        "I fact-check claims across 65+ sources from 6 world regions — "
+        f"*Welcome to Fred • Fact Check{beta_suffix}* 👋\n\n"
+        "I'm FRED, I fact check claims across 65+ sources from 6 world regions — "
         "with no default Western narrative.\n\n"
         "*Send me any of these:*\n"
-        "• A claim, headline or quote\n"
+        "• A text claim, headline or quote\n"
         "• A URL (news article, Facebook, Instagram, TikTok, YouTube)\n"
         "• An image, video or voice note\n\n"
-        f"You have *{FREE_CHECKS_LIMIT} free {free_word}* to try it out.\n\n"
         "Type *HELP* anytime for a full guide.\n"
         f"🌐 {WEBSITE_URL}"
         + beta_line
