@@ -270,7 +270,9 @@ Type HELP anytime for a full guide.
 3. **Meta app review** — submit once business verification approved
 
 ### Ready to Implement
-4. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message, so splitting is free. Improves readability. Discuss format next session.
+4. **QA automation suite** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
+5. **Rotating tagline carousel on fredcheck.com** — add more straplines beneath/alongside "Truth Beyond Borders". Confirmed taglines so far: "Tackling misinformation since birth". Candidates: "Facts don't have a postcode", "Beyond the Western headline", "No default narrative", "Six regions. One truth.", "Every story has another side", "Built for those who ask questions", "The antidote to algorithmic bias", "Checking power, everywhere", "For journalists who dig deeper", "Where facts meet all perspectives".
+6. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message, so splitting is free. Improves readability. Discuss format next session.
 5. **Stripe setup** — Payment Links, `TOPUP_LINK`/`SUB_LINK` env vars, webhook handler
 5. **Fix `estimate_cost()`** — values ~12× too low; must fix before charging
 6. **FREE_CHECKS_LIMIT** — change from 9999 to agreed number post pricing decision
