@@ -241,8 +241,7 @@ Type HELP anytime for a full guide.
 | Brave Search | Active | Already in use |
 | Perplexity Sonar | In codebase, inactive | Activate post-beta with `PERPLEXITY_API_KEY` |
 | SendGrid | Free trial until 2026-05-18 | 100 emails/day |
-| FB cookies | Refreshed 2026-03-20, expire ~2026-04-03 | ✅ done |
-| IG cookies | Expire ~2026-03-30 | **URGENT — not yet rotated** |
+| FB/IG cookies | Refreshed 2026-03-20, expire ~2026-04-03 | ✅ both done — next rotation due ~2026-04-01 |
 
 ---
 
@@ -251,7 +250,7 @@ Type HELP anytime for a full guide.
 ### Urgent
 1. **FB/IG cookies rotation** — expires ~2026-03-30 (~10 days).
 
-   **Status:** FB cookies refreshed 2026-03-20 ✅. IG cookies NOT YET refreshed — do now.
+   **Status:** FB + IG cookies both refreshed 2026-03-20 ✅. Next rotation due ~2026-04-01.
 
    **Manual rotation steps (do every ~10 days until automation is live):**
    1. Install "Get cookies.txt LOCALLY" extension (Chrome or Firefox)
