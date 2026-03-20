@@ -1149,12 +1149,50 @@ def _fb_ig_post_scrape(url):
                             result["article_url"] = candidate
                             log.info(f"FB/IG linked article URL: {candidate[:80]}")
                         break
+            result["final_url"] = r.url  # track redirect destination
             if result.get("description") or result.get("image_url"):
                 log.info(f"FB/IG scrape ({ua.split('/')[0]}): desc={bool(result.get('description'))} img={bool(result.get('image_url'))}")
                 return result
         except Exception as e:
             log.debug(f"FB/IG scrape failed ({ua[:20]}): {e}")
     return {"is_post": is_post_url}
+
+_UNAVAIL_TITLE_PHRASES = [
+    "this content isn't available", "content isn't available",
+    "this page isn't available", "page not found", "content not found",
+    "log in to facebook", "log in to instagram", "login • instagram",
+    "sorry, this page", "this link may be broken",
+]
+_UNAVAIL_DESC_PHRASES = [
+    "log in or sign up", "log in to see", "log into facebook",
+    "create an account or log in", "see posts, photos and more",
+    "to see more from", "join facebook to connect",
+]
+_UNAVAIL_URL_FRAGMENTS = [
+    "/login", "/checkpoint", "accounts/login", "login.php",
+]
+
+def _is_content_unavailable(fb_og):
+    """Return True if the scraped og data signals private/deleted/restricted content."""
+    title = (fb_og.get("title") or "").lower()
+    desc  = (fb_og.get("description") or "").lower()
+    final = (fb_og.get("final_url") or "").lower()
+
+    if any(p in title for p in _UNAVAIL_TITLE_PHRASES):
+        log.info(f"Content unavailable signal — title: {title[:80]}")
+        return True
+    if any(p in desc for p in _UNAVAIL_DESC_PHRASES):
+        log.info(f"Content unavailable signal — desc: {desc[:80]}")
+        return True
+    if any(f in final for f in _UNAVAIL_URL_FRAGMENTS):
+        log.info(f"Content unavailable signal — redirect to: {final[:80]}")
+        return True
+    # No description AND no image = nothing was served (private/deleted)
+    if not fb_og.get("description") and not fb_og.get("image_url"):
+        log.info("Content unavailable signal — no description and no image returned")
+        return True
+    return False
+
 
 def _og_metadata(url):
     """Last resort: extract Open Graph tags (title, description, image OCR) from the page."""
@@ -4400,24 +4438,15 @@ def process(from_num, message):
                             page_text = "\n\n".join(parts)
                             log.info(f"FB/IG extracted: {len(page_text)} chars, {len(img_candidates)} img candidates")
 
-                        # If we extracted almost nothing and no image, the post is
-                        # likely private, deleted, or restricted.
-                        _has_image_content = any(p.startswith("Image text:") for p in parts)
-                        _has_rich_content = any(
-                            p.startswith(("Visual analysis:", "Audio:", "Article text:", "Captions:"))
-                            for p in parts
-                        )
-                        # Measure only the post description text — strip label prefixes
-                        _post_desc = next((
-                            p.replace("Post text:", "", 1).strip()
-                            for p in parts if p.startswith("Post text:")
-                        ), "")
-                        if not _has_image_content and not _has_rich_content and len(_post_desc) < 60:
+                        # Detect private/deleted/restricted content via og: signals
+                        # rather than character counts (which are fragile).
+                        # fb_og is always set by STEP 1 above.
+                        if _is_content_unavailable(fb_og):
                             send(from_num,
                                 "⚠️ This post appears to be private, deleted, or restricted.\n\n"
-                                "Only a small amount of text could be retrieved — not enough to fact-check.\n\n"
+                                "Fred couldn't access the content — it may have been removed or shared "
+                                "with a limited audience.\n\n"
                                 "If the post is public, try copying the claim text directly and sending it as a message.")
-                            log.warning(f"FB/IG: post likely private/deleted — only {_text_only_len} chars extracted, no image")
                             return
 
                 if not page_text:
