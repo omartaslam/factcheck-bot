@@ -384,6 +384,9 @@ def html_text(html, lim=2000):
 def fetch(url, timeout=12):
     try:
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=timeout)
+        if r.status_code in _UNAVAIL_HTTP_CODES:
+            log.warning("fetch %s: HTTP %s (unavailable/restricted)", url, r.status_code)
+            return ""
         r.raise_for_status(); return html_text(r.text)
     except Exception as e: log.warning("fetch %s: %s", url, e); return ""
 
@@ -1158,19 +1161,44 @@ def _fb_ig_post_scrape(url):
     return {"is_post": is_post_url}
 
 _UNAVAIL_TITLE_PHRASES = [
+    # Facebook / Instagram
     "this content isn't available", "content isn't available",
     "this page isn't available", "page not found", "content not found",
     "log in to facebook", "log in to instagram", "login • instagram",
     "sorry, this page", "this link may be broken",
+    # Twitter / X
+    "this account doesn't exist", "account suspended",
+    "this tweet is from a suspended account", "tweet not found",
+    "caution: this account is temporarily restricted",
+    # YouTube
+    "video unavailable", "private video", "this video has been removed",
+    "this video is unavailable", "this video is private",
+    "this video is no longer available",
+    # TikTok
+    "this video is unavailable", "video currently unavailable",
+    "this video has been removed", "this video is not available",
+    # Generic
+    "403 forbidden", "404 not found", "access denied", "error 404",
+    "page does not exist", "no longer available", "410 gone",
 ]
 _UNAVAIL_DESC_PHRASES = [
+    # Facebook / Instagram
     "log in or sign up", "log in to see", "log into facebook",
     "create an account or log in", "see posts, photos and more",
     "to see more from", "join facebook to connect",
+    # Twitter / X
+    "these tweets are protected", "this account's tweets are protected",
+    "you need to be following this person", "this account is suspended",
+    # YouTube
+    "sign in to confirm your age", "sign in to watch this video",
+    # Generic
+    "you don't have permission", "sign in to access",
 ]
 _UNAVAIL_URL_FRAGMENTS = [
     "/login", "/checkpoint", "accounts/login", "login.php",
+    "signin", "/suspended", "/unavailable", "age-gate",
 ]
+_UNAVAIL_HTTP_CODES = {403, 404, 410, 451}
 
 def _is_content_unavailable(fb_og):
     """Return True if the scraped og data signals private/deleted/restricted content."""
@@ -1192,6 +1220,37 @@ def _is_content_unavailable(fb_og):
         log.info("Content unavailable signal — no description and no image returned")
         return True
     return False
+
+
+def _check_url_unavailable(url):
+    """Lightweight check: returns True if URL signals private/deleted/restricted content.
+
+    Does a single GET, checks HTTP status against _UNAVAIL_HTTP_CODES, then checks
+    og:title/description for unavailability phrases. Used for YouTube, TikTok,
+    Twitter/X and generic URLs when all download attempts return nothing.
+    """
+    try:
+        r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12,
+                         allow_redirects=True)
+        final_url = r.url
+        if r.status_code in _UNAVAIL_HTTP_CODES:
+            log.info(f"Content unavailable — HTTP {r.status_code}: {url[:80]}")
+            return True
+        html = r.text
+        og = {"final_url": final_url}
+        for prop, key in [("og:title", "title"), ("og:description", "description"),
+                          ("twitter:title", "title"), ("twitter:description", "description")]:
+            m = re.search(rf'<meta[^>]+(?:property|name)=["\']?{re.escape(prop)}["\']?[^>]+content=["\']([^"\']+)["\']',
+                          html, re.I)
+            if not m:
+                m = re.search(rf'<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\']?{re.escape(prop)}["\']?',
+                              html, re.I)
+            if m and key not in og:
+                og[key] = m.group(1).strip()
+        return _is_content_unavailable(og)
+    except Exception as e:
+        log.warning(f"_check_url_unavailable: {e}")
+        return False
 
 
 def _og_metadata(url):
@@ -4118,6 +4177,10 @@ def process(from_num, message):
                             send(from_num, "❌ Could not extract any content from this URL. Please paste the claim as text or send a screenshot.")
                             return
                     elif metadata:
+                        # Check if the metadata itself signals unavailability before doing more work
+                        if _is_content_unavailable({"title": metadata, "description": metadata}):
+                            send(from_num, "🔒 This content appears to be private, deleted, or restricted and cannot be accessed.")
+                            return
                         # Video download failed but we have metadata — try yt-dlp audio before falling back
                         send(from_num, "⚙️ Extracting audio from video...")
                         audio_bytes_fb, audio_ext_fb = _ytdlp_audio_bytes(url)
@@ -4143,8 +4206,11 @@ def process(from_num, message):
                             query = f"Social media post: {metadata}\n\nURL: {url}"
                             source_type = "url"
                     else:
-                        # No video bytes and no metadata — cannot fact-check the video
-                        send(from_num, "❌ Could not access this video. To fact-check it, please describe the claim in text or paste a direct quote.")
+                        # No video bytes and no metadata — check if content is private/deleted
+                        if _check_url_unavailable(url):
+                            send(from_num, "🔒 This content appears to be private, deleted, or restricted and cannot be accessed.")
+                        else:
+                            send(from_num, "❌ Could not access this video. To fact-check it, please describe the claim in text or paste a direct quote.")
                         return
                 except Exception as e:
                     send(from_num, f"❌ Video error: {str(e)[:200]}\n\nTrying page scrape instead...")
