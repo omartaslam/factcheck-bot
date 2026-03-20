@@ -248,7 +248,17 @@ Type HELP anytime for a full guide.
 ## 11. Outstanding Tasks (Priority Order)
 
 ### Urgent
-1. **FB/IG cookies rotation** — expires ~2026-03-30 (~10 days). Automated refresh built (`scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml`, commit `94a2ce4`). **Blocked on push** — GitHub PAT needs `workflow` scope. Once pushed, add GitHub secrets: `FB_EMAIL`, `FB_PASSWORD`, `IG_USERNAME`, `IG_PASSWORD`, `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_ID`, `RAILWAY_SERVICE_ID`, `SENDGRID_API_KEY`. Requires dedicated FB/IG account with 2FA disabled.
+1. **FB/IG cookies rotation** — expires ~2026-03-30 (~10 days).
+
+   **Manual rotation steps (do every ~10 days until automation is live):**
+   1. Install "Get cookies.txt LOCALLY" extension (Chrome or Firefox)
+   2. Log into Facebook → click extension on `facebook.com` → **Export** → saves `facebook.com_cookies.txt`
+   3. `base64 -w 0 facebook.com_cookies.txt` → copy output
+   4. Railway dashboard → service → Variables → update `FB_COOKIES_B64` → Save
+   5. Repeat for Instagram: log into Instagram → export from `instagram.com` → encode → update `IG_COOKIES_B64`
+   6. Railway auto-redeploys; if not, trigger manually
+
+   **Permanent automation (blocked):** `scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml` built (commit `94a2ce4`, not yet pushed). Needs: GitHub PAT `workflow` scope → push → add 9 GitHub secrets (`FB_EMAIL`, `FB_PASSWORD`, `IG_USERNAME`, `IG_PASSWORD`, `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_ID`, `RAILWAY_SERVICE_ID`, `SENDGRID_API_KEY`) → dedicated FB/IG account with 2FA disabled.
 
 ### Blocked / Pending Decision
 2. **Pricing / free claims strategy** — must decide before Stripe:
