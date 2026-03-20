@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-20 (session 11)
+**Last updated:** 2026-03-20 (session 12)
 
 ---
 
@@ -283,7 +283,15 @@ Type HELP anytime for a full guide.
 
 ---
 
-## 12. Recently Completed Work (Session 11 — 2026-03-20)
+## 12. Recently Completed Work (Session 12 — 2026-03-20)
+
+- **New beta user email notification** (`_notify_new_user()`, commit `1e7a7e3`):
+  - Extracts WhatsApp profile name from `contacts[0].profile.name` in webhook payload
+  - Stores `profile_name` in `platform_users` DB (migration: `ALTER TABLE platform_users ADD COLUMN profile_name TEXT`)
+  - On new user: async email to `hello@fredcheck.com` — number, display name, join timestamp
+  - Subject: `🆕 New beta user: <name or number>`
+
+### Previously (Session 11 — 2026-03-20)
 
 - **Automated FB/IG cookie refresh** (`scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml`):
   - Playwright headless browser logs into FB and IG with stored credentials
