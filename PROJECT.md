@@ -270,7 +270,8 @@ Type HELP anytime for a full guide.
 3. **Meta app review** — submit once business verification approved
 
 ### Ready to Implement
-4. **Stripe setup** — Payment Links, `TOPUP_LINK`/`SUB_LINK` env vars, webhook handler
+4. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message, so splitting is free. Improves readability. Discuss format next session.
+5. **Stripe setup** — Payment Links, `TOPUP_LINK`/`SUB_LINK` env vars, webhook handler
 5. **Fix `estimate_cost()`** — values ~12× too low; must fix before charging
 6. **FREE_CHECKS_LIMIT** — change from 9999 to agreed number post pricing decision
 7. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
