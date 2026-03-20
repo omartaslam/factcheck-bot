@@ -3857,8 +3857,8 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             return
         if bt == "free":
             u = _puser(platform, uid)
-            remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
-            send_fn(f"✓ Free check — {remaining} free check{'s' if remaining != 1 else ''} remaining after this")
+            remaining = FREE_CHECKS_LIMIT - _daily_free_used(u) - 1
+            send_fn(f"✓ Free check — {remaining} free check{'s' if remaining != 1 else ''} remaining today")
         elif bt == "paid":
             u = _puser(platform, uid)
             send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f}")
@@ -4060,14 +4060,14 @@ def process(from_num, message, profile_name=None):
                 return
             if bt == "free":
                 u = _wa_user(from_num)
-                remaining = FREE_CHECKS_LIMIT - u["free_checks_used"] - 1
+                remaining = FREE_CHECKS_LIMIT - _daily_free_used(u) - 1
                 if remaining <= 0:
-                    suffix = "last free check"
+                    suffix = "last free check today"
                 else:
-                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining after this"
+                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining today"
                 status_line = f"✓ Free check — {suffix}"
                 if remaining == 0:
-                    status_line += "\n_This is your last free check. Reply HELP for info on continuing after this._"
+                    status_line += "\n_This is your last free check today. Your allowance resets at midnight._"
             elif bt == "paid":
                 u = _wa_user(from_num)
                 status_line = f"✓ Balance: ${u['balance_cents']/100:.2f}"
@@ -4801,6 +4801,8 @@ def init_db():
             except Exception: pass
         try: c.execute("ALTER TABLE platform_users ADD COLUMN profile_name TEXT")
         except Exception: pass
+        try: c.execute("ALTER TABLE platform_users ADD COLUMN free_checks_date TEXT")
+        except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
             rows = c.execute("SELECT * FROM wa_users").fetchall()
@@ -4883,11 +4885,21 @@ def _puser(platform, uid, profile_name=None):
             c.execute("UPDATE platform_users SET last_seen=? WHERE platform=? AND platform_id=?", (now, platform, uid))
     return dict(row)
 
+def _today():
+    import datetime as _dt
+    return _dt.date.today().isoformat()
+
+def _daily_free_used(u):
+    """Return how many free checks the user has used today (resets at midnight)."""
+    if u.get("free_checks_date") != _today():
+        return 0
+    return u.get("free_checks_used") or 0
+
 def _pbilling_type(platform, uid):
     """Returns 'subscriber' | 'free' | 'paid' | 'blocked'."""
     u = _puser(platform, uid)
     if u["tier"] == "subscriber": return "subscriber"
-    if u["free_checks_used"] < FREE_CHECKS_LIMIT: return "free"
+    if _daily_free_used(u) < FREE_CHECKS_LIMIT: return "free"
     if u["balance_cents"] > 0: return "paid"
     return "blocked"
 
@@ -4900,8 +4912,14 @@ def _pdeduct(platform, uid, cents, description, billing_type):
         with _db() as c:
             c.execute("UPDATE platform_users SET balance_cents = MAX(0, balance_cents - ?) WHERE platform=? AND platform_id=?", (cents, platform, uid))
     elif billing_type == "free":
+        today = _today()
         with _db() as c:
-            c.execute("UPDATE platform_users SET free_checks_used = free_checks_used + 1 WHERE platform=? AND platform_id=?", (platform, uid))
+            u = c.execute("SELECT free_checks_used, free_checks_date FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
+            if u and u["free_checks_date"] != today:
+                # New day — reset count
+                c.execute("UPDATE platform_users SET free_checks_used=1, free_checks_date=? WHERE platform=? AND platform_id=?", (today, platform, uid))
+            else:
+                c.execute("UPDATE platform_users SET free_checks_used = free_checks_used + 1, free_checks_date=? WHERE platform=? AND platform_id=?", (today, platform, uid))
     with _db() as c:
         c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES (?,?,?,?,?,?)",
                   (platform, uid, txn_type, cents, description, now))
@@ -4923,7 +4941,7 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
     lines = [
         "💳 *FactCheck Pro — Top Up Required*", "",
-        f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.",
+        f"You've used your {FREE_CHECKS_LIMIT} free {free_word} for today. Your allowance resets at midnight.",
         f"Current balance: *${balance_cents/100:.2f}*", "",
         "*Choose a top-up amount:*",
     ]
