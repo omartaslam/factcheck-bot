@@ -950,9 +950,11 @@ def _ytdlp_download(url):
                 pass
             title = info.get("title", "")
             description = info.get("description", "")[:200] if info.get("description") else ""
+            uploader = info.get("uploader", "") or info.get("channel", "")
             post_date = _parse_post_date(info.get("upload_date", ""))
-            log.info(f"yt-dlp downloaded: {title[:50]} date={post_date or 'unknown'}")
-            return video_bytes, f"{title}\n{description}".strip(), post_date
+            log.info(f"yt-dlp downloaded: {title[:50]} uploader={uploader[:30]} date={post_date or 'unknown'}")
+            meta_parts = [p for p in [title, f"Creator: {uploader}" if uploader else "", description] if p]
+            return video_bytes, "\n".join(meta_parts).strip(), post_date
     except Exception as e:
         log.error(f"yt-dlp failed: {e}")
         return None, "", ""
@@ -962,15 +964,56 @@ def _ytdlp_download(url):
             except: pass
 
 
+def _ytdlp_captions(url):
+    """Fetch auto-generated or manual English captions for a YouTube URL via yt-dlp.
+    Returns plain text string or '' on failure."""
+    import re as _re
+    tmpdir = tempfile.mkdtemp()
+    try:
+        ydl_opts = {
+            "quiet": True, "no_warnings": True, "skip_download": True,
+            "writesubtitles": True, "writeautomaticsub": True,
+            "subtitleslangs": ["en", "en-US", "en-GB"],
+            "subtitlesformat": "vtt",
+            "outtmpl": os.path.join(tmpdir, "cap.%(ext)s"),
+            "socket_timeout": 15,
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        for fname in os.listdir(tmpdir):
+            if fname.endswith(".vtt"):
+                with open(os.path.join(tmpdir, fname), "r", errors="ignore") as f:
+                    vtt = f.read()
+                # Strip VTT headers, timestamps, and tags — keep only spoken text
+                lines = []
+                for line in vtt.splitlines():
+                    line = line.strip()
+                    if not line or line.startswith("WEBVTT") or "-->" in line:
+                        continue
+                    line = _re.sub(r"<[^>]+>", "", line)  # strip <c>, <00:00> tags
+                    if line and line not in lines[-3:]:     # basic dedup of repeated cues
+                        lines.append(line)
+                text = " ".join(lines)
+                log.info(f"yt-dlp captions: {len(text)} chars from {fname}")
+                return text[:3000]
+    except Exception as e:
+        log.debug(f"yt-dlp captions failed: {e}")
+    finally:
+        import shutil as _sh
+        try: _sh.rmtree(tmpdir)
+        except: pass
+    return ""
+
+
 def _get_video_duration(url):
-    """Return video duration in seconds without downloading. Returns 0 on failure."""
+    """Return video duration in seconds without downloading. Returns -1 on failure, 0 for live/unknown."""
     try:
         ydl_opts = {"quiet": True, "no_warnings": True, "socket_timeout": 10}
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=False)
-            return int(info.get("duration") or 0) if info else 0
+            return int(info.get("duration") or 0) if info else -1
     except Exception:
-        return 0
+        return -1
 
 
 def _ytdlp_audio_bytes(url):
@@ -1032,8 +1075,11 @@ def _fb_ig_post_scrape(url):
 
     For POST URLs (containing /posts/, /photo, /p/, /share/ etc.) the og:image
     returned is the actual post image, not the page profile picture.
+    For Instagram URLs, also attempts a cookie-authenticated request to retrieve
+    captions that may be hidden from unauthenticated bots.
     """
     import html as _html_mod
+    import http.cookiejar as _cj_mod
     POST_INDICATORS = ['/posts/', '/photo', '/p/', '/share/', 'story.php', 'fbid=', 'story_fbid=']
     is_post_url = any(s in url for s in POST_INDICATORS)
 
@@ -1042,10 +1088,33 @@ def _fb_ig_post_scrape(url):
         "WhatsApp/2.24.6.77 A",
         "Twitterbot/1.0",
     ]
-    for ua in UAS:
+    # For Instagram, append a cookie-authenticated attempt as final fallback
+    _ig_cookie_session = None
+    if "instagram.com" in url and IG_COOKIES_B64:
         try:
-            r = requests.get(url, headers={"User-Agent": ua, "Accept-Language": "en-US,en;q=0.9"},
-                             timeout=14, allow_redirects=True)
+            _cookies_data = base64.b64decode(IG_COOKIES_B64).decode("utf-8")
+            _cj = _cj_mod.MozillaCookieJar()
+            import tempfile as _tmpmod
+            with _tmpmod.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as _tf:
+                _tf.write(_cookies_data); _tf_name = _tf.name
+            _cj.load(_tf_name, ignore_discard=True, ignore_expires=True)
+            os.unlink(_tf_name)
+            _ig_cookie_session = requests.Session()
+            _ig_cookie_session.cookies = requests.utils.cookiejar_from_dict(
+                {c.name: c.value for c in _cj})
+            log.info("IG cookie session prepared for post scrape")
+        except Exception as _cse:
+            log.debug(f"IG cookie session prep failed: {_cse}")
+
+    _all_attempts = [(ua, None) for ua in UAS]
+    if _ig_cookie_session:
+        _all_attempts.append(("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X)", _ig_cookie_session))
+
+    for ua, _sess in _all_attempts:
+        try:
+            _req = _sess if _sess else requests
+            r = _req.get(url, headers={"User-Agent": ua, "Accept-Language": "en-US,en;q=0.9"},
+                         timeout=14, allow_redirects=True)
             if not r.ok:
                 continue
             html = r.text
@@ -1081,10 +1150,10 @@ def _fb_ig_post_scrape(url):
                             log.info(f"FB/IG linked article URL: {candidate[:80]}")
                         break
             if result.get("description") or result.get("image_url"):
-                log.info(f"FB/IG externalhit ({ua.split('/')[0]}): desc={bool(result.get('description'))} img={bool(result.get('image_url'))}")
+                log.info(f"FB/IG scrape ({ua.split('/')[0]}): desc={bool(result.get('description'))} img={bool(result.get('image_url'))}")
                 return result
         except Exception as e:
-            log.debug(f"FB/IG externalhit failed ({ua[:20]}): {e}")
+            log.debug(f"FB/IG scrape failed ({ua[:20]}): {e}")
     return {"is_post": is_post_url}
 
 def _og_metadata(url):
@@ -1136,8 +1205,28 @@ def _fxtwitter_text(url):
         post_date = _parse_post_date(tweet.get("created_at", ""))
         if text:
             combined = f"Tweet by {author}: {text}"
-            for m in tweet.get("media", {}).get("photos", []):
-                combined += f"\n[Image: {m.get('url','')}]"
+            # Include quoted tweet text — quote tweets are common and the original
+            # post is often the subject of the fact-check
+            quote = tweet.get("quote")
+            if quote:
+                q_author = quote.get("author", {}).get("name", "")
+                q_text = quote.get("text", "")
+                if q_text:
+                    combined += f"\n\nQuoted tweet by {q_author}: {q_text}"
+            # Download and OCR any photos — image posts carry claims in text overlays
+            for photo in tweet.get("media", {}).get("photos", []):
+                photo_url = photo.get("url", "")
+                if photo_url:
+                    try:
+                        img_r = requests.get(photo_url, timeout=10,
+                                             headers={"User-Agent": "Mozilla/5.0"})
+                        if img_r.ok and len(img_r.content) > 500:
+                            photo_ocr = ocr_image(img_r.content)
+                            if photo_ocr and len(photo_ocr) > 20:
+                                combined += f"\nImage text: {photo_ocr[:500]}"
+                                log.info(f"fxtwitter photo OCR: {photo_ocr[:80]}")
+                    except Exception as _pe:
+                        log.debug(f"fxtwitter photo OCR failed: {_pe}")
             log.info(f"fxtwitter extracted: {combined[:100]} date={post_date or 'unknown'}")
             return combined, post_date
     except Exception as e:
@@ -3924,6 +4013,15 @@ def process(from_num, message):
                                     log.error(f"yt-dlp audio transcription: {e}")
                         if transcript:
                             parts.append(f"Audio: {transcript}")
+                        # For YouTube: if transcription failed, try auto-generated captions
+                        if not transcript and any(d in url for d in ["youtube.com", "youtu.be"]):
+                            try:
+                                captions = _ytdlp_captions(url)
+                                if captions:
+                                    parts.append(f"Captions: {captions}")
+                                    log.info(f"YouTube captions added: {len(captions)} chars")
+                            except Exception as _ce:
+                                log.debug(f"YouTube captions failed: {_ce}")
                         # For FB/IG — always include post caption alongside video analysis.
                         # The caption often contains claims not visible in the video itself
                         # (e.g. describing what the video shows, adding context or spin).
@@ -4042,21 +4140,33 @@ def process(from_num, message):
                             vid_parts = []
                             if vid_meta_try and not _is_useless_title(vid_meta_try):
                                 vid_parts.append(f"Video: {vid_meta_try}")
+                            _vid_frames = []
                             try:
-                                frames, _ = extract_video_frames(vid_bytes_try, num_frames=5)
-                                if frames:
-                                    visual = analyze_video_frames(frames)
+                                _vid_frames, _ = extract_video_frames(vid_bytes_try, num_frames=5)
+                                if _vid_frames:
+                                    visual = analyze_video_frames(_vid_frames)
                                     if visual:
                                         vid_parts.append(f"Visual analysis:\n{visual}")
                             except Exception as vfe:
                                 log.error(f"FB/IG video frame analysis: {vfe}")
+                            _vid_transcript = ""
                             try:
-                                transcript = transcribe(vid_bytes_try, "video/mp4")
-                                if transcript:
-                                    vid_parts.append(f"Audio: {transcript}")
+                                _vid_transcript = transcribe(vid_bytes_try, "video/mp4")
+                                if _vid_transcript:
+                                    vid_parts.append(f"Audio: {_vid_transcript}")
                             except Exception as vte:
                                 log.warning(f"FB/IG video transcription: {vte}")
-                            has_av = any(p.startswith(("Visual analysis:", "Audio:")) for p in vid_parts)
+                            # No audio transcript — Facebook CDN often wraps static images as
+                            # short MP4s. OCR the first frame to capture any text overlay.
+                            if not _vid_transcript and _vid_frames:
+                                try:
+                                    _frame_ocr = ocr_image(_vid_frames[0])
+                                    if _frame_ocr and len(_frame_ocr) > 20:
+                                        vid_parts.append(f"Image text:\n{_frame_ocr}")
+                                        log.info(f"FB/IG: no audio — OCR'd first frame: {_frame_ocr[:80]}")
+                                except Exception as _foe:
+                                    log.warning(f"FB/IG frame OCR: {_foe}")
+                            has_av = any(p.startswith(("Visual analysis:", "Audio:", "Image text:")) for p in vid_parts)
                             if has_av:
                                 # Only now confirm to the user — actual video content confirmed
                                 send(from_num, f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — analysed frames and audio")
@@ -4065,6 +4175,19 @@ def process(from_num, message):
                                 video_bytes = vid_bytes_try
                                 _fb_video_done = True
                                 log.info(f"FB/IG video download succeeded: {len(page_text)} chars")
+                                # Always fetch post caption — may contain claims not visible
+                                # in the video/image itself (context, spin, attribution)
+                                try:
+                                    _post_og = _fb_ig_post_scrape(url)
+                                    _caption = _post_og.get("description", "").strip()
+                                    if _caption and len(_caption) > 20:
+                                        vid_parts.append(f"Post caption: {_caption[:1200]}")
+                                        page_text = "\n\n".join(vid_parts)
+                                        log.info(f"FB/IG post caption added after video: {_caption[:80]}")
+                                    if _post_og.get("post_date") and not post_date:
+                                        post_date = _post_og["post_date"]
+                                except Exception as _ce:
+                                    log.warning(f"FB/IG post caption fetch after video: {_ce}")
                             else:
                                 log.info(f"FB/IG: MP4 bytes but no extractable frames/audio — treating as image post")
                         elif vid_bytes_try:
@@ -4173,6 +4296,10 @@ def process(from_num, message):
                                     for fmt in (info.get("formats") or []):
                                         if fmt.get("ext") in ("jpg","jpeg","png","webp") and fmt.get("url"):
                                             img_candidates.append(fmt["url"])
+                                    # Carousel/album posts: each entry has its own thumbnail
+                                    for _entry in (info.get("entries") or []):
+                                        if _entry.get("thumbnail"):
+                                            img_candidates.append(_entry["thumbnail"])
                                     ext_urls = re.findall(r'https?://(?!(?:www\.)?facebook\.com)(?!(?:www\.)?instagram\.com)\S+', desc)
                                     if ext_urls:
                                         try:
@@ -4203,8 +4330,9 @@ def process(from_num, message):
                         except Exception as e:
                             log.warning(f"yt-dlp info extraction failed: {e}")
 
-                        # ── STEP 3: OCR the best image ────────────────────────────
+                        # ── STEP 3: OCR all images (carousel/album aware) ─────────
                         seen_urls = set()
+                        all_ocr_texts = []
                         ocr_succeeded = False
                         for img_url in img_candidates:
                             if not img_url or img_url in seen_urls: continue
@@ -4215,15 +4343,19 @@ def process(from_num, message):
                                 if not img_r.ok or len(img_r.content) < 500: continue
                                 ocr = ocr_image(img_r.content)
                                 if ocr and len(ocr) > 20:
-                                    parts.append(f"Image text/content:\n{ocr}")
-                                    send(from_num, f"🖼 Post image analysed — extracted text ({len(img_r.content)//1024}KB image, {len(ocr)} chars of text)")
+                                    all_ocr_texts.append(ocr)
+                                    if not image_bytes:
+                                        image_bytes = img_r.content  # save first for OSINT
                                     log.info(f"OCR success from {img_url[:60]}: {ocr[:80]}")
-                                    image_bytes = img_r.content  # save for OSINT/AI detection
-                                    ocr_succeeded = True
-                                    break
                             except Exception as ie:
                                 log.warning(f"Image OCR failed ({img_url[:60]}): {ie}")
-                        if img_candidates and not ocr_succeeded:
+                        if all_ocr_texts:
+                            combined_ocr = "\n---\n".join(all_ocr_texts)
+                            parts.append(f"Image text/content:\n{combined_ocr}")
+                            n = len(all_ocr_texts)
+                            send(from_num, f"🖼 {'Image' if n == 1 else f'{n} images'} analysed — extracted text ({len(combined_ocr)} chars)")
+                            ocr_succeeded = True
+                        elif img_candidates:
                             log.warning(f"FB/IG: OCR failed for all {len(img_candidates)} image candidates")
                             send(from_num, "⚠️ Could not read text from post image")
 
@@ -4294,6 +4426,20 @@ def process(from_num, message):
 
                 query = page_text or body
                 source_type = "url"
+            # For any additional URLs in the message, fetch article text and append.
+            # Skip social/video platforms — those need the full pipeline.
+            _skip_domains = ["youtube.com","youtu.be","twitter.com","x.com","tiktok.com",
+                             "instagram.com","facebook.com","fb.watch","rumble.com","bitchute.com"]
+            for _extra_url in urls[1:]:
+                if any(d in _extra_url for d in _skip_domains):
+                    continue
+                try:
+                    _extra_text = fetch(_extra_url)
+                    if _extra_text and len(_extra_text) > 100:
+                        query = query + f"\n\nAdditional source:\n{_extra_text[:2000]}"
+                        log.info(f"Extra URL fetched: {len(_extra_text)} chars from {_extra_url[:60]}")
+                except Exception as _eu:
+                    log.debug(f"Extra URL fetch failed ({_extra_url[:60]}): {_eu}")
         else:
             query, source_type = body, "text"
             # Enrich short text with Tavily context so claim extraction has background
@@ -4304,7 +4450,15 @@ def process(from_num, message):
                     query = f"{body}\n\nBACKGROUND CONTEXT (real-time web):\n{ctx_text}"
     elif msg_type == "image":
         send(from_num, "🖼 Analysing image..."); image_bytes = download_media(message["image"]["id"])
-        if image_bytes: query = clean_query(ocr_image(image_bytes))
+        if image_bytes:
+            _img_parts = []
+            _img_caption = message["image"].get("caption", "").strip()
+            if _img_caption:
+                _img_parts.append(f"Caption: {_img_caption}")
+            _ocr = clean_query(ocr_image(image_bytes))
+            if _ocr:
+                _img_parts.append(_ocr)
+            query = "\n\n".join(_img_parts)
         source_type = "image"
         if not query: send(from_num, "⚠️ Could not analyse image."); return
     elif msg_type == "audio":
