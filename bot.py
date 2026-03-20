@@ -4400,6 +4400,21 @@ def process(from_num, message):
                             page_text = "\n\n".join(parts)
                             log.info(f"FB/IG extracted: {len(page_text)} chars, {len(img_candidates)} img candidates")
 
+                        # If we extracted almost nothing and no image, the post is
+                        # likely private, deleted, or restricted.
+                        _has_image_content = any(p.startswith("Image text:") for p in parts)
+                        _text_only_len = sum(
+                            len(p) for p in parts
+                            if not p.startswith("Image text:") and not p.startswith("Visual analysis:")
+                        )
+                        if not _has_image_content and _text_only_len < 80:
+                            send(from_num,
+                                "⚠️ This post appears to be private, deleted, or restricted.\n\n"
+                                "Only a small amount of text could be retrieved — not enough to fact-check.\n\n"
+                                "If the post is public, try copying the claim text directly and sending it as a message.")
+                            log.warning(f"FB/IG: post likely private/deleted — only {_text_only_len} chars extracted, no image")
+                            return
+
                 if not page_text:
                     page_text = fetch(url) or ""
 
