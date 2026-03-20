@@ -4403,11 +4403,16 @@ def process(from_num, message):
                         # If we extracted almost nothing and no image, the post is
                         # likely private, deleted, or restricted.
                         _has_image_content = any(p.startswith("Image text:") for p in parts)
-                        _text_only_len = sum(
-                            len(p) for p in parts
-                            if not p.startswith("Image text:") and not p.startswith("Visual analysis:")
+                        _has_rich_content = any(
+                            p.startswith(("Visual analysis:", "Audio:", "Article text:", "Captions:"))
+                            for p in parts
                         )
-                        if not _has_image_content and _text_only_len < 80:
+                        # Measure only the post description text — strip label prefixes
+                        _post_desc = next((
+                            p.replace("Post text:", "", 1).strip()
+                            for p in parts if p.startswith("Post text:")
+                        ), "")
+                        if not _has_image_content and not _has_rich_content and len(_post_desc) < 60:
                             send(from_num,
                                 "⚠️ This post appears to be private, deleted, or restricted.\n\n"
                                 "Only a small amount of text could be retrieved — not enough to fact-check.\n\n"
