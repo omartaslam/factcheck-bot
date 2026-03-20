@@ -3966,7 +3966,41 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
                              "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()}
         send_fn(confirm_msg(source_type, query, cost))
 
-def process(from_num, message):
+def _notify_new_user(wa_id, profile_name):
+    """Email hello@fredcheck.com when a new WhatsApp user is detected."""
+    try:
+        import urllib.request as _ur, json as _json, datetime as _dt
+        sg_key = os.environ.get("SENDGRID_API_KEY")
+        if not sg_key:
+            return
+        joined = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
+        name_line = f"Name:   {profile_name}" if profile_name else "Name:   (not available)"
+        body = (
+            f"New Fred user joined during beta.\n\n"
+            f"Number: +{wa_id}\n"
+            f"{name_line}\n"
+            f"Joined: {joined}\n\n"
+            f"Fred Check"
+        )
+        payload = _json.dumps({
+            "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+            "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+            "subject": f"🆕 New beta user: {profile_name or wa_id}",
+            "content": [{"type": "text/plain", "value": body}]
+        }).encode()
+        req = _ur.Request(
+            "https://api.sendgrid.com/v3/mail/send",
+            data=payload,
+            headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        _ur.urlopen(req, timeout=10)
+        log.info(f"New user notification sent for {wa_id} ({profile_name})")
+    except Exception as e:
+        log.error(f"New user notification failed: {e}")
+
+
+def process(from_num, message, profile_name=None):
     msg_id = message.get("id",""); msg_time = int(message.get("timestamp",0))
     with processed_lock:
         if msg_id in processed_ids: return
@@ -3979,6 +4013,7 @@ def process(from_num, message):
     # ── First-time user: send welcome and let them proceed ────────────────────
     if _is_new_wa_user(from_num):
         send(from_num, _welcome_msg())
+        threading.Thread(target=_notify_new_user, args=(from_num, profile_name), daemon=True).start()
         # Fall through so they can also process content if sent with first message
     pkey = ("whatsapp", from_num)
     msg_type = message.get("type")
@@ -4761,6 +4796,8 @@ def init_db():
                           ("stripe_customer_id","TEXT")]:
             try: c.execute(f"ALTER TABLE users ADD COLUMN {col} {defn}")
             except Exception: pass
+        try: c.execute("ALTER TABLE platform_users ADD COLUMN profile_name TEXT")
+        except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
             rows = c.execute("SELECT * FROM wa_users").fetchall()
@@ -4799,8 +4836,8 @@ def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, repo
 
 # ── WhatsApp user billing ─────────────────────────────────────────────────────
 
-def _wa_user(wa_id):
-    return _puser("whatsapp", wa_id)
+def _wa_user(wa_id, profile_name=None):
+    return _puser("whatsapp", wa_id, profile_name=profile_name)
 
 def _wa_billing_type(wa_id):
     return _pbilling_type("whatsapp", wa_id)
@@ -4829,15 +4866,15 @@ def get_random_ad():
 
 # ── Generalized platform billing ──────────────────────────────────────────────
 
-def _puser(platform, uid):
+def _puser(platform, uid, profile_name=None):
     """Get or create platform user record. Returns dict."""
     now = int(t.time())
     uid = str(uid)
     with _db() as c:
         row = c.execute("SELECT * FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
         if not row:
-            c.execute("INSERT INTO platform_users (platform, platform_id, created_at, last_seen) VALUES (?,?,?,?)",
-                      (platform, uid, now, now))
+            c.execute("INSERT INTO platform_users (platform, platform_id, profile_name, created_at, last_seen) VALUES (?,?,?,?,?)",
+                      (platform, uid, profile_name or None, now, now))
             row = c.execute("SELECT * FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
         else:
             c.execute("UPDATE platform_users SET last_seen=? WHERE platform=? AND platform_id=?", (now, platform, uid))
@@ -5602,12 +5639,13 @@ def receive():
         if "messages" in value:
             msg = value["messages"][0]
             msg_type = msg.get("type","unknown"); from_num = msg.get("from","unknown")
-            log.info(f">>> Received {msg_type} from {from_num}")
+            profile_name = (value.get("contacts") or [{}])[0].get("profile", {}).get("name", "")
+            log.info(f">>> Received {msg_type} from {from_num} ({profile_name or 'no name'})")
             if msg_type == "text": log.info(f"    Text: {msg.get('text',{}).get('body','')[:100]}")
             elif msg_type == "video": log.info(f"    Video ID: {msg.get('video',{}).get('id','')}")
             elif msg_type == "image": log.info(f"    Image ID: {msg.get('image',{}).get('id','')}")
             try:
-                process(from_num, msg)
+                process(from_num, msg, profile_name=profile_name)
             except Exception as e:
                 log.error(f"!!! Process exception: {e}")
                 try: send(from_num, f"❌ Bot error: {str(e)[:200]}\n\nPlease try again.")
