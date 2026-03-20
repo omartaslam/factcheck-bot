@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-20 (session 12)
+**Last updated:** 2026-03-20 (session 12 continued)
 
 ---
 
@@ -284,6 +284,20 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work (Session 12 — 2026-03-20)
+
+- **Daily usage summary email** (`_send_daily_summary()`, commit `13a2b37`):
+  - Background scheduler thread fires at 07:00 UTC daily, reports previous day
+  - Content: total checks, cost, active/new users, per-user claim breakdown with ratings
+  - Manual trigger: `POST /admin/daily-summary` with `X-Admin-Token: qc-test-fred-2026`
+  - Optional body `{"date": "YYYY-MM-DD"}` for specific day
+
+- **Daily free check limit** (commit `12cac8b`):
+  - 15 checks/day, resets at midnight UTC
+  - `free_checks_date` column added; `_daily_free_used()` handles daily reset
+  - **Railway**: set `FREE_CHECKS_LIMIT=15`
+
+- **Updated welcome message** (commit `0cc275e`):
+  - `_(BETA)_` in title, "I'm FRED" intro, beta footer with contact details, free checks count removed
 
 - **New beta user email notification** (`_notify_new_user()`, commit `1e7a7e3`):
   - Extracts WhatsApp profile name from `contacts[0].profile.name` in webhook payload
