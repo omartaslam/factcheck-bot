@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 13 — final)
+**Last updated:** 2026-03-21 (session 14)
 
 ---
 
@@ -200,6 +200,7 @@ Type HELP anytime for a full guide.
 
 ### Special commands
 - `HELP` — full guide
+- `BALANCE` — shows remaining free checks or credit balance
 - `FEEDBACK` — (planned, not yet implemented)
 
 ---
@@ -279,9 +280,8 @@ Type HELP anytime for a full guide.
    - **Open:** payment prompt UX — URLs must be visible in WA text messages. Interactive CTA buttons possible post Meta approval. `FREE_CHECKS_LIMIT` currently 0 for testing — set to final value.
 
 ### Ready to Implement
-5. **Set FREE_CHECKS_LIMIT** — currently 0 (testing), set to final beta value in Railway
-6. **Add HIVE_API_KEY** to Railway (key in Hive dashboard)
-7. **QA automation suite**
+5. **Low balance warning** — warn user when balance drops below `COST_PER_CHECK_CENTS` (not at $0.00); append to verdict footer
+6. **QA automation suite**
 8. **Rotating tagline carousel (fredcheck.com)**
 9. **Split verdict into multiple WA messages** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
 5. **Rotating tagline carousel on fredcheck.com** — add more straplines beneath/alongside "Truth Beyond Borders". Confirmed taglines so far: "Tackling misinformation since birth". Candidates: "Facts don't have a postcode", "Beyond the Western headline", "No default narrative", "Six regions. One truth.", "Every story has another side", "Built for those who ask questions", "The antidote to algorithmic bias", "Checking power, everywhere", "For journalists who dig deeper", "Where facts meet all perspectives".
@@ -299,7 +299,30 @@ Type HELP anytime for a full guide.
 
 ---
 
-## 12. Recently Completed Work (Session 13 — 2026-03-21)
+## 12. Recently Completed Work (Session 14 — 2026-03-21)
+
+- **Geo-localised source preview** (commit `9ae76ba`):
+  - `_GEO_SOURCE_BOOST` maps phone country prefixes to locally familiar sources
+  - UK (+44) → BBC/Channel 4/Guardian/FullFact; MENA (+971/+966/etc) → Al Jazeera/Arab News; LatAm (+54/+57/etc) → Chequeado/BBC Mundo; etc.
+  - `_geo_boost_sources(from_num)` longest-prefix match; boosted sources surface in cross-referencing preview
+  - `_source_preview_msg(topic_text, from_num=...)` updated at both WA and platform call sites
+
+- **BALANCE command** (commit `e4f8593`):
+  - Users type `BALANCE` to check remaining credits without doing a fact-check
+  - Free tier: "✓ Free checks remaining: 9 of 12"; Paid: "✓ Balance: $4.73"; Subscriber: "♾ Subscriber — unlimited access"
+
+- **COST_PER_CHECK_CENTS env var** (commit `3515851`):
+  - Drives check estimates in payment prompt — set in Railway, no redeploy needed
+  - Default: `9` (cents per text check with 2× margin); payment prompt now shows ~11/$1, ~56/$5, ~111/$10, ~278/$25
+  - Real cost is ~8–9¢/check (API only, 2× margin applied); WA conversation fee ($0.041) is absorbed by the business, not charged to user balance
+
+- **Low balance warning** — deferred; user confirmed warning should fire when balance drops below `COST_PER_CHECK_CENTS` (not at $0.00)
+
+- **Railway env vars confirmed set:**
+  - `FREE_CHECKS_LIMIT=12` (beta value)
+  - `HIVE_API_KEY` — confirmed added; Hive AI/deepfake detection now active
+
+## 12b. Previously Completed Work (Session 13 — 2026-03-21)
 
 - **RATING RULE ON SOURCE FRAMING** added to synthesis prompt (commit `51c3afb`):
   - Claude was conflating source video/post framing with the extracted claim
