@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 15)
+**Last updated:** 2026-03-21 (session 15 continued)
 
 ---
 
@@ -318,6 +318,26 @@ Type HELP anytime for a full guide.
   - ✅ All text, BBC, Reuters, X video (text fallback), multi-claim, Arabic, unverifiable fixtures pass
 
 - **Noted for later**: Full audit log for customers — store full verdict text + cited sources in request_log; HISTORY command or web view for customer check history.
+
+- **QA runner `--email` fix**: SENDGRID_API_KEY not available in local shell — email only works when triggered via `/admin/run-qa` on Railway.
+
+- **POST /admin/run-qa endpoint** (commit `d804eeb`):
+  - Triggers full QA suite in background thread, emails results to hello@fredcheck.com
+  - Returns immediately; results arrive ~25 min later
+  - Optional body `{"id": "fixture-id"}` to run single fixture
+  - `curl -X POST https://fredcheck.com/admin/run-qa -H "X-Admin-Token: qc-test-fred-2026"`
+
+- **QA fixture set expanded from 12 → 28** (commits `7e4dce2`, `92ba266`):
+  - New text fixtures: historical TRUE, climate denial, election fraud, statistical cherry-pick, NEEDS CONTEXT, contested geopolitical (Ukraine/Nord Stream), health misinfo (ivermectin), misattributed quote (Einstein), Arabic language input, satire detection
+  - New URL fixtures: Al Jazeera article, unavailable content test, politically sensitive tweet
+  - New platform fixtures: Facebook (George Galloway post), Instagram Reel, TikTok (Sky Sports), AI/deepfake TikTok (provisional)
+  - 24 active, 0 placeholders remaining
+  - Runner skips `skip: true` fixtures automatically
+
+- **Media type coverage gap identified**:
+  - ❌ Image OCR (WhatsApp image), audio/voice note, carousel posts, out-of-context image not testable via current `/admin/qc` endpoint
+  - Fix: extend `/admin/qc` to accept `image_url` field — Fred downloads and OCRs as if WhatsApp sent it
+  - Decision pending: automate image/audio testing vs keep manual-only
 
 ## 12a. Previously Completed Work (Session 14 — 2026-03-21)
 
