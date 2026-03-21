@@ -3526,8 +3526,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
     cost_str = f"Cost: ${cost + wa_cost:.4f}"
     footer = ["──────────────────────", f"{cost_str}  •  {version}"]
-    if a.get("_debate_pro"):
-        footer.append("⚖️ pro/con debate")
+    footer.append(f"_{random.choice(_TAGLINES)}_")
     footer.append(f"🌐 {WEBSITE_URL}")
     lines += footer
     if ad:
@@ -3618,6 +3617,22 @@ def send(to, text):
         except Exception as e:
             log.error("Send: %s", e)
     return last_msg_id
+
+_TAGLINES = [
+    "Truth Beyond Borders",
+    "Facts don't have a postcode",
+    "Because the truth is a human right",
+    "Checking power, everywhere",
+    "Every lie unchallenged is an injustice",
+    "Beyond the Western headline",
+    "Tackling misinformation since birth",
+    "For those who refuse to be misled",
+    "Hold power to account, wherever it sits",
+    "No default narrative",
+    "Truth is resistance",
+    "Fact-checking is a form of justice",
+    "We don't just check facts. We fight for them.",
+]
 
 _VERDICT_REACTION = {
     "TRUE":           "✅",

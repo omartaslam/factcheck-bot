@@ -592,11 +592,19 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 <!-- HERO -->
 <div class="hero">
   <div class="hero-badge" id="heroBadge">
-    <span class="badge-phrase visible" id="bp0">Truth without borders</span>
-    <span class="badge-phrase hidden" id="bp1">No default narrative</span>
-    <span class="badge-phrase hidden" id="bp2">65+ sources · 6 regions</span>
-    <span class="badge-phrase hidden" id="bp3">Verified in under 60 seconds</span>
-    <span class="badge-phrase hidden" id="bp4">Balance &amp; Independence</span>
+    <span class="badge-phrase hidden" id="bp0">Truth Beyond Borders</span>
+    <span class="badge-phrase hidden" id="bp1">Facts don't have a postcode</span>
+    <span class="badge-phrase hidden" id="bp2">Because the truth is a human right</span>
+    <span class="badge-phrase hidden" id="bp3">Checking power, everywhere</span>
+    <span class="badge-phrase hidden" id="bp4">Every lie unchallenged is an injustice</span>
+    <span class="badge-phrase hidden" id="bp5">Beyond the Western headline</span>
+    <span class="badge-phrase hidden" id="bp6">Tackling misinformation since birth</span>
+    <span class="badge-phrase hidden" id="bp7">For those who refuse to be misled</span>
+    <span class="badge-phrase hidden" id="bp8">Hold power to account, wherever it sits</span>
+    <span class="badge-phrase hidden" id="bp9">No default narrative</span>
+    <span class="badge-phrase hidden" id="bp10">Truth is resistance</span>
+    <span class="badge-phrase hidden" id="bp11">Fact-checking is a form of justice</span>
+    <span class="badge-phrase hidden" id="bp12">We don't just check facts. We fight for them.</span>
   </div>
   <h1 id="heroH1"><span id="twLine1"></span><br><span id="twLine2"></span><span class="typewriter-cursor" id="twCursor"></span></h1>
   <p class="hero-sub">65+ sources across Western, Arabic, Spanish and French media — searched simultaneously, held to the same standard. Balanced, multi-perspective verdicts in under 60 seconds.</p>
@@ -1252,14 +1260,18 @@ if(localStorage.getItem(FREE_KEY)){
 
 // ── ROTATING BADGE ─────────────────────────────────────────
 (function(){
-  const phrases = document.querySelectorAll('.badge-phrase');
+  const phraseEls = Array.from(document.querySelectorAll('.badge-phrase'));
+  // Shuffle order on each page load
+  const order = phraseEls.map((_, i) => i).sort(() => Math.random() - 0.5);
   let cur = 0;
+  phraseEls[order[cur]].classList.remove('hidden');
+  phraseEls[order[cur]].classList.add('visible');
   setInterval(function(){
-    phrases[cur].classList.remove('visible');
-    phrases[cur].classList.add('hidden');
-    cur = (cur + 1) % phrases.length;
-    phrases[cur].classList.remove('hidden');
-    phrases[cur].classList.add('visible');
+    phraseEls[order[cur]].classList.remove('visible');
+    phraseEls[order[cur]].classList.add('hidden');
+    cur = (cur + 1) % order.length;
+    phraseEls[order[cur]].classList.remove('hidden');
+    phraseEls[order[cur]].classList.add('visible');
   }, 4000);
 })();
 
