@@ -3257,7 +3257,15 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "'conspiracy theory framing', 'Islamist framing', or similar social/political categorisations as a reason to "
         "downgrade a verdict or switch to NEEDS CONTEXT. These are editorial judgements, not factual assessments. "
         "If a claim is factually true, rate it TRUE. If the claim itself contains a factually false assertion, rate it "
-        "on those factual merits — not because of its social associations.\n\n"
+        "on those factual merits — not because of its social associations.\n"
+        "- RATING RULE ON SOURCE FRAMING: Fact-check the CLAIM AS STATED above — not the source content's broader "
+        "narrative, implied conclusion, or framing. The claim has already been extracted; your job is to verify it as "
+        "written. If the extracted claim is factually accurate, rate it TRUE even if the source material draws "
+        "additional inferences beyond the claim that are not supported. Those additional inferences are outside the "
+        "scope of this verdict. Example: if the claim is 'first responders reported secondary explosions' and the "
+        "source video implies this means planted bombs, rate the claim on whether first responders reported secondary "
+        "explosions — not on whether the 'planted bombs' conclusion is valid. Never downgrade a true claim because "
+        "the source it came from makes a further unjustified leap.\n\n"
         f"Respond ONLY with valid JSON:\n{ANALYSE_JSON_SCHEMA}"
     )
 
