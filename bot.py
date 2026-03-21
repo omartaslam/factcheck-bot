@@ -4147,14 +4147,16 @@ def _send_daily_summary(date_str=None):
                 FROM request_log r
                 LEFT JOIN platform_users p ON p.platform='whatsapp' AND p.platform_id=r.uid
                 WHERE r.platform='whatsapp'
+                  AND r.uid NOT LIKE 'qctest_%'
                   AND r.created_at >= ? AND r.created_at < ?
                 ORDER BY r.uid, r.created_at
             """, (day_start, day_end)).fetchall()
 
-            # New users that day
+            # New users that day (exclude QC test users)
             new_users = c.execute("""
                 SELECT platform_id, profile_name FROM platform_users
                 WHERE platform='whatsapp'
+                  AND platform_id NOT LIKE 'qctest_%'
                   AND created_at >= ? AND created_at < ?
             """, (day_start, day_end)).fetchall()
     except Exception as e:
@@ -4232,6 +4234,8 @@ log.info("Daily summary scheduled: 07:00 UTC")
 
 def _notify_new_user(wa_id, profile_name):
     """Email hello@fredcheck.com when a new WhatsApp user is detected."""
+    if str(wa_id).startswith("qctest_"):
+        return  # suppress emails for QC test users
     try:
         import urllib.request as _ur, json as _json, datetime as _dt
         sg_key = os.environ.get("SENDGRID_API_KEY")
