@@ -5072,10 +5072,10 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
         f"Current balance: *${balance_cents/100:.2f}*", "",
         "*Choose a top-up amount:*", "",
     ]
-    if TOPUP_1_LINK:  lines.append(f"• *$1* (~5 checks)  {TOPUP_1_LINK}{suffix}")
-    if TOPUP_5_LINK:  lines.append(f"• *$5* (~25 checks)  {TOPUP_5_LINK}{suffix}")
-    if TOPUP_10_LINK: lines.append(f"• *$10* (~50 checks)  {TOPUP_10_LINK}{suffix}")
-    if TOPUP_25_LINK: lines.append(f"• *$25* (~130 checks)  {TOPUP_25_LINK}{suffix}")
+    if TOPUP_1_LINK:  lines += [f"• *$1* (~5 checks)", f"{TOPUP_1_LINK}{suffix}", ""]
+    if TOPUP_5_LINK:  lines += [f"• *$5* (~25 checks)", f"{TOPUP_5_LINK}{suffix}", ""]
+    if TOPUP_10_LINK: lines += [f"• *$10* (~50 checks)", f"{TOPUP_10_LINK}{suffix}", ""]
+    if TOPUP_25_LINK: lines += [f"• *$25* (~130 checks)", f"{TOPUP_25_LINK}{suffix}", ""]
     if SUB_LINK:
         lines += ["", f"*♾ Unlimited* → {SUB_LINK}{suffix}"]
     if not any([TOPUP_1_LINK, TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
