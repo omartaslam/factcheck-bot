@@ -3656,8 +3656,9 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     # ── OSINT checks — run in background thread while sources scrape ────────
     osint_future = None
     needs_osint = img_bytes or source_url
-    osint_line = "\n🔬 Running OSINT verification..." if needs_osint else ""
-    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...{osint_line}")
+    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
+    if needs_osint:
+        send(from_num, "🔬 Running OSINT verification...")
     if needs_osint:
         _osint_ex = ThreadPoolExecutor(max_workers=1)
         osint_future = _osint_ex.submit(run_osint,
@@ -3723,9 +3724,8 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         _log_request("whatsapp", from_num, st, query, claim, a, report, cost)
         log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
-            send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*\n" + report)
-        else:
-            send(from_num, report)
+            send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*")
+        send(from_num, report)
 
     # ── React to original message with most significant verdict emoji ──────
     if msg_id and all_ratings:
