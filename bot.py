@@ -1918,17 +1918,66 @@ _SOURCE_REPUTATION = {
     "Palestine Solidarity": 3, "Double Down News": 3,
 }
 
-def _source_preview_msg(topic_text=""):
+# Phone prefix → sources familiar to users in that region
+# Checked longest-prefix-first for specificity (e.g. 972 before 97)
+_GEO_SOURCE_BOOST = [
+    # UK
+    (["44"],          ["BBC News", "Channel 4 News", "The Guardian", "FullFact"]),
+    # US / Canada
+    (["1"],           ["AP News", "Reuters", "PolitiFact", "FactCheck.org"]),
+    # Pakistan
+    (["92"],          ["Dawn (Pakistan)", "Geo News", "BBC Urdu"]),
+    # India
+    (["91"],          ["The Hindu", "NDTV", "Hindustan Times"]),
+    # Israel
+    (["972"],         ["Haaretz", "Times of Israel"]),
+    # Gulf / MENA (UAE, Saudi, Qatar, Kuwait, Bahrain, Oman)
+    (["971","966","974","965","973","968"], ["Al Jazeera", "Arab News", "Middle East Eye"]),
+    # Egypt / North Africa
+    (["20","212","213","216"], ["Al Jazeera", "RFI", "Misbar"]),
+    # Turkey
+    (["90"],          ["Anadolu Agency", "TRT World"]),
+    # France
+    (["33"],          ["Le Monde", "France 24", "RFI"]),
+    # Spanish-speaking LatAm (Argentina, Colombia, Mexico, Spain, Chile, Peru)
+    (["54","57","52","34","56","51"], ["Chequeado", "BBC Mundo"]),
+    # Nigeria
+    (["234"],         ["Dubawa", "Africa Check"]),
+    # Kenya
+    (["254"],         ["Standard Media Kenya", "PesaCheck"]),
+    # Tanzania
+    (["255"],         ["The Citizen Tanzania", "BBC Swahili"]),
+    # South Africa
+    (["27"],          ["Africa Check"]),
+    # Russia / Ukraine
+    (["7","380"],     ["Meduza", "Reuters", "Bellingcat"]),
+]
+
+def _geo_boost_sources(from_num):
+    """Return list of sources to prioritise based on phone number prefix."""
+    if not from_num:
+        return []
+    num = str(from_num).lstrip("+")
+    # Check longest prefixes first for specificity
+    for prefixes, sources in sorted(_GEO_SOURCE_BOOST, key=lambda x: -max(len(p) for p in x[0])):
+        if any(num.startswith(p) for p in prefixes):
+            return sources
+    return []
+
+def _source_preview_msg(topic_text="", from_num=""):
     """Return (total_count, preview_string) — 8-10 sources, regionally balanced,
-    reputation-weighted within each region, topic-aware.
+    reputation-weighted within each region, topic-aware, geo-boosted.
     """
     all_src = enabled_sources()
     total = len(all_src)
     all_src_set = set(all_src)
     ql = topic_text.lower()
 
-    # Step 1: detect topic-priority sources
+    # Step 1: detect topic-priority + geo-boosted sources
     priority_set = set()
+    for s in _geo_boost_sources(from_num):
+        if s in all_src_set:
+            priority_set.add(s)
     for keywords, sources in _TOPIC_SOURCE_MAP:
         if any(kw in ql for kw in keywords):
             for s in sources:
@@ -3717,7 +3766,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     _cost_reset()  # reset per-request cost accumulator
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     topic_text = query + (" " + " ".join(pre_claims) if pre_claims else "")
-    total_src, src_preview = _source_preview_msg(topic_text)
+    total_src, src_preview = _source_preview_msg(topic_text, from_num=from_num)
     # ── OSINT checks — run in background thread while sources scrape ────────
     osint_future = None
     needs_osint = img_bytes or source_url
@@ -3808,7 +3857,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
     _cost_reset()
     show_ad = (billing_type == "free" and bool(SPONSOR_ADS))
     topic_text = query + (" " + " ".join(pre_claims) if pre_claims else "")
-    total_src, src_preview = _source_preview_msg(topic_text)
+    total_src, src_preview = _source_preview_msg(topic_text, from_num=uid)
     send_fn(f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
 
     if pre_claims:  # platform version — no OSINT line needed here
