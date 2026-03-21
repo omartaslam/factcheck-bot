@@ -1863,6 +1863,22 @@ _TOPIC_SOURCE_MAP = [
 ]
 
 
+# Sources searched and cited where relevant but excluded from the preview display.
+# These are activists, commentators, advocacy orgs — valuable contributors but not
+# "news organisations" in the conventional sense. They appear in SOURCES CITED
+# naturally when their content is actually used in a verdict.
+_DISPLAY_EXCLUDED = {
+    "Owen Jones", "Owen Jones (Substack)",
+    "Jeremy Corbyn", "Jeremy Corbyn (site)",
+    "Norman Finkelstein", "Norman Finkelstein (Substack)",
+    "Zara Sultana", "Zara Sultana (site)",
+    "George Galloway (site)",
+    "CODEPINK", "CODEPINK (site)",
+    "Palestine Solidarity",
+    "Double Down News", "Double Down News (YouTube)",
+    "Zeteo",
+}
+
 # Reputation tiers per source — used for display priority only, not evidentiary weight
 # T1 = internationally established, T2 = credible/known slant, T3 = niche/advocacy
 _SOURCE_REPUTATION = {
@@ -1919,9 +1935,11 @@ def _source_preview_msg(topic_text=""):
                 if s in all_src_set:
                     priority_set.add(s)
 
-    # Step 2: bucket by region
+    # Step 2: bucket by region — exclude activist/commentary sources from display
     by_cat = {}
     for s in all_src:
+        if s in _DISPLAY_EXCLUDED:
+            continue
         cat = _SOURCE_PERSPECTIVE.get(s, "OTHER")
         by_cat.setdefault(cat, []).append(s)
 
