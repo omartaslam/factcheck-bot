@@ -3656,9 +3656,9 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     # ── OSINT checks — run in background thread while sources scrape ────────
     osint_future = None
     needs_osint = img_bytes or source_url
-    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
     if needs_osint:
         send(from_num, "🔬 Running OSINT verification...")
+    send(from_num, f"⚙️ Cross-referencing {total_src} sources:\n{src_preview}...")
     if needs_osint:
         _osint_ex = ThreadPoolExecutor(max_workers=1)
         osint_future = _osint_ex.submit(run_osint,
