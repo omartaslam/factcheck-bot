@@ -27,10 +27,11 @@ FREE_CHECKS_LIMIT   = int(os.getenv("FREE_CHECKS_LIMIT", "3"))   # free checks p
 PROFIT_MARGIN       = float(os.getenv("PROFIT_MARGIN", "2.0"))   # cost multiplier (2.0 = 100% margin)
 STRIPE_SECRET_KEY   = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
+TOPUP_1_LINK        = os.getenv("TOPUP_1_LINK", "")              # Stripe Payment Link for $1
 TOPUP_5_LINK        = os.getenv("TOPUP_5_LINK", "")              # Stripe Payment Link for $5
 TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Payment Link for $10
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
-SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for $9.99/month subscription
+SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for subscription (not active)
 BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
 DEV_AUTOSELECT_NUM  = os.getenv("DEV_AUTOSELECT_NUM", "")               # Phone number that skips claim selection (dev only)
 DEV_AUTOSELECT_ON   = os.getenv("DEV_AUTOSELECT_ON", "false").lower() == "true"  # Toggle dev auto-select
@@ -5059,12 +5060,13 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
         f"Current balance: *${balance_cents/100:.2f}*", "",
         "*Choose a top-up amount:*",
     ]
-    if TOPUP_5_LINK:  lines.append(f"• *$5*  (~60–100 checks) → {TOPUP_5_LINK}{suffix}")
-    if TOPUP_10_LINK: lines.append(f"• *$10* (~120–200 checks) → {TOPUP_10_LINK}{suffix}")
-    if TOPUP_25_LINK: lines.append(f"• *$25* (~300–500 checks) → {TOPUP_25_LINK}{suffix}")
+    if TOPUP_1_LINK:  lines.append(f"• *$1*  (~5 checks) → {TOPUP_1_LINK}{suffix}")
+    if TOPUP_5_LINK:  lines.append(f"• *$5*  (~25 checks) → {TOPUP_5_LINK}{suffix}")
+    if TOPUP_10_LINK: lines.append(f"• *$10* (~50 checks) → {TOPUP_10_LINK}{suffix}")
+    if TOPUP_25_LINK: lines.append(f"• *$25* (~130 checks) → {TOPUP_25_LINK}{suffix}")
     if SUB_LINK:
-        lines += ["", f"*♾ Unlimited* — $9.99/month → {SUB_LINK}{suffix}"]
-    if not any([TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
+        lines += ["", f"*♾ Unlimited* → {SUB_LINK}{suffix}"]
+    if not any([TOPUP_1_LINK, TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
         beta_note = "\n_We're in BETA — paid plans launching soon. Watch this space!_" if BETA_MODE else ""
         lines += ["", f"_Payment system coming soon._{beta_note}"]
     lines += ["", "_Secure payment by Stripe_"]
