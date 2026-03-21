@@ -124,6 +124,8 @@ SRC_REUTERS          = os.getenv("SRC_REUTERS",          "true").lower() == "tru
 SRC_AP               = os.getenv("SRC_AP",               "true").lower() == "true"
 SRC_GUARDIAN         = os.getenv("SRC_GUARDIAN",         "true").lower() == "true"
 SRC_CNN              = os.getenv("SRC_CNN",              "true").lower() == "true"
+SRC_CHANNEL4         = os.getenv("SRC_CHANNEL4",         "true").lower() == "true"
+SRC_ATLANTIC         = os.getenv("SRC_ATLANTIC",         "true").lower() == "true"
 # Middle East expanded sources
 SRC_MEMO             = os.getenv("SRC_MEMO",             "true").lower() == "true"
 SRC_NEWARAB          = os.getenv("SRC_NEWARAB",          "true").lower() == "true"
@@ -1731,6 +1733,8 @@ def enabled_sources():
     if SRC_REUTERS:         sources.append("Reuters")
     if SRC_AP:              sources.append("AP News")
     if SRC_GUARDIAN:        sources.append("The Guardian")
+    if SRC_CHANNEL4:        sources.append("Channel 4 News")
+    if SRC_ATLANTIC:        sources.append("The Atlantic")
     if SRC_CNN:             sources.append("CNN")
     if SRC_MEMO:            sources.append("Middle East Monitor")
     if SRC_NEWARAB:         sources.append("The New Arab")
@@ -1859,69 +1863,102 @@ _TOPIC_SOURCE_MAP = [
 ]
 
 
-def _source_preview_msg(topic_text=""):
-    """Return (total_count, preview_string) with a balanced, rotating source preview.
+# Reputation tiers per source — used for display priority only, not evidentiary weight
+# T1 = internationally established, T2 = credible/known slant, T3 = niche/advocacy
+_SOURCE_REPUTATION = {
+    # Western mainstream
+    "BBC News": 1, "Reuters": 1, "AP News": 1, "The Guardian": 1, "Channel 4 News": 1,
+    "CNN": 2, "The Atlantic": 2,
+    # Fact-check orgs
+    "FullFact": 1, "AFP Fact Check": 1, "PolitiFact": 1, "Snopes": 1,
+    "FactCheck.org": 2, "Bellingcat": 2, "Logically Facts": 2,
+    "Alt News": 3, "Africa Check": 2, "PesaCheck": 3, "Dubawa": 3,
+    # Middle East
+    "Al Jazeera": 1, "Haaretz": 1, "Times of Israel": 2,
+    "Middle East Eye": 2, "Al-Monitor": 2, "Arab News": 2, "Anadolu Agency": 2,
+    "Middle East Monitor": 3, "The New Arab": 3, "972 Magazine": 3,
+    "Electronic Intifada": 3, "Mondoweiss": 3,
+    # South Asian
+    "Dawn (Pakistan)": 1, "The Hindu": 1, "BBC Urdu": 1,
+    "Geo News": 2, "NDTV": 2, "Hindustan Times": 2,
+    "The News International": 3, "ARY News": 3,
+    # French / Francophone
+    "RFI": 1, "France 24": 1, "Le Monde": 1,
+    "Jeune Afrique": 2, "Le Figaro": 2,
+    "20 Minutes": 3, "Afrik.com": 3,
+    # Spanish / LatAm
+    "BBC Mundo": 1, "Chequeado": 2, "Maldita": 2,
+    "Telesur": 3,
+    # Swahili / East Africa
+    "BBC Swahili": 1, "VOA Swahili": 2,
+    "The Citizen Tanzania": 3, "Standard Media Kenya": 3,
+    # Human rights
+    "Human Rights Watch": 1, "Amnesty International": 1, "UN News": 1,
+    "B'Tselem": 2,
+    # Independent / alternative
+    "The Intercept": 2, "Democracy Now": 2, "Novara Media": 2, "Meduza": 2,
+    "Responsible Statecraft": 2,
+    "The Canary": 3, "Zeteo": 3, "MintPress News": 3, "The Grayzone": 3,
+    "Palestine Solidarity": 3, "Double Down News": 3,
+}
 
-    Always shows a mix of Western, regional/Middle East, Spanish/LatAm and fact-check
-    sources so the display signals Fred's impartiality regardless of topic.
-    Up to 2 slots reserved for topic-relevant sources (shuffled so they rotate).
+def _source_preview_msg(topic_text=""):
+    """Return (total_count, preview_string) — 8-10 sources, regionally balanced,
+    reputation-weighted within each region, topic-aware.
     """
     all_src = enabled_sources()
     total = len(all_src)
     all_src_set = set(all_src)
     ql = topic_text.lower()
 
-    # Step 1: collect topic-priority sources, shuffled so different ones surface each time
-    priority = []
+    # Step 1: detect topic-priority sources
+    priority_set = set()
     for keywords, sources in _TOPIC_SOURCE_MAP:
         if any(kw in ql for kw in keywords):
             for s in sources:
-                if s in all_src_set and s not in priority:
-                    priority.append(s)
-    random.shuffle(priority)
+                if s in all_src_set:
+                    priority_set.add(s)
 
-    # Step 2: bucket all sources by region category
+    # Step 2: bucket by region
     by_cat = {}
     for s in all_src:
         cat = _SOURCE_PERSPECTIVE.get(s, "OTHER")
         by_cat.setdefault(cat, []).append(s)
 
-    chosen = []
+    def pick_from(pool, n):
+        """Pick n from pool: topic-priority first, then reputation-weighted with jitter."""
+        prio = [s for s in pool if s in priority_set]
+        rest = [s for s in pool if s not in priority_set]
+        # Sort rest by reputation tier (T1 first), add small random jitter so T1s rotate
+        rest.sort(key=lambda s: (_SOURCE_REPUTATION.get(s, 2), random.random()))
+        ordered = prio + rest
+        return ordered[:n]
 
-    # Always guarantee regional balance — one slot per region family + fact-checkers
-    # Regions with no enabled sources simply skip, so new regions auto-activate
+    # Regional quota — one slot per region, 2 for Western mainstream
     _quota = [
-        ("WESTERN MAINSTREAM",        2),   # BBC, Reuters, CNN etc.
-        ("REGIONAL / MIDDLE EAST",    1),   # Al Jazeera, Middle East Eye etc.
-        ("FRENCH / FRANCOPHONE",      1),   # RFI, France 24, Jeune Afrique etc.
-        ("SOUTH ASIAN / URDU",        1),   # Geo News, Dawn, BBC Urdu etc.
-        ("SPANISH / LATIN AMERICAN",  1),   # Chequeado, Maldita, El País etc.
-        ("FACT-CHECK ORGS",           1),   # Snopes, FullFact, AFP Fact Check etc.
-        ("INDEPENDENT / ALTERNATIVE", 1),   # Bellingcat, The Intercept, Meduza etc.
+        ("WESTERN MAINSTREAM",        2),
+        ("REGIONAL / MIDDLE EAST",    1),
+        ("FACT-CHECK ORGS",           1),
+        ("INDEPENDENT / ALTERNATIVE", 1),
+        ("HUMAN RIGHTS & INTL LAW",   1),
+        ("FRENCH / FRANCOPHONE",      1),
+        ("SOUTH ASIAN / URDU",        1),
+        ("SPANISH / LATIN AMERICAN",  1),
+        ("SWAHILI / EAST AFRICA",     1),
     ]
+
+    chosen = []
     for cat, n in _quota:
         pool = [s for s in by_cat.get(cat, []) if s not in chosen]
         if pool:
-            chosen.extend(random.sample(pool, min(n, len(pool))))
+            chosen.extend(pick_from(pool, n))
 
-    # Fill remaining slot(s) with topic-priority sources not already shown
-    prio_new = [s for s in priority if s not in chosen]
-    chosen.extend(prio_new[:max(0, 8 - len(chosen))])
-
-    # Wildcard fill if still under 8
-    others = [s for s in all_src if s not in chosen]
-    if others and len(chosen) < 8:
-        chosen.extend(random.sample(others, min(8 - len(chosen), len(others))))
-
-    # Put topic-relevant sources first in the display, rest shuffled
-    prio_shown = [s for s in chosen if s in set(priority)]
-    rest = [s for s in chosen if s not in set(prio_shown)]
-    random.shuffle(rest)
-    final = (prio_shown + rest)[:8]
+    # Cap at 10
+    final = chosen[:10]
 
     preview = ", ".join(final)
-    if total > 8:
-        preview += f" +{total - 8} more"
+    if total > len(final):
+        preview += f" +{total - len(final)} more"
     return total, preview
 
 
@@ -2106,6 +2143,8 @@ _DOMAIN_TO_SOURCE = {
     # Western mainstream news
     "bbc.com": "BBC", "bbc.co.uk": "BBC",
     "theguardian.com": "The Guardian", "guardian.com": "The Guardian",
+    "channel4.com": "Channel 4 News", "news.channel4.com": "Channel 4 News",
+    "theatlantic.com": "The Atlantic",
     "nytimes.com": "New York Times", "washingtonpost.com": "Washington Post",
     "independent.co.uk": "The Independent", "telegraph.co.uk": "The Telegraph",
     "cnn.com": "CNN", "nbcnews.com": "NBC News", "cbsnews.com": "CBS News",
@@ -2474,8 +2513,10 @@ def scrape_sites(query, post_date=None):
     if SRC_BBC:      fast.append(("BBC News",  f"https://www.bbc.co.uk/search?q={qt}&d=NEWS_PS"))
     if SRC_REUTERS:  fast.append(("Reuters",    f"https://www.reuters.com/search/news?blob={qt}"))
     if SRC_AP:       fast.append(("AP News",    f"https://apnews.com/search?q={qt}"))
-    if SRC_GUARDIAN: fast.append(("Guardian",   f"https://www.theguardian.com/search?q={qt}"))
-    if SRC_CNN:      fast.append(("CNN",        f"https://edition.cnn.com/search?q={qt}"))
+    if SRC_GUARDIAN: fast.append(("Guardian",       f"https://www.theguardian.com/search?q={qt}"))
+    if SRC_CNN:      fast.append(("CNN",            f"https://edition.cnn.com/search?q={qt}"))
+    if SRC_CHANNEL4: fast.append(("Channel 4 News", f"https://www.channel4.com/news/search?q={qt}"))
+    if SRC_ATLANTIC: fast.append(("The Atlantic",   f"https://www.theatlantic.com/search/#q={qt}"))
     # Middle East expanded
     if SRC_MEMO:           fast.append(("Middle East Monitor",   f"https://www.middleeastmonitor.com/?s={q}"))
     if SRC_NEWARAB:        fast.append(("The New Arab",          f"https://www.newarab.com/search?q={qt}"))
@@ -2898,6 +2939,8 @@ _SOURCE_PERSPECTIVE = {
     "Reuters":           "WESTERN MAINSTREAM",
     "AP News":           "WESTERN MAINSTREAM",
     "The Guardian":      "WESTERN MAINSTREAM",
+    "Channel 4 News":    "WESTERN MAINSTREAM",
+    "The Atlantic":      "WESTERN MAINSTREAM",
     "CNN":               "WESTERN MAINSTREAM",
     "Times of Israel":   "WESTERN MAINSTREAM",
     # Fact-check organisations
@@ -3033,6 +3076,8 @@ _SOURCE_PERSPECTIVE = {
     "NPR":                 "WESTERN MAINSTREAM",
     "PBS NewsHour":        "WESTERN MAINSTREAM",
     "The Guardian":        "WESTERN MAINSTREAM",
+    "Channel 4 News":      "WESTERN MAINSTREAM",
+    "The Atlantic":        "WESTERN MAINSTREAM",
     "ITV News":            "WESTERN MAINSTREAM",
     "Sky News":            "WESTERN MAINSTREAM",
     "Breitbart":           "WESTERN MAINSTREAM",
