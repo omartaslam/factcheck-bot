@@ -231,11 +231,15 @@ Type HELP anytime for a full guide.
 ## 10. Business / Meta Status
 
 ### Meta Business Verification
-- Status: **In review** (submitted 2026-03-19, ~2 working days)
-- Business: Fred Check (sole trader, registered HMRC 2026-03-19)
-- Documents: HMRC acknowledgment + Monzo Business bank statement
+- Status: **Rejected** (sole trader insufficient — Meta requires stronger business documentation)
+- **Decision:** Register as a Limited Company (Companies House, ~£50, 24hrs online) then resubmit
 - Domain verified: fredcheck.com (meta-tag method, gold dot visible in WA)
-- **Next:** Once approved → submit app review for `whatsapp_business_messaging`, `whatsapp_business_management`, `public_profile`
+- **Next:** Register Ltd → resubmit with certificate of incorporation → app review for `whatsapp_business_messaging`, `whatsapp_business_management`, `public_profile`
+
+### Going live without verification — NO BLOCKERS
+- Fred is live now at +447863795638, open beta, Stripe payments all working
+- Verification only unlocks: green tick, higher messaging tiers (>250 conversations/day), app review
+- 250 conversations/day cap is fine for early beta
 
 ### External Services
 | Service | Status | Notes |
