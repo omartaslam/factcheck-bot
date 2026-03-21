@@ -4282,6 +4282,22 @@ def process(from_num, message, profile_name=None):
             except Exception as e:
                 log.warning("Feedback store failed: %s", e)
         return
+    # ── Reply-as-feedback ─────────────────────────────────────────────────────
+    if _is_text:
+        context_id = message.get("context", {}).get("id")
+        if context_id:
+            try:
+                with _db() as c:
+                    row = c.execute("SELECT id FROM request_log WHERE wa_message_id=?", (context_id,)).fetchone()
+                if row:
+                    feedback_body = message.get("text", {}).get("body", "").strip()
+                    with _db() as c:
+                        c.execute("UPDATE request_log SET feedback_text=? WHERE id=?", (feedback_body[:1000], row["id"]))
+                    send(from_num, "✅ _Thanks for the feedback — it helps us improve Fred._")
+                    log.info("Feedback text recorded for request_log id %s", row["id"])
+                    return
+            except Exception as e:
+                log.warning("Reply-feedback store failed: %s", e)
     _body_upper = message.get("text", {}).get("body", "").strip().upper() if _is_text else ""
     _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
     if not is_new and not _is_command:
@@ -5074,6 +5090,7 @@ def init_db():
                 cost_usd REAL,
                 feedback INTEGER,
                 feedback_emoji TEXT,
+                feedback_text TEXT,
                 wa_message_id TEXT,
                 created_at INTEGER NOT NULL
             );
@@ -5090,6 +5107,8 @@ def init_db():
         try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_emoji TEXT")
         except Exception: pass
         try: c.execute("ALTER TABLE request_log ADD COLUMN wa_message_id TEXT")
+        except Exception: pass
+        try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_text TEXT")
         except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
