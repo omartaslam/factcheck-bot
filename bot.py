@@ -1,4 +1,4 @@
-"""FactCheck Pro v3.2 - Enhanced Video Analysis"""
+"""Fred Check v3.2 - Enhanced Video Analysis"""
 import os, base64, json, logging, tempfile, threading, requests, re, sqlite3, hashlib, secrets, hmac, random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify, send_from_directory
@@ -219,7 +219,7 @@ def send_admin_alert(provider, message):
         requests.post(
             WHATSAPP_URL,
             json={"messaging_product": "whatsapp", "to": ADMIN_NUMBER,
-                  "type": "text", "text": {"body": f"⚠️ *FactCheck Pro Alert*\n\n{message}"}},
+                  "type": "text", "text": {"body": f"⚠️ *Fred Check Alert*\n\n{message}"}},
             headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"},
             timeout=10
         )
@@ -292,7 +292,7 @@ PENDING_TTL = 600
 _qc_jobs = {}   # from_num -> {"messages": [], "done": False, "error": None, "_input": str}
 _qc_lock = threading.Lock()
 
-SYSTEM = """You are FactCheck Pro — a bias-aware, multi-perspective fact-checker serving investigative journalists, activists, and communities underserved by Western media.
+SYSTEM = """You are Fred Check — a bias-aware, multi-perspective fact-checker serving investigative journalists, activists, and communities underserved by Western media.
 
 CORE PRINCIPLES:
 1. Western government and media narratives are NOT the default neutral. Apply the same scepticism to BBC, CNN, Reuters and AP as you would to any state-adjacent outlet. Official statements from Western governments, militaries, and intelligence agencies require corroboration like any other source.
@@ -5067,15 +5067,15 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
     suffix = f"?client_reference_id={cid}"
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
     lines = [
-        "💳 *FactCheck Pro — Top Up Required*", "",
+        "💳 *Fred Check — Top Up Required*", "",
         f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.",
         f"Current balance: *${balance_cents/100:.2f}*", "",
-        "*Choose a top-up amount:*",
+        "*Choose a top-up amount:*", "",
     ]
-    if TOPUP_1_LINK:  lines.append(f"• *$1*  (~5 checks) → {TOPUP_1_LINK}{suffix}")
-    if TOPUP_5_LINK:  lines.append(f"• *$5*  (~25 checks) → {TOPUP_5_LINK}{suffix}")
-    if TOPUP_10_LINK: lines.append(f"• *$10* (~50 checks) → {TOPUP_10_LINK}{suffix}")
-    if TOPUP_25_LINK: lines.append(f"• *$25* (~130 checks) → {TOPUP_25_LINK}{suffix}")
+    if TOPUP_1_LINK:  lines.append(f"• *$1* (~5 checks)  {TOPUP_1_LINK}{suffix}")
+    if TOPUP_5_LINK:  lines.append(f"• *$5* (~25 checks)  {TOPUP_5_LINK}{suffix}")
+    if TOPUP_10_LINK: lines.append(f"• *$10* (~50 checks)  {TOPUP_10_LINK}{suffix}")
+    if TOPUP_25_LINK: lines.append(f"• *$25* (~130 checks)  {TOPUP_25_LINK}{suffix}")
     if SUB_LINK:
         lines += ["", f"*♾ Unlimited* → {SUB_LINK}{suffix}"]
     if not any([TOPUP_1_LINK, TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
@@ -5293,7 +5293,7 @@ def api_topup():
         payload = {
             "mode": "payment",
             "line_items[0][price_data][currency]": "usd",
-            "line_items[0][price_data][product_data][name]": "FactCheck Pro Credits",
+            "line_items[0][price_data][product_data][name]": "Fred Check Credits",
             "line_items[0][price_data][unit_amount]": str(amount_cents),
             "line_items[0][quantity]": "1",
             "client_reference_id": cid,
@@ -5366,7 +5366,7 @@ def stripe_webhook():
                         "telegram": lambda t, u=uid: send_telegram(u, t),
                         "twitter": lambda t, u=uid: send_twitter_dm(u, t),
                     }.get(platform, lambda t: None)
-                    platform_send("🎉 *Subscription activated!* You now have unlimited FactCheck Pro access.")
+                    platform_send("🎉 *Subscription activated!* You now have unlimited Fred Check access.")
                     log.info("Subscription activated for %s/%s", platform, uid)
 
             elif platform == "web" and uid:
@@ -5928,5 +5928,5 @@ def admin_qc_status(job_id):
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
-    log.info("FactCheck Pro v3.2 starting (dev mode)...")
+    log.info("Fred Check v3.2 starting (dev mode)...")
     app.run(host="0.0.0.0", port=port, debug=False)
