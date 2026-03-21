@@ -337,11 +337,14 @@ Type HELP anytime for a full guide.
 - **Media type coverage gap identified**:
   - ❌ Image OCR (WhatsApp image), audio/voice note, carousel posts, out-of-context image not testable via current `/admin/qc` endpoint
   - Fix: extend `/admin/qc` to accept `image_url` field — Fred downloads and OCRs as if WhatsApp sent it
-  - Decision pending: automate image/audio testing vs keep manual-only
+  - Decision: image/audio testing manual-only for now (can't simulate WhatsApp media via /admin/qc)
 
 - **VCF contact card created** (`static/fred-check.vcf`, commit `b163fdc`):
   - For sharing with beta testers via WhatsApp
   - Includes embedded logo, +447863795638, website URL, brief description
+  - Share via phone Contacts app → Share contact → WhatsApp (not as file attachment)
+
+- **Meta WhatsApp Business profile** — category showing as "Public and government service", description showing as "—Fact Check". To update: Meta Business Manager → WhatsApp accounts → Details → Phone numbers → edit profile. **In progress.**
 
 ## 12a. Previously Completed Work (Session 14 — 2026-03-21)
 
