@@ -270,7 +270,15 @@ Type HELP anytime for a full guide.
 3. **Meta app review** — submit once business verification approved
 
 ### In Progress
-4. **Stripe setup** — user has dashboard open. Waiting on pricing decisions: free check count, top-up amounts ($5/$10/$25), subscription price ($9.99/mo), B2B tier. Code already written — purely config once decided.
+4. **Stripe setup** — Payment Links created ($1/$5/$10/$25). Next: add env vars to Railway (`TOPUP_1_LINK`, `TOPUP_5_LINK`, `TOPUP_10_LINK`, `TOPUP_25_LINK`, `STRIPE_SECRET_KEY`), set up webhook → `https://web-production-1f0a4.up.railway.app/stripe-webhook`, add `STRIPE_WEBHOOK_SECRET`, test.
+
+   **Pricing decided:** credit top-ups only, no subscription (real cost ~$0.185/check, $9.99/mo breaks even at 54 checks only). `FREE_CHECKS_LIMIT` TBD.
+
+   **Payment links:**
+   - $1 → https://buy.stripe.com/9B6fZi8Htajo5QO5CJ8k800
+   - $5 → https://buy.stripe.com/aFa14of5R4Z4cfc3uB8k801
+   - $10 → https://buy.stripe.com/5kQ9AUf5R4Z49302qx8k802
+   - $25 → https://buy.stripe.com/eVq6oI0aX77cfrod5b8k803
 
 ### Ready to Implement
 5. **Test Hive AI/deepfake detection** — `HIVE_API_KEY` needs adding to Railway.
