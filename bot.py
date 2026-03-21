@@ -36,6 +36,7 @@ BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show B
 DEV_AUTOSELECT_NUM  = os.getenv("DEV_AUTOSELECT_NUM", "")               # Phone number that skips claim selection (dev only)
 DEV_AUTOSELECT_ON   = os.getenv("DEV_AUTOSELECT_ON", "false").lower() == "true"  # Toggle dev auto-select
 WA_CONVERSATION_COST = float(os.getenv("WA_CONVERSATION_COST", "0.041"))  # WhatsApp per-conversation charge (Europe/Spain rate)
+COST_PER_CHECK_CENTS = int(os.getenv("COST_PER_CHECK_CENTS", "9"))        # Used to calculate check estimates in payment prompt
 
 # ── Multi-platform config ──────────────────────────────────────────────────────
 MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page Access Token (Messenger + Instagram DMs)
@@ -5199,10 +5200,11 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
         f"Current balance: *${balance_cents/100:.2f}*", "",
         "*Choose a top-up amount:*", "",
     ]
-    if TOPUP_1_LINK:  lines += [f"• *$1* (~5 checks)", f"{TOPUP_1_LINK}{suffix}", ""]
-    if TOPUP_5_LINK:  lines += [f"• *$5* (~25 checks)", f"{TOPUP_5_LINK}{suffix}", ""]
-    if TOPUP_10_LINK: lines += [f"• *$10* (~50 checks)", f"{TOPUP_10_LINK}{suffix}", ""]
-    if TOPUP_25_LINK: lines += [f"• *$25* (~130 checks)", f"{TOPUP_25_LINK}{suffix}", ""]
+    def _n(cents): return max(1, round(cents / COST_PER_CHECK_CENTS))
+    if TOPUP_1_LINK:  lines += [f"• *$1* (~{_n(100)} checks)", f"{TOPUP_1_LINK}{suffix}", ""]
+    if TOPUP_5_LINK:  lines += [f"• *$5* (~{_n(500)} checks)", f"{TOPUP_5_LINK}{suffix}", ""]
+    if TOPUP_10_LINK: lines += [f"• *$10* (~{_n(1000)} checks)", f"{TOPUP_10_LINK}{suffix}", ""]
+    if TOPUP_25_LINK: lines += [f"• *$25* (~{_n(2500)} checks)", f"{TOPUP_25_LINK}{suffix}", ""]
     if SUB_LINK:
         lines += ["", f"*♾ Unlimited* → {SUB_LINK}{suffix}"]
     if not any([TOPUP_1_LINK, TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
