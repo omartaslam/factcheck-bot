@@ -344,7 +344,13 @@ Type HELP anytime for a full guide.
   - Includes embedded logo, +447863795638, website URL, brief description
   - Share via phone Contacts app → Share contact → WhatsApp (not as file attachment)
 
-- **Meta WhatsApp Business profile** — category showing as "Public and government service", description showing as "—Fact Check". To update: Meta Business Manager → WhatsApp accounts → Details → Phone numbers → edit profile. **In progress.**
+- **Meta WhatsApp Business profile** — updated ✅. Category: Public service. Description updated to: "Fred • AI Fact Checker / Truth Beyond Borders 🌍 / No default narrative - 70+ sources. / Send any link, image, video or claim for a balanced verdict. / fredcheck.com / hello@fredcheck.com"
+
+- **Open beta confirmed** — Fred live at +447863795638, any number can message. Meta business verification is separate (green tick + higher tiers only).
+
+- **Welcome message verified** via /admin/qc — new user flow correct end-to-end. Feedback number in welcome (+34643994740) is user's personal beta feedback number — intentional.
+
+- **Verdict feedback vs welcome feedback** — two separate things: welcome has personal number for general beta feedback; verdict feedback (reactions + reply) stored in DB per-verdict.
 
 ## 12a. Previously Completed Work (Session 14 — 2026-03-21)
 
