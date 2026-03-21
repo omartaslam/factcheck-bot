@@ -4128,12 +4128,24 @@ def process(from_num, message, profile_name=None):
             processed_ids.clear(); processed_ids.update(to_keep)
     expire_pending()
     # ── First-time user: send welcome and let them proceed ────────────────────
-    if _is_new_wa_user(from_num):
+    is_new = _is_new_wa_user(from_num)
+    if is_new:
         send(from_num, _welcome_msg())
         threading.Thread(target=_notify_new_user, args=(from_num, profile_name), daemon=True).start()
         # Fall through so they can also process content if sent with first message
     pkey = ("whatsapp", from_num)
     msg_type = message.get("type")
+    # ── Early billing gate — block before any processing ─────────────────────
+    # Skip for: new users (just joined, have free checks), text commands/responses
+    _is_text = msg_type == "text"
+    _body_upper = message.get("text", {}).get("body", "").strip().upper() if _is_text else ""
+    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
+    if not is_new and not _is_command:
+        _bt_early = _wa_billing_type(from_num)
+        if _bt_early == "blocked":
+            u = _wa_user(from_num)
+            _send_payment_prompt(from_num, u["balance_cents"])
+            return
     if msg_type == "video":
         send(from_num, "📹 Video detected!")
         log.info("=== VIDEO MESSAGE RECEIVED ===")
