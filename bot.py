@@ -3852,6 +3852,11 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     actual_cents = max(1, _cost_get())
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
+    if billing_type == "paid":
+        u = _wa_user(from_num)
+        if 0 < u["balance_cents"] < COST_PER_CHECK_CENTS:
+            send(from_num, f"⚠️ _Low balance: ${u['balance_cents']/100:.2f} — not enough for another check._")
+            _send_payment_prompt(from_num, u["balance_cents"])
 
 def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_claims=None, post_date=None):
     """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
@@ -3896,6 +3901,11 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
 
     actual_cents = max(1, _cost_get())
     _pdeduct(platform, uid, actual_cents, f"{st} fact-check", billing_type)
+    if billing_type == "paid":
+        u = _puser(platform, uid)
+        if 0 < u["balance_cents"] < COST_PER_CHECK_CENTS:
+            send_fn(f"⚠️ _Low balance: ${u['balance_cents']/100:.2f} — not enough for another check._")
+            _psend_payment_prompt(platform, uid, u["balance_cents"], send_fn)
 
 def clean_query(q):
     lines = []
