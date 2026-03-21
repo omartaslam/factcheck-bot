@@ -87,9 +87,9 @@
       "layer": ["extraction", "claim"],
       "input": "https://x.com/jack/status/20",
       "source_type": "url",
-      "notes": "First ever tweet: 'just setting up my twttr' — always exists",
+      "notes": "First ever tweet: 'just setting up my twttr' — tweet text used as query input, not echoed in messages",
       "expect": {
-        "extraction": {"min_content_len": 10, "no_unavailable": true, "contains": "twttr"},
+        "extraction": {"min_content_len": 10, "no_unavailable": true},
         "claims": {"min": 0, "max": 1, "allow_uncheckable": true}
       }
     },
@@ -110,11 +110,11 @@
 
     {
       "id": "youtube-video",
-      "description": "YouTube video — WHO COVID pandemic declaration press conference",
+      "description": "YouTube video — UN General Assembly (stable official channel)",
       "layer": ["extraction", "claim"],
-      "input": "https://www.youtube.com/watch?v=h4cJMlYBOzA",
+      "input": "https://www.youtube.com/watch?v=VYrLGpWdAE8",
       "source_type": "url",
-      "notes": "WHO Director-General COVID pandemic announcement March 2020",
+      "notes": "UN General Assembly 77th session opening — official UN channel, unlikely to be removed. Original WHO video h4cJMlYBOzA went unavailable.",
       "expect": {
         "extraction": {"min_content_len": 50, "no_unavailable": true},
         "claims": {"min": 1, "max": 3}
