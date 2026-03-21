@@ -12,7 +12,7 @@ Fred is a **WhatsApp fact-checking bot** for journalists, activists, and media p
 
 **Brand name:** Fred • Fact Check (the bot is called "Fred")
 **Website:** https://fredcheck.com
-**WhatsApp number:** registered via Meta/WhatsApp Cloud API
+**WhatsApp number:** +447863795638 (registered via Meta/WhatsApp Cloud API)
 **Target audience:** Professional journalists, independent journalists, news/media outlets, activist organisations (B2B focus)
 
 ---
@@ -338,6 +338,10 @@ Type HELP anytime for a full guide.
   - ❌ Image OCR (WhatsApp image), audio/voice note, carousel posts, out-of-context image not testable via current `/admin/qc` endpoint
   - Fix: extend `/admin/qc` to accept `image_url` field — Fred downloads and OCRs as if WhatsApp sent it
   - Decision pending: automate image/audio testing vs keep manual-only
+
+- **VCF contact card created** (`static/fred-check.vcf`, commit `b163fdc`):
+  - For sharing with beta testers via WhatsApp
+  - Includes embedded logo, +447863795638, website URL, brief description
 
 ## 12a. Previously Completed Work (Session 14 — 2026-03-21)
 
