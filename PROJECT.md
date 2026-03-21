@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 15 — late)
+**Last updated:** 2026-03-21 (session 15 — closed)
 
 ---
 
@@ -281,7 +281,7 @@ Type HELP anytime for a full guide.
 6. **Meta app review** — submit once business verification approved
 
 ### Ready to implement
-7. **QA automation suite** — ✅ `scripts/qa_runner.py` + `scripts/qa_fixtures.json` built (commit `5068b98`). 12 fixtures: text TRUE/FALSE/MISLEADING/UNVERIFIABLE, BBC/Reuters URLs, X text+video, YouTube, multi-claim, Arabic-context. Run: `python3 scripts/qa_runner.py [--id X] [--layer X] [--fast] [--quiet]`. Still to add: Facebook, Instagram, TikTok fixtures.
+7. **QA automation suite** — ⏸ SHELVED. Infrastructure complete: `scripts/qa_runner.py` + `scripts/qa_fixtures.json`, 28 fixtures across all categories, POST `/admin/run-qa` endpoint live. Shelved 2026-03-21 because Claude's capacity limitations make the suite too slow and fragile to be a useful daily tool (~70 min runtime, context pressure, no mid-run visibility). Known quality issues: FALSE returned instead of UNVERIFIABLE for ambiguous claims; "vaccines kill more than COVID" returns FALSE not MISLEADING. Do not delete — park until either (a) Claude is faster/cheaper or (b) a lightweight 5–8 fixture subset is carved out for quick iteration.
 8. **Service health monitoring** — email alert when RapidAPI/Hive/SendGrid/FB-IG cookies go down
 9. **Split verdict into multiple WA messages**
 10. **source_url stored in request_log** — ✅ done (commit `5149819`)
