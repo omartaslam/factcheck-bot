@@ -6151,7 +6151,7 @@ def admin_run_qa():
     fixture_id = (request.get_json() or {}).get("id")
 
     def _run():
-        import subprocess, sys
+        import subprocess, sys, urllib.request as _ur, json as _json, datetime as _dt
         here = os.path.dirname(os.path.abspath(__file__))
         runner = os.path.join(here, "scripts", "qa_runner.py")
         cmd = [sys.executable, runner, "--quiet", "--email"]
@@ -6160,10 +6160,32 @@ def admin_run_qa():
         env = os.environ.copy()
         env["FRED_BASE_URL"] = "https://fredcheck.com"
         env["FRED_ADMIN_TOKEN"] = _QC_ADMIN_TOKEN
+        started = _dt.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
         try:
-            subprocess.run(cmd, env=env, timeout=7200)  # 2 hour max (28 fixtures × 150s each)
+            result = subprocess.run(cmd, env=env, timeout=7200, capture_output=True, text=True)
+            if result.returncode != 0:
+                raise RuntimeError(f"exit code {result.returncode}\n{result.stderr[-500:]}")
         except Exception as e:
             log.error("QA run failed: %s", e)
+            # Send failure notification email
+            sg_key = os.environ.get("SENDGRID_API_KEY")
+            if sg_key:
+                try:
+                    body = f"Fred QA run FAILED\nStarted: {started}\nError: {e}\n\nFred Check"
+                    payload = _json.dumps({
+                        "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+                        "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+                        "subject": f"❌ Fred QA run failed — {started}",
+                        "content": [{"type": "text/plain", "value": body}]
+                    }).encode()
+                    req = _ur.Request("https://api.sendgrid.com/v3/mail/send",
+                                      data=payload,
+                                      headers={"Authorization": f"Bearer {sg_key}",
+                                               "Content-Type": "application/json"},
+                                      method="POST")
+                    _ur.urlopen(req, timeout=10)
+                except Exception as mail_err:
+                    log.error("QA failure email also failed: %s", mail_err)
 
     threading.Thread(target=_run, daemon=True).start()
     msg = f"QA run started (fixture: {fixture_id})" if fixture_id else "Full QA suite started"
