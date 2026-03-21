@@ -336,12 +336,11 @@
 
     {
       "id": "facebook-post",
-      "description": "Facebook post — public post with verifiable claim",
+      "description": "Facebook post — George Galloway political claim (public figure)",
       "layer": ["extraction", "claim"],
-      "input": "TODO: replace with real Facebook post URL containing a checkable claim",
+      "input": "https://www.facebook.com/GeorgeGallowayOfficial/posts/pfbid0xoxdmTeWr88dtsJJK4qCib6G2RaV8Srh7kpMhqJobc94D6EWFW6LTLDGVPSJNMj1l",
       "source_type": "url",
-      "notes": "TODO: user to provide stable public Facebook post URL",
-      "skip": true,
+      "notes": "George Galloway Official Facebook post — political content, tests FB extraction with cookies",
       "expect": {
         "extraction": {"min_content_len": 50, "no_unavailable": true},
         "claims": {"min": 1, "max": 3}
@@ -349,27 +348,25 @@
     },
 
     {
-      "id": "instagram-post",
-      "description": "Instagram post — public post with verifiable claim",
+      "id": "instagram-reel",
+      "description": "Instagram Reel — tests IG video/caption extraction with cookie auth",
       "layer": ["extraction", "claim"],
-      "input": "TODO: replace with real Instagram post URL containing a checkable claim",
+      "input": "https://www.instagram.com/reel/DTOylBkjwU5/",
       "source_type": "url",
-      "notes": "TODO: user to provide stable public Instagram post URL",
-      "skip": true,
+      "notes": "Public Instagram Reel — tests IG cookie-auth extraction path",
       "expect": {
-        "extraction": {"min_content_len": 50, "no_unavailable": true},
+        "extraction": {"min_content_len": 20, "no_unavailable": true},
         "claims": {"min": 1, "max": 3}
       }
     },
 
     {
       "id": "tiktok-video",
-      "description": "TikTok video — verifiable claim in video or caption",
+      "description": "TikTok video — Sky Sports Football (verifiable sports content)",
       "layer": ["extraction", "claim"],
-      "input": "TODO: replace with real TikTok URL containing a verifiable claim",
+      "input": "https://www.tiktok.com/@skysportsfootball/video/7602957290882321686",
       "source_type": "url",
-      "notes": "TODO: user to provide TikTok URL",
-      "skip": true,
+      "notes": "Sky Sports Football TikTok — official sports account, stable content with checkable claims",
       "expect": {
         "extraction": {"min_content_len": 20, "no_unavailable": true},
         "claims": {"min": 1, "max": 3}
@@ -378,12 +375,11 @@
 
     {
       "id": "ai-deepfake-video",
-      "description": "AI-generated or deepfake video — tests Hive OSINT detection path",
+      "description": "Potential AI/synthetic video — tests Hive OSINT detection path",
       "layer": ["extraction", "claim"],
-      "input": "TODO: replace with URL of known AI-generated/deepfake video",
+      "input": "https://vm.tiktok.com/ZNRx22Pmh/",
       "source_type": "url",
-      "notes": "TODO: user to provide a known synthetic/deepfake video URL. Should trigger Hive AI detection and surface result in verdict.",
-      "skip": true,
+      "notes": "TikTok short URL flagged as potential AI/deepfake content. Verify after first run whether Hive detection fires. May need replacing with a confirmed synthetic video.",
       "expect": {
         "extraction": {"min_content_len": 10},
         "claims": {"min": 0, "max": 3}
