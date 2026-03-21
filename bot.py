@@ -4134,7 +4134,7 @@ def process(from_num, message, profile_name=None):
     pkey = ("whatsapp", from_num)
     msg_type = message.get("type")
     if msg_type == "video":
-        send(from_num, "📹 Video detected! Starting processing...")
+        send(from_num, "📹 Video detected!")
         log.info("=== VIDEO MESSAGE RECEIVED ===")
     if msg_type == "text":
         body = message["text"]["body"].strip(); body_upper = body.upper()
