@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 14 — final)
+**Last updated:** 2026-03-21 (session 14 — end of day)
 
 ---
 
@@ -325,6 +325,13 @@ Type HELP anytime for a full guide.
 - **Reply-to-verdict text feedback** (commit `f8c2941`) — user long-presses verdict → Reply → text stored as `feedback_text` in `request_log`; Fred confirms with thank-you message
 
 - **HELP updated** (commit `6f81929`) — added BALANCE command and feedback instructions
+
+- **COST_PER_CHECK_CENTS default 9→19** (commit `9723cca`) — reflects full retail price (API + WA fee + infrastructure + 100% markup); displays ~5/$1, ~26/$5, ~53/$10, ~131/$25
+
+- **13 rotating taglines** (commit `b21a655`):
+  - Website badge carousel: shuffled randomly on each page load, rotates every 4s
+  - Verdict footer: random tagline replaces static "⚖️ pro/con debate" line
+  - Taglines: Truth Beyond Borders · Facts don't have a postcode · Because the truth is a human right · Checking power, everywhere · Every lie unchallenged is an injustice · Beyond the Western headline · Tackling misinformation since birth · For those who refuse to be misled · Hold power to account, wherever it sits · No default narrative · Truth is resistance · Fact-checking is a form of justice · We don't just check facts. We fight for them.
 
 - **Railway env vars confirmed set:**
   - `FREE_CHECKS_LIMIT=12` (beta value)
