@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 13 — end of day)
+**Last updated:** 2026-03-21 (session 13 — final)
 
 ---
 
@@ -279,8 +279,11 @@ Type HELP anytime for a full guide.
    - **Open:** payment prompt UX — URLs must be visible in WA text messages. Interactive CTA buttons possible post Meta approval. `FREE_CHECKS_LIMIT` currently 0 for testing — set to final value.
 
 ### Ready to Implement
-5. **Test Hive AI/deepfake detection** — `HIVE_API_KEY` needs adding to Railway.
-6. **QA automation suite** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
+5. **Set FREE_CHECKS_LIMIT** — currently 0 (testing), set to final beta value in Railway
+6. **Add HIVE_API_KEY** to Railway (key in Hive dashboard)
+7. **QA automation suite**
+8. **Rotating tagline carousel (fredcheck.com)**
+9. **Split verdict into multiple WA messages** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
 5. **Rotating tagline carousel on fredcheck.com** — add more straplines beneath/alongside "Truth Beyond Borders". Confirmed taglines so far: "Tackling misinformation since birth". Candidates: "Facts don't have a postcode", "Beyond the Western headline", "No default narrative", "Six regions. One truth.", "Every story has another side", "Built for those who ask questions", "The antidote to algorithmic bias", "Checking power, everywhere", "For journalists who dig deeper", "Where facts meet all perspectives".
 6. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message, so splitting is free. Improves readability. Discuss format next session.
 5. **Stripe setup** — Payment Links, `TOPUP_LINK`/`SUB_LINK` env vars, webhook handler
