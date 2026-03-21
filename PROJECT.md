@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 14 — continued)
+**Last updated:** 2026-03-21 (session 14 — final)
 
 ---
 
@@ -265,27 +265,34 @@ Type HELP anytime for a full guide.
 
    **Permanent automation (blocked):** `scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml` built (commit `94a2ce4`, not yet pushed). Needs: GitHub PAT `workflow` scope → push → add 9 GitHub secrets (`FB_EMAIL`, `FB_PASSWORD`, `IG_USERNAME`, `IG_PASSWORD`, `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_ID`, `RAILWAY_SERVICE_ID`, `SENDGRID_API_KEY`) → dedicated FB/IG account with 2FA disabled.
 
-### Immediate bugs to fix
-1. **Video content not accessed** — `⚠️ Could not access video content — fact-checking post text only` appearing; video content itself not verified — highest priority
-2. **"FACTCHECK PRO"** still in claim selection message — rename missed this spot
-3. **"free checks remaining today"** — says "today" but reverted to lifetime free checks
-4. **Est. cost: $0.0085** — old `estimate_cost()` value in claim selection (12× too low)
+### Immediate bugs (fixed this session)
+1. ~~**"FACTCHECK PRO"** still in claim selection~~ — fixed (commit `466c9e8`) ✅
+2. ~~**"free checks remaining today"**~~ — fixed, removed "today" ✅
+3. ~~**Est. cost shown in claim selection**~~ — removed entirely ✅
+4. ~~**X/Twitter false-positive unavailability**~~ — fixed (commit `a1299ea`) ✅
+5. ~~**Double welcome on new user + early return**~~ — fixed ✅
+6. **X video download** — vikas5914 RapidAPI key was expired; user updated key. yt-dlp still blocked by X. Text fallback via fxtwitter works. Video content itself unverified.
+
+### Service monitoring (new task)
+- Email alert when any API/service/cookies goes down (RapidAPI, Hive, SendGrid, FB/IG cookies)
 
 ### Blocked
 5. **Cookie automation** — FB + IG cookies expire ~2026-04-03. Blocked on GitHub PAT `workflow` scope
 6. **Meta app review** — submit once business verification approved
 
 ### Ready to implement
-7. **QA automation suite** — `/admin/qc` endpoint confirmed working; returns full message output readable by Claude; previous failure was lack of shared view — now resolved. Coverage needed: extraction, claim formulation, verdict quality (human-in-loop for edge cases)
-8. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message; free to split. Improves readability.
-9. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
-10. **fredcheck.co.uk** — add as custom domain in Railway
-11. **FEEDBACK command** — freeform text (reactions + reply feedback already done)
-12. **Persist `pending` state to DB** — lost on every redeploy
-13. **SendGrid DMARC** — verify once DNS propagates
-14. **Tavily language passes** — French/Urdu/Swahili
-15. **Perplexity Sonar** — activate post-beta with `PERPLEXITY_API_KEY`
-16. **Review COST_PER_CHECK_CENTS** — check against real dashboard data before beta go-live
+7. **QA automation suite** — ✅ `scripts/qa_runner.py` + `scripts/qa_fixtures.json` built (commit `5068b98`). 12 fixtures: text TRUE/FALSE/MISLEADING/UNVERIFIABLE, BBC/Reuters URLs, X text+video, YouTube, multi-claim, Arabic-context. Run: `python3 scripts/qa_runner.py [--id X] [--layer X] [--fast] [--quiet]`. Still to add: Facebook, Instagram, TikTok fixtures.
+8. **Service health monitoring** — email alert when RapidAPI/Hive/SendGrid/FB-IG cookies go down
+9. **Split verdict into multiple WA messages**
+10. **source_url stored in request_log** — ✅ done (commit `5149819`)
+11. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
+12. **fredcheck.co.uk** — add as custom domain in Railway
+13. **FEEDBACK command** — freeform text (reactions + reply feedback already done)
+14. **Persist `pending` state to DB** — lost on every redeploy
+15. **SendGrid DMARC** — verify once DNS propagates
+16. **Tavily language passes** — French/Urdu/Swahili
+17. **Perplexity Sonar** — activate post-beta with `PERPLEXITY_API_KEY`
+18. **Review COST_PER_CHECK_CENTS** — check against real dashboard data before beta go-live
 
 ---
 
