@@ -1,0 +1,17 @@
+name: Daily QA
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+jobs:
+  trigger-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger QA suite on Railway
+        run: |
+          curl -s -X POST https://fredcheck.com/admin/run-qa \
+            -H "X-Admin-Token: ${{ secrets.QA_ADMIN_TOKEN }}" \
+            -w "\nHTTP %{http_code}" \
+            --fail
