@@ -6141,6 +6141,35 @@ def admin_qc_status(job_id):
         "messages": job["messages"]
     })
 
+@app.route("/admin/run-qa", methods=["POST"])
+def admin_run_qa():
+    """Trigger the full QA suite in the background and email results.
+    Optional body: {"id": "fixture-id"}  — run a single fixture only.
+    """
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    fixture_id = (request.get_json() or {}).get("id")
+
+    def _run():
+        import subprocess, sys
+        here = os.path.dirname(os.path.abspath(__file__))
+        runner = os.path.join(here, "scripts", "qa_runner.py")
+        cmd = [sys.executable, runner, "--quiet", "--email"]
+        if fixture_id:
+            cmd += ["--id", fixture_id]
+        env = os.environ.copy()
+        env["FRED_BASE_URL"] = "https://fredcheck.com"
+        env["FRED_ADMIN_TOKEN"] = _QC_ADMIN_TOKEN
+        try:
+            subprocess.run(cmd, env=env, timeout=1800)  # 30 min max
+        except Exception as e:
+            log.error("QA run failed: %s", e)
+
+    threading.Thread(target=_run, daemon=True).start()
+    msg = f"QA run started (fixture: {fixture_id})" if fixture_id else "Full QA suite started"
+    return jsonify({"ok": True, "message": msg, "email": "hello@fredcheck.com"})
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     log.info("Fred Check v3.2 starting (dev mode)...")
