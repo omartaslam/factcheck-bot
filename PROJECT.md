@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 13 continued)
+**Last updated:** 2026-03-21 (session 13 — end of day)
 
 ---
 
@@ -274,7 +274,9 @@ Type HELP anytime for a full guide.
    - Webhook: `checkout.session.completed` → `https://web-production-1f0a4.up.railway.app/stripe-webhook`
    - All env vars in Railway: `TOPUP_1_LINK`, `TOPUP_5_LINK`, `TOPUP_10_LINK`, `TOPUP_25_LINK`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
    - No subscription — real cost ~$0.185/check; $9.99/mo breaks even at only 54 checks
-   - **Pending:** test payment prompt (set `FREE_CHECKS_LIMIT=0`), set final `FREE_CHECKS_LIMIT` value
+   - Early billing gate added — blocks before any media/OSINT/API processing
+   - FactCheck Pro → Fred Check renamed throughout
+   - **Open:** payment prompt UX — URLs must be visible in WA text messages. Interactive CTA buttons possible post Meta approval. `FREE_CHECKS_LIMIT` currently 0 for testing — set to final value.
 
 ### Ready to Implement
 5. **Test Hive AI/deepfake detection** — `HIVE_API_KEY` needs adding to Railway.
