@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 14 — end of day)
+**Last updated:** 2026-03-21 (session 14 — continued)
 
 ---
 
@@ -265,39 +265,27 @@ Type HELP anytime for a full guide.
 
    **Permanent automation (blocked):** `scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml` built (commit `94a2ce4`, not yet pushed). Needs: GitHub PAT `workflow` scope → push → add 9 GitHub secrets (`FB_EMAIL`, `FB_PASSWORD`, `IG_USERNAME`, `IG_PASSWORD`, `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_ID`, `RAILWAY_SERVICE_ID`, `SENDGRID_API_KEY`) → dedicated FB/IG account with 2FA disabled.
 
-### Blocked / Pending Decision
-2. **Pricing / free claims strategy** — must decide before Stripe:
-   - How many free claims for regular vs B2B users?
-   - Time-limited trial (7 days) vs fixed claim count?
-   - Two-tier search quality for free vs paid?
-3. **Meta app review** — submit once business verification approved
+### Immediate bugs to fix
+1. **Video content not accessed** — `⚠️ Could not access video content — fact-checking post text only` appearing; video content itself not verified — highest priority
+2. **"FACTCHECK PRO"** still in claim selection message — rename missed this spot
+3. **"free checks remaining today"** — says "today" but reverted to lifetime free checks
+4. **Est. cost: $0.0085** — old `estimate_cost()` value in claim selection (12× too low)
 
-4. **Stripe — COMPLETE** ✅
-   - Payment Links live: $1/$5/$10/$25 (live mode)
-   - Webhook: `checkout.session.completed` → `https://web-production-1f0a4.up.railway.app/stripe-webhook`
-   - All env vars in Railway: `TOPUP_1_LINK`, `TOPUP_5_LINK`, `TOPUP_10_LINK`, `TOPUP_25_LINK`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-   - No subscription — real cost ~$0.185/check; $9.99/mo breaks even at only 54 checks
-   - Early billing gate added — blocks before any media/OSINT/API processing
-   - FactCheck Pro → Fred Check renamed throughout
-   - **Open:** payment prompt UX — URLs must be visible in WA text messages. Interactive CTA buttons possible post Meta approval. `FREE_CHECKS_LIMIT` currently 0 for testing — set to final value.
+### Blocked
+5. **Cookie automation** — FB + IG cookies expire ~2026-04-03. Blocked on GitHub PAT `workflow` scope
+6. **Meta app review** — submit once business verification approved
 
-### Ready to Implement
-5. **Low balance warning** — warn user when balance drops below `COST_PER_CHECK_CENTS` (not at $0.00); append to verdict footer
-6. **QA automation suite**
-8. **Rotating tagline carousel (fredcheck.com)**
-9. **Split verdict into multiple WA messages** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
-5. **Rotating tagline carousel on fredcheck.com** — add more straplines beneath/alongside "Truth Beyond Borders". Confirmed taglines so far: "Tackling misinformation since birth". Candidates: "Facts don't have a postcode", "Beyond the Western headline", "No default narrative", "Six regions. One truth.", "Every story has another side", "Built for those who ask questions", "The antidote to algorithmic bias", "Checking power, everywhere", "For journalists who dig deeper", "Where facts meet all perspectives".
-6. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message, so splitting is free. Improves readability. Discuss format next session.
-5. **Stripe setup** — Payment Links, `TOPUP_LINK`/`SUB_LINK` env vars, webhook handler
-5. **Fix `estimate_cost()`** — values ~12× too low; must fix before charging
-6. **FREE_CHECKS_LIMIT** — change from 9999 to agreed number post pricing decision
-7. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
-8. **fredcheck.co.uk** — add as custom domain in Railway
-9. **User feedback system** — `FEEDBACK` command, 👍/👎 rating buttons, store in DB
-10. **Persist `pending` state to DB** — currently lost on every redeploy
-11. **SendGrid DMARC** — verify once DNS propagates
-12. **Tavily language passes** — French/Urdu/Swahili (English-only currently)
-13. **Perplexity Sonar** — activate post-beta with `PERPLEXITY_API_KEY`
+### Ready to implement
+7. **QA automation suite** — `/admin/qc` endpoint confirmed working; returns full message output readable by Claude; previous failure was lack of shared view — now resolved. Coverage needed: extraction, claim formulation, verdict quality (human-in-loop for edge cases)
+8. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message; free to split. Improves readability.
+9. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
+10. **fredcheck.co.uk** — add as custom domain in Railway
+11. **FEEDBACK command** — freeform text (reactions + reply feedback already done)
+12. **Persist `pending` state to DB** — lost on every redeploy
+13. **SendGrid DMARC** — verify once DNS propagates
+14. **Tavily language passes** — French/Urdu/Swahili
+15. **Perplexity Sonar** — activate post-beta with `PERPLEXITY_API_KEY`
+16. **Review COST_PER_CHECK_CENTS** — check against real dashboard data before beta go-live
 
 ---
 
@@ -327,6 +315,8 @@ Type HELP anytime for a full guide.
 - **HELP updated** (commit `6f81929`) — added BALANCE command and feedback instructions
 
 - **COST_PER_CHECK_CENTS default 9→19** (commit `9723cca`) — reflects full retail price (API + WA fee + infrastructure + 100% markup); displays ~5/$1, ~26/$5, ~53/$10, ~131/$25
+
+- **Taglines toned down** (commit `9d3000d`) — truth-seeker framing, less confrontational; injustice implicit not stated
 
 - **13 rotating taglines** (commit `b21a655`):
   - Website badge carousel: shuffled randomly on each page load, rotates every 4s
