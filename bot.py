@@ -6161,7 +6161,7 @@ def admin_run_qa():
         env["FRED_BASE_URL"] = "https://fredcheck.com"
         env["FRED_ADMIN_TOKEN"] = _QC_ADMIN_TOKEN
         try:
-            subprocess.run(cmd, env=env, timeout=1800)  # 30 min max
+            subprocess.run(cmd, env=env, timeout=7200)  # 2 hour max (28 fixtures × 150s each)
         except Exception as e:
             log.error("QA run failed: %s", e)
 
