@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 14)
+**Last updated:** 2026-03-21 (session 14 — final)
 
 ---
 
@@ -201,7 +201,9 @@ Type HELP anytime for a full guide.
 ### Special commands
 - `HELP` — full guide
 - `BALANCE` — shows remaining free checks or credit balance
-- `FEEDBACK` — (planned, not yet implemented)
+- React 👍/👎 to verdict — stores accuracy rating
+- Long-press verdict → Reply — stores text feedback comment
+- `FEEDBACK` — (planned, not yet implemented — freeform command)
 
 ---
 
@@ -316,7 +318,13 @@ Type HELP anytime for a full guide.
   - Default: `9` (cents per text check with 2× margin); payment prompt now shows ~11/$1, ~56/$5, ~111/$10, ~278/$25
   - Real cost is ~8–9¢/check (API only, 2× margin applied); WA conversation fee ($0.041) is absorbed by the business, not charged to user balance
 
-- **Low balance warning** — deferred; user confirmed warning should fire when balance drops below `COST_PER_CHECK_CENTS` (not at $0.00)
+- **Low balance warning** (commit `c7678cb`) — fires after paid check when balance < `COST_PER_CHECK_CENTS`; sends warning + full top-up prompt
+
+- **Verdict reaction feedback** (commit `483cf82`) — `send()` returns WA message ID; stored in `request_log.wa_message_id`; incoming reactions matched to verdict and stored as `feedback` (+1/-1) + `feedback_emoji`
+
+- **Reply-to-verdict text feedback** (commit `f8c2941`) — user long-presses verdict → Reply → text stored as `feedback_text` in `request_log`; Fred confirms with thank-you message
+
+- **HELP updated** (commit `6f81929`) — added BALANCE command and feedback instructions
 
 - **Railway env vars confirmed set:**
   - `FREE_CHECKS_LIMIT=12` (beta value)
