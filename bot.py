@@ -3934,11 +3934,6 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
     if source_type in ("text", "image", "audio", "url", "video"):
         send_fn("🔍 Identifying claims...")
         assessment = assess_content_claims(query, source_type, post_date=post_date)
-        if source_type == "video":
-            existing = assessment.get("claims") or []
-            if not any("ai-generated" in c.lower() or "manipulated" in c.lower() for c in existing):
-                assessment["claims"] = list(existing) + ["Is this video real and not AI-generated or manipulated?"]
-                assessment["checkable"] = True
         if not assessment["checkable"] or not assessment["claims"]:
             msg = no_claims_msg(assessment["reason"], source_type, assessment["suggestions"])
             if image_bytes and HIVE_API_KEY:
@@ -4793,12 +4788,6 @@ def process(from_num, message, profile_name=None):
     if source_type in ("text", "image", "audio", "url", "video"):
         send(from_num, "🔍 Identifying claims...")
         assessment = assess_content_claims(query, source_type, post_date=post_date)
-        # For video: always ensure authenticity check is present — inject before the 0-claims gate
-        if source_type == "video":
-            existing = assessment.get("claims") or []
-            if not any("ai-generated" in c.lower() or "manipulated" in c.lower() for c in existing):
-                assessment["claims"] = list(existing) + ["Is this video real and not AI-generated or manipulated?"]
-                assessment["checkable"] = True
         if not assessment["checkable"] or not assessment["claims"]:
             msg = no_claims_msg(assessment["reason"], source_type, assessment["suggestions"])
             # Still run AI/deepfake detection if we have an image from the post
