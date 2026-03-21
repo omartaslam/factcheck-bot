@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-20 (session 12 continued)
+**Last updated:** 2026-03-21 (session 13)
 
 ---
 
@@ -270,7 +270,8 @@ Type HELP anytime for a full guide.
 3. **Meta app review** — submit once business verification approved
 
 ### Ready to Implement
-4. **QA automation suite** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
+4. **Test Hive AI/deepfake detection** — user creating AI video to test. `HIVE_API_KEY` needs adding to Railway env vars (key in Hive dashboard).
+5. **QA automation suite** — big task. End-to-end testing across: content extraction (all platforms/input types), claim formulation, search quality, source diversity, bias neutralisation, verdict accuracy, edge cases, latency, cost. Build fixture library + Claude-as-judge scoring + nightly GitHub Action regression run. Uses existing `/admin/qc` endpoint as foundation.
 5. **Rotating tagline carousel on fredcheck.com** — add more straplines beneath/alongside "Truth Beyond Borders". Confirmed taglines so far: "Tackling misinformation since birth". Candidates: "Facts don't have a postcode", "Beyond the Western headline", "No default narrative", "Six regions. One truth.", "Every story has another side", "Built for those who ask questions", "The antidote to algorithmic bias", "Checking power, everywhere", "For journalists who dig deeper", "Where facts meet all perspectives".
 6. **Split verdict into multiple WA messages** — Meta charges per 24hr conversation not per message, so splitting is free. Improves readability. Discuss format next session.
 5. **Stripe setup** — Payment Links, `TOPUP_LINK`/`SUB_LINK` env vars, webhook handler
@@ -286,7 +287,33 @@ Type HELP anytime for a full guide.
 
 ---
 
-## 12. Recently Completed Work (Session 12 — 2026-03-20)
+## 12. Recently Completed Work (Session 13 — 2026-03-21)
+
+- **RATING RULE ON SOURCE FRAMING** added to synthesis prompt (commit `51c3afb`):
+  - Claude was conflating source video/post framing with the extracted claim
+  - e.g. "first responders reported secondary explosions" rated MISLEADING because video implied planted bombs
+  - Fix: judge the claim as stated, never downgrade because the source makes a further unjustified leap
+  - Tested: 9/11 claim now correctly returns TRUE
+
+- **Message sequencing fixes** (commits `0bd759b`, `2d4f34a`):
+  - 🔬 Running OSINT verification... now a separate message, sent *before* cross-referencing
+  - — CLAIM X/Y — now a separate message before each verdict, not prepended to verdict body
+
+- **Removed auto-injected AI/deepfake claim for video** (commit `b0c0185`):
+  - Was adding "Is this video real and not AI-generated or manipulated?" as final claim
+  - Redundant — Hive OSINT covers this; Claude is unqualified to answer it
+
+- **Fixed duplicate daily summary emails** (commit `c3403a1`):
+  - Old polling thread fired on every Railway redeploy after 07:00 UTC (last_sent reset to None)
+  - Replaced with APScheduler cron job, misfire_grace_time=None — fires once at 07:00 UTC only
+
+- **Hive OSINT now runs on WA video uploads** (commits `2bf11ab`, `9def045`):
+  - Video uploads had no image_bytes/source_url so OSINT was skipped entirely
+  - Fix: extract middle frame (40% through video) and pass as image_bytes for Hive
+  - Middle frame chosen over first frame — avoids title cards, more representative of content
+  - Latency impact: zero (OSINT runs in background thread in parallel with claim extraction)
+
+## 12b. Previously Completed Work (Session 12 — 2026-03-20)
 
 - **Daily usage summary email** (`_send_daily_summary()`, commit `13a2b37`):
   - Background scheduler thread fires at 07:00 UTC daily, reports previous day
