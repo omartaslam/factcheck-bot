@@ -3621,17 +3621,17 @@ def send(to, text):
 _TAGLINES = [
     "Truth Beyond Borders",
     "Facts don't have a postcode",
-    "Because the truth is a human right",
-    "Checking power, everywhere",
-    "Every lie unchallenged is an injustice",
     "Beyond the Western headline",
-    "Tackling misinformation since birth",
-    "For those who refuse to be misled",
-    "Hold power to account, wherever it sits",
     "No default narrative",
-    "Truth is resistance",
-    "Fact-checking is a form of justice",
-    "We don't just check facts. We fight for them.",
+    "Checking power, everywhere",
+    "For those who refuse to be misled",
+    "Tackling misinformation since birth",
+    "Seeking truth, wherever it leads",
+    "Every claim deserves scrutiny",
+    "Facts in service of the truth",
+    "Digging deeper, so you don't have to",
+    "The truth belongs to everyone",
+    "Accountability without borders",
 ]
 
 _VERDICT_REACTION = {
