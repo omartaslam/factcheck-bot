@@ -1,0 +1,162 @@
+{
+  "_comment": "Fred QA fixtures. Each fixture tests one pipeline path. Update source_url if a URL goes stale.",
+  "fixtures": [
+
+    {
+      "id": "text-true-covid",
+      "description": "Plain text — known TRUE fact",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "The WHO declared COVID-19 a pandemic on 11 March 2020",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating": "TRUE", "min_sources": 3, "confidence": ["HIGH", "MEDIUM"]}
+      }
+    },
+
+    {
+      "id": "text-false-moon",
+      "description": "Plain text — known FALSE claim (moon landing hoax)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "The 1969 moon landing was staged by NASA and never actually happened",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-false-5g",
+      "description": "Plain text — known FALSE claim (5G/COVID)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "5G towers were used to spread COVID-19",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-misleading-framing",
+      "description": "Plain text — misleading framing of a real statistic",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Vaccines kill more people than COVID",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE", "MISLEADING"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "url-news-article",
+      "description": "News article URL — BBC archive (stable)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "https://www.bbc.com/news/world-51235105",
+      "source_type": "url",
+      "notes": "BBC article: Coronavirus confirmed as pandemic by WHO",
+      "expect": {
+        "extraction": {"min_content_len": 100, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "url-reuters-article",
+      "description": "Reuters news article URL",
+      "layer": ["extraction", "claim"],
+      "input": "https://www.reuters.com/world/uk/bbc-drops-documentary-about-gaza-doctors-2024-11-06/",
+      "source_type": "url",
+      "notes": "Reuters: BBC drops Gaza doctors documentary",
+      "expect": {
+        "extraction": {"min_content_len": 100, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3}
+      }
+    },
+
+    {
+      "id": "twitter-text-only",
+      "description": "X/Twitter — oldest tweet, guaranteed stable (Jack Dorsey)",
+      "layer": ["extraction", "claim"],
+      "input": "https://x.com/jack/status/20",
+      "source_type": "url",
+      "notes": "First ever tweet: 'just setting up my twttr' — always exists",
+      "expect": {
+        "extraction": {"min_content_len": 10, "no_unavailable": true, "contains": "twttr"},
+        "claims": {"min": 0, "max": 1, "allow_uncheckable": true}
+      }
+    },
+
+    {
+      "id": "twitter-video-text-fallback",
+      "description": "X/Twitter video — expect text via fxtwitter fallback, video may fail",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "https://x.com/zeteo_news/status/1940518860349915472",
+      "source_type": "url",
+      "notes": "Zeteo video about BBC/Gaza doc — video download often fails, text fallback expected",
+      "expect": {
+        "extraction": {"min_content_len": 20, "no_unavailable": true, "video_optional": true},
+        "claims": {"min": 1, "max": 3},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "youtube-video",
+      "description": "YouTube video — WHO COVID pandemic declaration press conference",
+      "layer": ["extraction", "claim"],
+      "input": "https://www.youtube.com/watch?v=h4cJMlYBOzA",
+      "source_type": "url",
+      "notes": "WHO Director-General COVID pandemic announcement March 2020",
+      "expect": {
+        "extraction": {"min_content_len": 50, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3}
+      }
+    },
+
+    {
+      "id": "multi-claim-text",
+      "description": "Text with multiple checkable claims — tests claim extraction depth",
+      "layer": ["extraction", "claim"],
+      "input": "The BBC refused to air Gaza: Doctors Under Attack. The film was directed by Chloe Hadjimatheou. Channel 4 broadcast it in 2025.",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 2, "max": 3}
+      }
+    },
+
+    {
+      "id": "text-unverifiable",
+      "description": "Plain text — genuinely unverifiable private claim",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "The UK government has a secret plan to ban all protests by 2026",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["UNVERIFIABLE", "FALSE", "MOSTLY FALSE", "NEEDS CONTEXT"], "min_sources": 1}
+      }
+    },
+
+    {
+      "id": "text-arabic-context",
+      "description": "Claim requiring non-Western sources — tests regional source coverage",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Israel declared a state of war on 8 October 2023 following the Hamas attack",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3}
+      }
+    }
+  ]
+}
