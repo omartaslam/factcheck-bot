@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 15 continued)
+**Last updated:** 2026-03-21 (session 15 — late)
 
 ---
 
@@ -333,6 +333,19 @@ Type HELP anytime for a full guide.
   - New platform fixtures: Facebook (George Galloway post), Instagram Reel, TikTok (Sky Sports), AI/deepfake TikTok (provisional)
   - 24 active, 0 placeholders remaining
   - Runner skips `skip: true` fixtures automatically
+
+- **QA runner reliability fixes** (commits `c8b0124`, `abe7075`):
+  - Subprocess timeout increased from 30 min → 2 hours (28 fixtures can take ~70 min)
+  - Failure notification email now sent immediately if run fails or times out
+  - stderr captured so failures are no longer silent
+
+- **Quality observations from earlier runs** (12-fixture suite):
+  - Fred defaults to FALSE when it can't verify something rather than UNVERIFIABLE — synthesis prompt issue to fix
+  - "Vaccines kill more people than COVID" → FALSE (should be MISLEADING)
+  - "UK secret plan to ban protests" → FALSE (should be UNVERIFIABLE)
+  - Source counts consistently 55–83 per verdict ✅
+  - Non-Western sources firing correctly on MENA claims ✅
+  - X video text fallback solid ✅
 
 - **Media type coverage gap identified**:
   - ❌ Image OCR (WhatsApp image), audio/voice note, carousel posts, out-of-context image not testable via current `/admin/qc` endpoint
