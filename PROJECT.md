@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 14 — final)
+**Last updated:** 2026-03-21 (session 15)
 
 ---
 
@@ -296,7 +296,30 @@ Type HELP anytime for a full guide.
 
 ---
 
-## 12. Recently Completed Work (Session 14 — 2026-03-21)
+## 12. Recently Completed Work (Session 15 — 2026-03-21)
+
+- **Suppress qctest_ from new-user emails** (commit `4afaf25`):
+  - `_notify_new_user()` returns early for any wa_id starting with `qctest_`
+  - Fixes ~12 spam emails received per QA suite run during beta testing
+  - `_send_daily_summary()` also filters `qctest_%` from check rows and new-user counts
+
+- **QA runner — rich email report** (commit `1ee0671`):
+  - `--email` flag: runs suite then sends single consolidated email to hello@fredcheck.com
+  - Per-fixture email includes: input, extracted claims text, verdict reasoning snippet, failed checks only
+  - `extract_claims_text(messages)` — parses numbered claim lines from pipeline output
+  - `extract_verdict_text(messages)` — extracts VERDICT line + 3 lines of reasoning
+  - Format designed for human review of pipeline quality (not just pass/fail counts)
+  - Run: `python3 scripts/qa_runner.py --email`
+
+- **QA run results** (two runs, consistent failures):
+  - 10/12 fixtures pass, 65/67 checks pass
+  - ❌ `twitter-text-only` — `contains: twttr` check wrong (tweet text not echoed in messages, just used as query input). Fixture assertion needs relaxing.
+  - ❌ `youtube-video` — WHO press conference video (`h4cJMlYBOzA`) is unavailable on YouTube. Need replacement stable URL.
+  - ✅ All text, BBC, Reuters, X video (text fallback), multi-claim, Arabic, unverifiable fixtures pass
+
+- **Noted for later**: Full audit log for customers — store full verdict text + cited sources in request_log; HISTORY command or web view for customer check history.
+
+## 12a. Previously Completed Work (Session 14 — 2026-03-21)
 
 - **Geo-localised source preview** (commit `9ae76ba`):
   - `_GEO_SOURCE_BOOST` maps phone country prefixes to locally familiar sources
