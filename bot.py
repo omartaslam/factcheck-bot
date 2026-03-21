@@ -2917,23 +2917,21 @@ def claims_confirm_msg(claims, source_type, cost, is_free=False):
     plural = "claims" if len(claims) > 1 else "claim"
     claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
     if len(claims) == 1:
-        reply_prompt = f"_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel"
+        reply_prompt = "Reply *Y* to fact-check\nReply *N* to cancel"
     elif is_free:
         nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
         reply_prompt = (
-            f"_Est. cost: ${cost:.4f}_\n\n"
-            f"Reply {nums} to pick one claim (free plan — one claim per check)\n"
+            f"Reply {nums} to pick one claim _(free plan — one claim per check)_\n"
             f"Reply *N* to cancel"
         )
     else:
         nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
         reply_prompt = (
-            f"_Est. cost: ${cost:.4f} per claim_\n\n"
             f"Reply {nums} or *ALL* to fact-check\n"
             f"Reply *N* to cancel"
         )
     return (
-        f"{HDR}\n*FACTCHECK PRO*\n_{src.get(source_type, source_type)}_\n{HDR}\n\n"
+        f"{HDR}\n*Fred Check*\n_{src.get(source_type, source_type)}_\n{HDR}\n\n"
         f"*Found {len(claims)} verifiable {plural}:*\n\n{claim_lines}\n\n"
         f"{reply_prompt}"
     )
@@ -3581,7 +3579,7 @@ HELP_MSG = (
 def confirm_msg(st, preview, cost):
     src = {"text":"Text","image":"Image","audio":"Voice Note","video":"Video","url":"Article","document":"Document"}
     HDR = "*━━━━━━━━━━━━━━*"
-    return (f"{HDR}\n*FACTCHECK PRO*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\n_Est. cost: ${cost:.4f}_\n\nReply *Y* to fact-check\nReply *N* to cancel")
+    return (f"{HDR}\n*Fred Check*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\nReply *Y* to fact-check\nReply *N* to cancel")
 
 def _split_message(text, limit=4000):
     """Split text at newline boundaries near limit to avoid mid-sentence cuts."""
@@ -4388,7 +4386,7 @@ def process(from_num, message, profile_name=None):
                 if remaining <= 0:
                     suffix = "last free check"
                 else:
-                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining today"
+                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining"
                 status_line = f"✓ Free check — {suffix}"
                 if remaining == 0:
                     status_line += "\n_This is your last free check today. Your allowance resets at midnight._"
