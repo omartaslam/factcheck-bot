@@ -3866,7 +3866,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*")
         verdict_msg_id = send(from_num, report)
-        _log_request("whatsapp", from_num, st, query, claim, a, report, cost, wa_message_id=verdict_msg_id)
+        _log_request("whatsapp", from_num, st, query, claim, a, report, cost, wa_message_id=verdict_msg_id, source_url=source_url or None)
 
     # ── React to original message with most significant verdict emoji ──────
     if msg_id and all_ratings:
@@ -5115,6 +5115,7 @@ def init_db():
                 feedback_emoji TEXT,
                 feedback_text TEXT,
                 wa_message_id TEXT,
+                source_url TEXT,
                 created_at INTEGER NOT NULL
             );
         """)
@@ -5133,6 +5134,8 @@ def init_db():
         except Exception: pass
         try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_text TEXT")
         except Exception: pass
+        try: c.execute("ALTER TABLE request_log ADD COLUMN source_url TEXT")
+        except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
             rows = c.execute("SELECT * FROM wa_users").fetchall()
@@ -5149,7 +5152,7 @@ def init_db():
 init_db()
 
 
-def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd, wa_message_id=None):
+def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd, wa_message_id=None, source_url=None):
     """Log a fact-check request and Fred's response to request_log. Returns inserted row id."""
     import time as _time, json as _json
     try:
@@ -5157,8 +5160,8 @@ def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, repo
             c.execute("""
                 INSERT INTO request_log
                     (platform, uid, source_type, raw_input, extracted_claim,
-                     rating, confidence, verdict_json, response_text, cost_usd, wa_message_id, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                     rating, confidence, verdict_json, response_text, cost_usd, wa_message_id, source_url, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (platform, uid, source_type,
                  (raw_input or "")[:2000],
                  (extracted_claim or "")[:1000],
@@ -5167,6 +5170,7 @@ def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, repo
                  (report or "")[:4000],
                  cost_usd,
                  wa_message_id,
+                 source_url or None,
                  int(_time.time())))
     except Exception as e:
         log.warning("request_log insert failed: %s", e)
