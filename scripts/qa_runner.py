@@ -6,11 +6,12 @@ Usage:
   python3 scripts/qa_runner.py --id text-true-covid  # run one fixture
   python3 scripts/qa_runner.py --layer extraction    # run by layer
   python3 scripts/qa_runner.py --fast              # skip slow video fixtures
+  python3 scripts/qa_runner.py --email             # run all and email results
 
 Results printed to stdout. Exit code 0 = all pass, 1 = failures.
 """
 
-import argparse, json, os, sys, time, requests
+import argparse, json, os, re, sys, time, requests
 
 BASE_URL  = os.getenv("FRED_BASE_URL", "https://fredcheck.com")
 ADMIN_TOK = os.getenv("FRED_ADMIN_TOKEN", "qc-test-fred-2026")
@@ -54,12 +55,10 @@ def extract_verdict_rating(messages):
 
 def extract_sources_count(messages):
     """Count cited sources from the verdict message."""
-    import re
     for m in reversed(messages):
         match = re.search(r"searched (\d+)", m)
         if match:
             return int(match.group(1))
-        # count bullet source lines
         lines = [l for l in m.split("\n") if l.strip().startswith("•") and "—" in l]
         if lines:
             return len(lines)
@@ -67,12 +66,39 @@ def extract_sources_count(messages):
 
 def extract_claims_count(messages):
     """Count how many claims were identified."""
-    import re
     for m in messages:
         match = re.search(r"Found (\d+) verifiable", m)
         if match:
             return int(match.group(1))
     return 0
+
+def extract_claims_text(messages):
+    """Return list of extracted claim strings."""
+    for m in messages:
+        if re.search(r"Found \d+ verifiable", m):
+            lines = m.split("\n")
+            claims = []
+            for line in lines:
+                line = line.strip()
+                # Numbered claim lines: "1. Claim text" or "1) Claim text"
+                match = re.match(r"^\d+[.)]\s+(.+)", line)
+                if match:
+                    claims.append(match.group(1))
+            if claims:
+                return claims
+    return []
+
+def extract_verdict_text(messages):
+    """Return verdict rating + first 3 lines of reasoning."""
+    for m in messages:
+        if "VERDICT:" in m:
+            lines = [l.strip() for l in m.split("\n") if l.strip()]
+            # Find VERDICT line and take up to 3 lines after it
+            for i, line in enumerate(lines):
+                if "VERDICT:" in line:
+                    snippet = lines[i:i+4]  # VERDICT line + up to 3 more
+                    return "\n".join(snippet)
+    return None
 
 def content_was_extracted(messages):
     """Returns (extracted: bool, content_len: int, unavailable: bool)."""
@@ -81,7 +107,6 @@ def content_was_extracted(messages):
         "private, deleted, or restricted",
         "Could not access this video",
     ])
-    # Content is in the query that gets processed — proxy: no error messages
     has_content = not unavailable and len(messages) >= 4
     content_len = max(len(m) for m in messages) if messages else 0
     return has_content, content_len, unavailable
@@ -175,9 +200,100 @@ def evaluate(fixture, messages):
 
     return results
 
+# ── email ──────────────────────────────────────────────────────────────────────
+
+def build_email_body(fixture_detail_list, total_pass, total_fail, run_ts):
+    """
+    fixture_detail_list: list of dicts with keys:
+      id, description, input, claims, verdict_text, checks, ok, error
+    """
+    lines = [
+        "Fred Check — QA Report",
+        f"Run: {run_ts}",
+        f"Base URL: {BASE_URL}",
+        "",
+        f"Fixtures: {len(fixture_detail_list)}   "
+        f"Checks passed: {total_pass}   Failed: {total_fail}",
+        "",
+        "=" * 60,
+    ]
+
+    for d in fixture_detail_list:
+        status = "PASS" if d["ok"] else "FAIL"
+        lines.append(f"\n[{status}] {d['id']}")
+        lines.append(f"  {d['description']}")
+        lines.append(f"  Input: {d['input'][:100]}")
+
+        if d.get("error"):
+            lines.append(f"  ERROR: {d['error']}")
+        else:
+            # Claims
+            if d["claims"]:
+                lines.append("  Claims extracted:")
+                for i, c in enumerate(d["claims"], 1):
+                    lines.append(f"    {i}. {c}")
+            else:
+                lines.append("  Claims: (none extracted)")
+
+            # Verdict
+            if d["verdict_text"]:
+                lines.append("  Verdict:")
+                for vline in d["verdict_text"].split("\n"):
+                    lines.append(f"    {vline}")
+            else:
+                lines.append("  Verdict: —")
+
+            # Failed checks only
+            failed_checks = [(n, det) for n, ok, det in d["checks"] if not ok]
+            if failed_checks:
+                lines.append("  Failed checks:")
+                for name, det in failed_checks:
+                    lines.append(f"    ✗ {name}: {det}")
+
+        lines.append("")
+
+    lines += [
+        "=" * 60,
+        "SUMMARY",
+        "",
+    ]
+    for d in fixture_detail_list:
+        icon = "PASS" if d["ok"] else "FAIL"
+        lines.append(f"  [{icon}] {d['id']}")
+
+    lines += ["", "Fred Check"]
+    return "\n".join(lines)
+
+
+def send_email(subject, body):
+    import urllib.request as _ur
+    sg_key = os.environ.get("SENDGRID_API_KEY")
+    if not sg_key:
+        print("ERROR: SENDGRID_API_KEY not set — cannot send email")
+        return False
+    payload = json.dumps({
+        "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+        "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+        "subject": subject,
+        "content": [{"type": "text/plain", "value": body}]
+    }).encode()
+    req = _ur.Request(
+        "https://api.sendgrid.com/v3/mail/send",
+        data=payload,
+        headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
+        method="POST"
+    )
+    try:
+        _ur.urlopen(req, timeout=15)
+        return True
+    except Exception as e:
+        print(f"Email send failed: {e}")
+        return False
+
 # ── main ──────────────────────────────────────────────────────────────────────
 
 def run_fixture(fixture, verbose=True):
+    """Returns (ok, passed, failed, detail_dict)."""
     fid = fixture["id"]
     desc = fixture["description"]
     notes = fixture.get("notes", "")
@@ -189,33 +305,51 @@ def run_fixture(fixture, verbose=True):
         print(f"  NOTE: {notes}")
     print(f"  INPUT: {fixture['input'][:80]}")
 
+    detail = {
+        "id": fid,
+        "description": desc,
+        "input": fixture["input"],
+        "claims": [],
+        "verdict_text": None,
+        "checks": [],
+        "ok": False,
+        "error": None,
+    }
+
     try:
         job_id = start_job(fixture["input"])
         print(f"  Job: {job_id} — polling ({POLL_SECS}s max)...")
         messages, err = poll_job(job_id)
     except Exception as e:
         print(f"  ❌ ERROR starting job: {e}")
-        return False, 0, 1
+        detail["error"] = str(e)
+        return False, 0, 1, detail
 
     if err:
         print(f"  ❌ {err[0]}")
-        return False, 0, 1
+        detail["error"] = err[0]
+        return False, 0, 1, detail
 
     if verbose:
         print(f"  Messages received: {len(messages)}")
         for i, m in enumerate(messages):
             print(f"    [{i}] {m[:120].replace(chr(10),' ')}")
 
+    detail["claims"] = extract_claims_text(messages)
+    detail["verdict_text"] = extract_verdict_text(messages)
+
     checks = evaluate(fixture, messages)
+    detail["checks"] = checks
     passed = sum(1 for _, ok, _ in checks if ok)
     failed = sum(1 for _, ok, _ in checks if not ok)
+    detail["ok"] = (failed == 0)
 
     print(f"\n  Results ({passed} pass, {failed} fail):")
-    for name, ok, detail in checks:
+    for name, ok, det in checks:
         icon = "✅" if ok else "❌"
-        print(f"    {icon} {name}: {detail}")
+        print(f"    {icon} {name}: {det}")
 
-    return failed == 0, passed, failed
+    return failed == 0, passed, failed, detail
 
 
 def main():
@@ -224,6 +358,7 @@ def main():
     parser.add_argument("--layer", help="Run fixtures containing this layer")
     parser.add_argument("--fast",  action="store_true", help="Skip video fixtures")
     parser.add_argument("--quiet", action="store_true", help="Suppress message dump")
+    parser.add_argument("--email", action="store_true", help="Email results to hello@fredcheck.com")
     args = parser.parse_args()
 
     here = os.path.dirname(os.path.abspath(__file__))
@@ -241,23 +376,35 @@ def main():
         print("No fixtures matched.")
         sys.exit(1)
 
+    import datetime
+    run_ts = datetime.datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC")
     print(f"Running {len(fixtures)} fixture(s) against {BASE_URL}")
 
     total_pass = total_fail = 0
     fixture_results = []
+    fixture_details = []
 
     for fix in fixtures:
-        ok, p, f = run_fixture(fix, verbose=not args.quiet)
+        ok, p, f, detail = run_fixture(fix, verbose=not args.quiet)
         total_pass += p
         total_fail += f
         fixture_results.append((fix["id"], ok))
-        time.sleep(3)  # brief pause between fixtures
+        fixture_details.append(detail)
+        time.sleep(3)
 
     print(f"\n{'='*60}")
     print(f"SUMMARY: {total_pass} checks passed, {total_fail} failed")
     print()
     for fid, ok in fixture_results:
         print(f"  {'✅' if ok else '❌'} {fid}")
+
+    if args.email:
+        body = build_email_body(fixture_details, total_pass, total_fail, run_ts)
+        n_pass = sum(1 for _, ok in fixture_results if ok)
+        n_fail = sum(1 for _, ok in fixture_results if not ok)
+        subject = f"🧪 Fred QA — {n_pass}/{len(fixture_results)} fixtures passed — {run_ts}"
+        ok_send = send_email(subject, body)
+        print(f"\n{'Email sent ✅' if ok_send else 'Email FAILED ❌'} → hello@fredcheck.com")
 
     sys.exit(0 if total_fail == 0 else 1)
 
