@@ -3704,6 +3704,30 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         except Exception as e:
             log.warning(f"OSINT collect: {e}")
 
+    # ── OSINT early exit — bail if high-confidence AI/deepfake detected ──────
+    if osint:
+        hive = osint.get("hive") or osint.get("hive_url") or {}
+        ai_score = hive.get("ai_generated", 0) if isinstance(hive, dict) else 0
+        df_score = hive.get("deepfake", 0) if isinstance(hive, dict) else 0
+        generator = hive.get("generator", "") if isinstance(hive, dict) else ""
+        gen_label = f" (likely {generator})" if generator else ""
+        if ai_score > 0.7:
+            send(from_num,
+                f"🤖 *AI-Generated Content Detected*\n\n"
+                f"This content has been identified as AI-generated{gen_label} "
+                f"({int(ai_score*100)}% probability). "
+                f"Fact-checking AI-generated content is not meaningful as the claims within it may be fabricated.\n\n"
+                f"_If you believe this is an error, please send the claim as text._")
+            return
+        if df_score > 0.7:
+            send(from_num,
+                f"🎭 *Deepfake Detected*\n\n"
+                f"This content has been identified as a deepfake "
+                f"({int(df_score*100)}% probability). "
+                f"The media appears to have been synthetically manipulated.\n\n"
+                f"_If you believe this is an error, please send the claim as text._")
+            return
+
     # ── Multi-claim header (skip — already shown before Y confirmation) ───
     multi = len(claims) > 1
 
