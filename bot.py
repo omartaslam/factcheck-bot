@@ -272,11 +272,12 @@ def refresh_whatsapp_token():
         log.error(f"Token refresh error: {e}")
 
 # Schedule token refresh every 50 days
+# Daily summary at 07:00 UTC added after _send_daily_summary is defined (see below)
 _scheduler = BackgroundScheduler()
 _scheduler.add_job(refresh_whatsapp_token, "interval", days=50, id="token_refresh")
 _scheduler.start()
 atexit.register(lambda: _scheduler.shutdown())
-log.info("Token auto-refresh scheduler started (every 50 days)")
+log.info("Scheduler started: token refresh (50d)")
 
 processed_ids = set()
 processed_lock = threading.Lock()
@@ -4074,21 +4075,11 @@ def _send_daily_summary(date_str=None):
     except Exception as e:
         log.error("Daily summary email failed: %s", e)
 
-
-def _daily_summary_scheduler():
-    """Background thread: sends daily summary at 07:00 UTC every day."""
-    import datetime as _dt
-    last_sent = None
-    while True:
-        try:
-            now = _dt.datetime.utcnow()
-            today = now.date().isoformat()
-            if now.hour >= 7 and last_sent != today:
-                _send_daily_summary()
-                last_sent = today
-        except Exception as e:
-            log.error("Daily summary scheduler error: %s", e)
-        t.sleep(3600)  # check every hour
+# Add daily summary to scheduler now that _send_daily_summary is defined
+# misfire_grace_time=None means missed fires (e.g. on restart) are skipped — fires once at 07:00 UTC only
+_scheduler.add_job(_send_daily_summary, "cron", hour=7, minute=0, id="daily_summary",
+                   misfire_grace_time=None)
+log.info("Daily summary scheduled: 07:00 UTC")
 
 
 def _notify_new_user(wa_id, profile_name):
@@ -4933,7 +4924,7 @@ def init_db():
     log.info("DB initialised at %s", DB_PATH)
 
 init_db()
-threading.Thread(target=_daily_summary_scheduler, daemon=True).start()
+
 
 def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd):
     """Log a fact-check request and Fred's response to request_log."""
