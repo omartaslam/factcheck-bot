@@ -1,10 +1,10 @@
 {
-  "_comment": "Fred QA fixtures. Each fixture tests one pipeline path. Update source_url if a URL goes stale.",
+  "_comment": "Fred QA fixtures. Each fixture tests one pipeline path. Update source_url if a URL goes stale. PLACEHOLDERS marked with TODO must be replaced before running.",
   "fixtures": [
 
     {
       "id": "text-true-covid",
-      "description": "Plain text — known TRUE fact",
+      "description": "Plain text — known TRUE fact (COVID pandemic declaration)",
       "layer": ["extraction", "claim", "verdict"],
       "input": "The WHO declared COVID-19 a pandemic on 11 March 2020",
       "source_type": "text",
@@ -12,6 +12,19 @@
         "extraction": {"min_content_len": 20},
         "claims": {"min": 1, "max": 2},
         "verdict": {"rating": "TRUE", "min_sources": 3, "confidence": ["HIGH", "MEDIUM"]}
+      }
+    },
+
+    {
+      "id": "text-true-historical",
+      "description": "Plain text — confirmed TRUE historical fact (Mandela release)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Nelson Mandela was released from prison on 11 February 1990 after 27 years",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3, "confidence": ["HIGH", "MEDIUM"]}
       }
     },
 
@@ -42,8 +55,34 @@
     },
 
     {
+      "id": "text-false-climate",
+      "description": "Plain text — climate change denial claim",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "97% of scientists do not agree that climate change is caused by humans — that figure was made up",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE", "MISLEADING"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-false-election",
+      "description": "Plain text — known FALSE election fraud claim (US 2020)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "The 2020 US presidential election was stolen through widespread voter fraud",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE"], "min_sources": 3}
+      }
+    },
+
+    {
       "id": "text-misleading-framing",
-      "description": "Plain text — misleading framing of a real statistic",
+      "description": "Plain text — misleading framing of a real statistic (vaccines)",
       "layer": ["extraction", "claim", "verdict"],
       "input": "Vaccines kill more people than COVID",
       "source_type": "text",
@@ -51,6 +90,129 @@
         "extraction": {"min_content_len": 20},
         "claims": {"min": 1, "max": 2},
         "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE", "MISLEADING"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-misleading-stat",
+      "description": "Plain text — statistical cherry-pick (UK knife crime)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Knife crime in the UK has risen every year since 2014",
+      "source_type": "text",
+      "notes": "Partially true in some years, not every year — expects MISLEADING or NEEDS CONTEXT",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["MISLEADING", "MOSTLY FALSE", "FALSE", "NEEDS CONTEXT", "MOSTLY TRUE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-needs-context",
+      "description": "Plain text — claim that is true but missing critical context",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Israel has killed more people in Gaza than Hamas killed on October 7",
+      "source_type": "text",
+      "notes": "Numerically verifiable but deeply context-dependent — expects NEEDS CONTEXT, MOSTLY TRUE or TRUE with caveats",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE", "NEEDS CONTEXT", "MISLEADING"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-contested-geopolitical",
+      "description": "Plain text — contested claim where sources disagree (Ukraine)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Ukraine attacked the Nord Stream pipeline in 2022",
+      "source_type": "text",
+      "notes": "Attribution contested — multiple credible theories. Tests whether Fred picks sides or returns NEEDS CONTEXT/UNVERIFIABLE",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["UNVERIFIABLE", "NEEDS CONTEXT", "MISLEADING", "MOSTLY FALSE", "FALSE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-health-misinfo",
+      "description": "Plain text — health misinformation (ivermectin/COVID)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Ivermectin was proven to cure COVID-19 but governments suppressed the evidence",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE", "MISLEADING"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-misattributed-quote",
+      "description": "Plain text — famous misattributed quote (Einstein)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Albert Einstein said 'The definition of insanity is doing the same thing over and over and expecting different results'",
+      "source_type": "text",
+      "notes": "Widely misattributed — Einstein never said this. Expects FALSE or MISLEADING.",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "MISLEADING", "MOSTLY FALSE"], "min_sources": 2}
+      }
+    },
+
+    {
+      "id": "text-unverifiable",
+      "description": "Plain text — genuinely unverifiable private claim",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "The UK government has a secret plan to ban all protests by 2026",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["UNVERIFIABLE", "FALSE", "MOSTLY FALSE", "NEEDS CONTEXT"], "min_sources": 1}
+      }
+    },
+
+    {
+      "id": "text-arabic-input",
+      "description": "Plain text — Arabic language input claim",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "أعلنت منظمة الصحة العالمية أن كوفيد-19 جائحة في 11 مارس 2020",
+      "source_type": "text",
+      "notes": "Arabic: WHO declared COVID-19 a pandemic on 11 March 2020. Tests non-English input handling.",
+      "expect": {
+        "extraction": {"min_content_len": 10},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-arabic-context",
+      "description": "Plain text — claim requiring non-Western sources (Israel/Hamas)",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "Israel declared a state of war on 8 October 2023 following the Hamas attack",
+      "source_type": "text",
+      "expect": {
+        "extraction": {"min_content_len": 20},
+        "claims": {"min": 1, "max": 2},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3}
+      }
+    },
+
+    {
+      "id": "text-satire-detection",
+      "description": "Plain text — satire/parody claim that should not be fact-checked as real",
+      "layer": ["extraction", "claim"],
+      "input": "Scientists have confirmed that the Moon is actually made of cheese, resolving a centuries-old debate",
+      "source_type": "text",
+      "notes": "Obvious parody — Fred should either mark unverifiable/false or ideally flag as satirical. Should NOT return TRUE.",
+      "expect": {
+        "extraction": {"min_content_len": 10},
+        "claims": {"min": 0, "max": 2},
+        "verdict": {"rating_in": ["FALSE", "PANTS ON FIRE", "UNVERIFIABLE"]}
       }
     },
 
@@ -69,6 +231,19 @@
     },
 
     {
+      "id": "url-aljazeera-article",
+      "description": "Non-Western news source — Al Jazeera article",
+      "layer": ["extraction", "claim"],
+      "input": "https://www.aljazeera.com/news/2023/10/7/hamas-launches-surprise-attack-on-israel-what-we-know",
+      "source_type": "url",
+      "notes": "Al Jazeera: Hamas attack Oct 7 2023 — tests non-Western source extraction",
+      "expect": {
+        "extraction": {"min_content_len": 100, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3}
+      }
+    },
+
+    {
       "id": "url-reuters-article",
       "description": "Reuters news article URL",
       "layer": ["extraction", "claim"],
@@ -82,6 +257,18 @@
     },
 
     {
+      "id": "url-unavailable-content",
+      "description": "URL pointing to deleted/private content — tests unavailability detection",
+      "layer": ["extraction"],
+      "input": "https://www.facebook.com/photo?fbid=999999999999999",
+      "source_type": "url",
+      "notes": "Non-existent Facebook photo — should trigger unavailability message",
+      "expect": {
+        "extraction": {"min_content_len": 10}
+      }
+    },
+
+    {
       "id": "twitter-text-only",
       "description": "X/Twitter — oldest tweet, guaranteed stable (Jack Dorsey)",
       "layer": ["extraction", "claim"],
@@ -91,6 +278,20 @@
       "expect": {
         "extraction": {"min_content_len": 10, "no_unavailable": true},
         "claims": {"min": 0, "max": 1, "allow_uncheckable": true}
+      }
+    },
+
+    {
+      "id": "twitter-political-claim",
+      "description": "X/Twitter — politically sensitive tweet with checkable claim",
+      "layer": ["extraction", "claim", "verdict"],
+      "input": "https://x.com/Reuters/status/1843396117544653101",
+      "source_type": "url",
+      "notes": "Reuters tweet on Gaza ceasefire talks Oct 2024 — stable official news account",
+      "expect": {
+        "extraction": {"min_content_len": 20, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3},
+        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE", "NEEDS CONTEXT"], "min_sources": 3}
       }
     },
 
@@ -114,7 +315,7 @@
       "layer": ["extraction", "claim"],
       "input": "https://www.youtube.com/watch?v=VYrLGpWdAE8",
       "source_type": "url",
-      "notes": "UN General Assembly 77th session opening — official UN channel, unlikely to be removed. Original WHO video h4cJMlYBOzA went unavailable.",
+      "notes": "UN General Assembly 77th session opening — official UN channel. Original WHO video h4cJMlYBOzA went unavailable.",
       "expect": {
         "extraction": {"min_content_len": 50, "no_unavailable": true},
         "claims": {"min": 1, "max": 3}
@@ -134,29 +335,60 @@
     },
 
     {
-      "id": "text-unverifiable",
-      "description": "Plain text — genuinely unverifiable private claim",
-      "layer": ["extraction", "claim", "verdict"],
-      "input": "The UK government has a secret plan to ban all protests by 2026",
-      "source_type": "text",
+      "id": "facebook-post",
+      "description": "Facebook post — public post with verifiable claim",
+      "layer": ["extraction", "claim"],
+      "input": "TODO: replace with real Facebook post URL containing a checkable claim",
+      "source_type": "url",
+      "notes": "TODO: user to provide stable public Facebook post URL",
+      "skip": true,
       "expect": {
-        "extraction": {"min_content_len": 20},
-        "claims": {"min": 1, "max": 2},
-        "verdict": {"rating_in": ["UNVERIFIABLE", "FALSE", "MOSTLY FALSE", "NEEDS CONTEXT"], "min_sources": 1}
+        "extraction": {"min_content_len": 50, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3}
       }
     },
 
     {
-      "id": "text-arabic-context",
-      "description": "Claim requiring non-Western sources — tests regional source coverage",
-      "layer": ["extraction", "claim", "verdict"],
-      "input": "Israel declared a state of war on 8 October 2023 following the Hamas attack",
-      "source_type": "text",
+      "id": "instagram-post",
+      "description": "Instagram post — public post with verifiable claim",
+      "layer": ["extraction", "claim"],
+      "input": "TODO: replace with real Instagram post URL containing a checkable claim",
+      "source_type": "url",
+      "notes": "TODO: user to provide stable public Instagram post URL",
+      "skip": true,
       "expect": {
-        "extraction": {"min_content_len": 20},
-        "claims": {"min": 1, "max": 2},
-        "verdict": {"rating_in": ["TRUE", "MOSTLY TRUE"], "min_sources": 3}
+        "extraction": {"min_content_len": 50, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3}
+      }
+    },
+
+    {
+      "id": "tiktok-video",
+      "description": "TikTok video — verifiable claim in video or caption",
+      "layer": ["extraction", "claim"],
+      "input": "TODO: replace with real TikTok URL containing a verifiable claim",
+      "source_type": "url",
+      "notes": "TODO: user to provide TikTok URL",
+      "skip": true,
+      "expect": {
+        "extraction": {"min_content_len": 20, "no_unavailable": true},
+        "claims": {"min": 1, "max": 3}
+      }
+    },
+
+    {
+      "id": "ai-deepfake-video",
+      "description": "AI-generated or deepfake video — tests Hive OSINT detection path",
+      "layer": ["extraction", "claim"],
+      "input": "TODO: replace with URL of known AI-generated/deepfake video",
+      "source_type": "url",
+      "notes": "TODO: user to provide a known synthetic/deepfake video URL. Should trigger Hive AI detection and surface result in verdict.",
+      "skip": true,
+      "expect": {
+        "extraction": {"min_content_len": 10},
+        "claims": {"min": 0, "max": 3}
       }
     }
+
   ]
 }

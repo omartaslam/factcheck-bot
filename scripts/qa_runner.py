@@ -371,6 +371,12 @@ def main():
         fixtures = [f for f in fixtures if args.layer in f.get("layer", [])]
     if args.fast:
         fixtures = [f for f in fixtures if "video" not in f["id"]]
+    # Skip placeholder fixtures unless explicitly requested by --id
+    if not args.id:
+        skipped = [f["id"] for f in fixtures if f.get("skip")]
+        fixtures = [f for f in fixtures if not f.get("skip")]
+        if skipped:
+            print(f"Skipping {len(skipped)} placeholder fixture(s): {', '.join(skipped)}")
 
     if not fixtures:
         print("No fixtures matched.")
