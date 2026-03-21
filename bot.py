@@ -3591,14 +3591,16 @@ def _split_message(text, limit=4000):
     return chunks
 
 def send(to, text):
+    """Send a WhatsApp message. Returns the WA message ID of the last chunk sent, or None."""
     # QC test interception — capture messages instead of hitting Meta API
     if to.startswith("qctest_"):
         with _qc_lock:
             if to in _qc_jobs:
                 _qc_jobs[to]["messages"].append(text)
-        return
+        return None
     # Sanitize: remove null bytes and non-BMP unicode that WhatsApp rejects
     text = text.replace("\x00", "").encode("utf-16", "surrogatepass").decode("utf-16")
+    last_msg_id = None
     for chunk in _split_message(text):
         try:
             r = requests.post(WHATSAPP_URL,
@@ -3608,8 +3610,10 @@ def send(to, text):
             if not r.ok:
                 log.error(f"Send failed {r.status_code}: {r.text[:200]}")
             r.raise_for_status()
+            last_msg_id = r.json().get("messages", [{}])[0].get("id")
         except Exception as e:
             log.error("Send: %s", e)
+    return last_msg_id
 
 _VERDICT_REACTION = {
     "TRUE":           "✅",
@@ -3836,11 +3840,11 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         all_ratings.append(a.get("rating", "UNVERIFIABLE"))
         ad = get_random_ad() if show_ad else None
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST)
-        _log_request("whatsapp", from_num, st, query, claim, a, report, cost)
         log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*")
-        send(from_num, report)
+        verdict_msg_id = send(from_num, report)
+        _log_request("whatsapp", from_num, st, query, claim, a, report, cost, wa_message_id=verdict_msg_id)
 
     # ── React to original message with most significant verdict emoji ──────
     if msg_id and all_ratings:
@@ -4261,6 +4265,23 @@ def process(from_num, message, profile_name=None):
     # ── Early billing gate — block before any processing ─────────────────────
     # Skip for: new users (just joined, have free checks), text commands/responses
     _is_text = msg_type == "text"
+    # ── Reaction feedback ─────────────────────────────────────────────────────
+    if msg_type == "reaction":
+        reaction = message.get("reaction", {})
+        reacted_msg_id = reaction.get("message_id")
+        emoji = reaction.get("emoji", "")
+        if reacted_msg_id and emoji:
+            _POSITIVE = {"👍","❤️","✅","🙌","💯","😍","🔥","❤","👏"}
+            _NEGATIVE = {"👎","😡","🤮","🤔","😕","💔"}
+            score = 1 if emoji in _POSITIVE else (-1 if emoji in _NEGATIVE else 0)
+            try:
+                with _db() as c:
+                    c.execute("UPDATE request_log SET feedback=?, feedback_emoji=? WHERE wa_message_id=?",
+                              (score, emoji, reacted_msg_id))
+                log.info("Feedback %s (%d) recorded for msg %s", emoji, score, reacted_msg_id[:20])
+            except Exception as e:
+                log.warning("Feedback store failed: %s", e)
+        return
     _body_upper = message.get("text", {}).get("body", "").strip().upper() if _is_text else ""
     _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
     if not is_new and not _is_command:
@@ -5052,6 +5073,8 @@ def init_db():
                 response_text TEXT,
                 cost_usd REAL,
                 feedback INTEGER,
+                feedback_emoji TEXT,
+                wa_message_id TEXT,
                 created_at INTEGER NOT NULL
             );
         """)
@@ -5063,6 +5086,10 @@ def init_db():
         try: c.execute("ALTER TABLE platform_users ADD COLUMN profile_name TEXT")
         except Exception: pass
         try: c.execute("ALTER TABLE platform_users ADD COLUMN free_checks_date TEXT")
+        except Exception: pass
+        try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_emoji TEXT")
+        except Exception: pass
+        try: c.execute("ALTER TABLE request_log ADD COLUMN wa_message_id TEXT")
         except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
@@ -5080,16 +5107,16 @@ def init_db():
 init_db()
 
 
-def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd):
-    """Log a fact-check request and Fred's response to request_log."""
+def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, report, cost_usd, wa_message_id=None):
+    """Log a fact-check request and Fred's response to request_log. Returns inserted row id."""
     import time as _time, json as _json
     try:
         with _db() as c:
             c.execute("""
                 INSERT INTO request_log
                     (platform, uid, source_type, raw_input, extracted_claim,
-                     rating, confidence, verdict_json, response_text, cost_usd, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                     rating, confidence, verdict_json, response_text, cost_usd, wa_message_id, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (platform, uid, source_type,
                  (raw_input or "")[:2000],
                  (extracted_claim or "")[:1000],
@@ -5097,6 +5124,7 @@ def _log_request(platform, uid, source_type, raw_input, extracted_claim, a, repo
                  _json.dumps(a),
                  (report or "")[:4000],
                  cost_usd,
+                 wa_message_id,
                  int(_time.time())))
     except Exception as e:
         log.warning("request_log insert failed: %s", e)
