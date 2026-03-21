@@ -1234,6 +1234,9 @@ def _check_url_unavailable(url):
     og:title/description for unavailability phrases. Used for YouTube, TikTok,
     Twitter/X and generic URLs when all download attempts return nothing.
     """
+    # X/Twitter never serves og tags to bots — always looks empty; use fxtwitter instead
+    if "twitter.com" in url or "x.com" in url:
+        return False
     try:
         r = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=12,
                          allow_redirects=True)
@@ -4278,6 +4281,7 @@ def process(from_num, message, profile_name=None):
     if is_new:
         send(from_num, _welcome_msg())
         threading.Thread(target=_notify_new_user, args=(from_num, profile_name), daemon=True).start()
+        _wa_user(from_num)  # ensure DB record exists before any early returns
         # Fall through so they can also process content if sent with first message
     pkey = ("whatsapp", from_num)
     msg_type = message.get("type")
