@@ -4746,6 +4746,9 @@ def process(from_num, message, profile_name=None):
                     visual = analyze_video_frames(frames)
                     if visual:
                         query_parts.append(f"Visual analysis:\n{visual}")
+                    # Use first frame for Hive AI/deepfake detection
+                    if frames and not image_bytes:
+                        image_bytes = frames[0]
             except Exception as ve:
                 log.warning(f"Video frame analysis: {ve}")
             try:
