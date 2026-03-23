@@ -288,7 +288,7 @@ Type HELP anytime for a full guide.
 6. **Meta app review** — submit once business verification approved
 
 ### Ready to implement
-7. **Stripe webhook registration** — must be done in Stripe Dashboard: add endpoint `https://fredcheck.com/webhook/stripe`, event `checkout.session.completed`, copy signing secret → set `STRIPE_WEBHOOK_SECRET` in Railway. Without this, credits won't apply even though the code is now correct.
+7. **Stripe webhook URL fix** — webhook exists (`fascinating-breeze`) but points to wrong path: `/stripe-webhook` → must be `/webhook/stripe`. Fix: Stripe Dashboard → Webhooks → `···` → Update destination → `https://fredcheck.com/webhook/stripe`. Also copy Signing secret → set `STRIPE_WEBHOOK_SECRET` in Railway. Currently 100% error rate.
 8. **QA automation suite** — ⏸ SHELVED. Infrastructure complete: `scripts/qa_runner.py` + `scripts/qa_fixtures.json`, 28 fixtures across all categories, POST `/admin/run-qa` endpoint live. Shelved 2026-03-21 because Claude's capacity limitations make the suite too slow and fragile to be a useful daily tool (~70 min runtime, context pressure, no mid-run visibility). Known quality issues: FALSE returned instead of UNVERIFIABLE for ambiguous claims; "vaccines kill more than COVID" returns FALSE not MISLEADING. Do not delete — park until either (a) Claude is faster/cheaper or (b) a lightweight 5–8 fixture subset is carved out for quick iteration.
 8. **Service health monitoring** — email alert when RapidAPI/Hive/SendGrid/FB-IG cookies go down
 9. **Split verdict into multiple WA messages**
