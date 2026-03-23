@@ -6307,6 +6307,29 @@ def admin_set_balance():
         c.execute("UPDATE platform_users SET balance_cents=? WHERE platform=? AND platform_id=?", (cents, platform, uid))
     return jsonify({"ok": True, "platform": platform, "uid": uid, "balance_cents": cents})
 
+@app.route("/admin/stats", methods=["GET"])
+def admin_stats():
+    """Usage stats snapshot for cost monitoring."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    with _db() as c:
+        total_checks = c.execute("SELECT COUNT(*) FROM request_log WHERE user_type != 'qctest'").fetchone()[0]
+        checks_today = c.execute("SELECT COUNT(*) FROM request_log WHERE user_type != 'qctest' AND created_at >= ?", (int(t.time()) - 86400,)).fetchone()[0]
+        checks_this_month = c.execute("SELECT COUNT(*) FROM request_log WHERE user_type != 'qctest' AND created_at >= ?", (int(t.time()) - 30*86400,)).fetchone()[0]
+        total_users = c.execute("SELECT COUNT(*) FROM platform_users WHERE platform='whatsapp'").fetchone()[0]
+        paid_users = c.execute("SELECT COUNT(*) FROM platform_users WHERE platform='whatsapp' AND balance_cents > 0").fetchone()[0]
+        total_revenue = c.execute("SELECT COALESCE(SUM(amount_cents),0) FROM transactions WHERE txn_type='credit' AND user_type != 'qctest'").fetchone()[0]
+    return jsonify({
+        "snapshot_utc": __import__('datetime').datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
+        "checks_total": total_checks,
+        "checks_today": checks_today,
+        "checks_this_month": checks_this_month,
+        "wa_users_total": total_users,
+        "wa_users_with_balance": paid_users,
+        "total_revenue_cents": total_revenue,
+        "total_revenue_usd": f"${total_revenue/100:.2f}",
+    })
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     log.info("Fred Check v3.2 starting (dev mode)...")
