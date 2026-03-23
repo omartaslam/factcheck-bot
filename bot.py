@@ -38,7 +38,7 @@ FRED_WA_NUMBER      = os.getenv("FRED_WA_NUMBER", "447863795638")       # Fred's
 DEV_AUTOSELECT_NUM  = os.getenv("DEV_AUTOSELECT_NUM", "")               # Phone number that skips claim selection (dev only)
 DEV_AUTOSELECT_ON   = os.getenv("DEV_AUTOSELECT_ON", "false").lower() == "true"  # Toggle dev auto-select
 WA_CONVERSATION_COST = float(os.getenv("WA_CONVERSATION_COST", "0.041"))  # WhatsApp per-conversation charge (Europe/Spain rate)
-COST_PER_CHECK_CENTS = int(os.getenv("COST_PER_CHECK_CENTS", "19"))       # Used to calculate check estimates in payment prompt
+COST_PER_CHECK_CENTS = int(os.getenv("COST_PER_CHECK_CENTS", "25"))       # Used to calculate check estimates in payment prompt
 
 # ── Multi-platform config ──────────────────────────────────────────────────────
 MESSENGER_PAGE_TOKEN  = os.getenv("MESSENGER_PAGE_TOKEN", "")    # Facebook Page Access Token (Messenger + Instagram DMs)
