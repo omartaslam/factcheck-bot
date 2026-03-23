@@ -3897,7 +3897,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         send_reaction(from_num, msg_id, emoji)
 
     # ── Billing: record cost and deduct balance ────────────────────────────
-    actual_cents = max(1, _cost_get())
+    actual_cents = COST_PER_CHECK_CENTS
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
     if billing_type == "paid":
@@ -3952,7 +3952,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         else:
             send_fn(report)
 
-    actual_cents = max(1, _cost_get())
+    actual_cents = COST_PER_CHECK_CENTS
     _pdeduct(platform, uid, actual_cents, f"{st} fact-check", billing_type)
     if billing_type == "paid":
         u = _puser(platform, uid)
