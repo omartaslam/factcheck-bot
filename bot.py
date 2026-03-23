@@ -192,7 +192,7 @@ def _url_fetch_reason(url):
         if r.status_code in (401, 402):
             return "behind a paywall or subscription wall"
         if r.status_code == 403:
-            return "blocking automated access (bot protection)"
+            return "blocking automated access"
         if r.status_code == 429:
             return "rate-limiting access right now — try again shortly"
         if r.status_code in (404, 410):
