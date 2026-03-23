@@ -2939,7 +2939,7 @@ def assess_content_claims(text, source_type, post_date=None):
         s = raw.find("{"); e = raw.rfind("}") + 1
         if s >= 0 and e > s:
             data = json.loads(raw[s:e])
-            claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:4]
+            claims = [_clean_claim(c.strip()) for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:4]
             # For all non-text source types: discard any claim that is itself a broad editorial question
             # (e.g. "Is the Iran war a big problem for the chancellor?" slipped through from a video title,
             #  or "Is China winning the AI race?" from a news image headline)
@@ -2964,8 +2964,8 @@ def assess_content_claims(text, source_type, post_date=None):
     return {"claims": [_clean_claim(text[:500])], "checkable": True, "reason": "", "suggestions": []}
 
 
-_CLAIM_META_MARKERS = ("Video:", "Audio:", "Post caption:", "Source:", "VISUAL ANALYSIS:",
-                       "VIDEO CONTENT", "SOURCE ARTICLE", "Creator:", "Channel:")
+_CLAIM_META_MARKERS = ("Video:", "Video title:", "Audio:", "Post caption:", "Source:", "VISUAL ANALYSIS:",
+                       "VIDEO CONTENT", "SOURCE ARTICLE", "Creator:", "Channel:", "Social media post:")
 
 def _clean_claim(claim):
     """Strip raw extraction metadata from a claim string. Used before displaying to users."""
