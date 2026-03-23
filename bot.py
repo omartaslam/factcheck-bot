@@ -4358,7 +4358,7 @@ def process(from_num, message, profile_name=None):
         _bt_early = _wa_billing_type(from_num)
         if _bt_early == "blocked":
             u = _wa_user(from_num)
-            _send_payment_prompt(from_num, u["balance_cents"])
+            _send_payment_prompt(from_num, u["balance_cents"], billing_type="blocked")
             return
     if msg_type == "video":
         send(from_num, "📹 Video detected!")
@@ -4374,7 +4374,7 @@ def process(from_num, message, profile_name=None):
             u = _wa_user(from_num)
             bt = _wa_billing_type(from_num)
             if body_upper == "TOPUP" or bt == "blocked":
-                _send_payment_prompt(from_num, u.get("balance_cents", 0))
+                _send_payment_prompt(from_num, u.get("balance_cents", 0), billing_type=bt)
             elif bt == "subscriber":
                 send(from_num, "♾ *Subscriber* — unlimited access.")
             elif bt == "free":
@@ -4411,7 +4411,7 @@ def process(from_num, message, profile_name=None):
                 selected_claims = selected_claims[:1]
             if bt == "blocked":
                 u = _wa_user(from_num)
-                _send_payment_prompt(from_num, u["balance_cents"])
+                _send_payment_prompt(from_num, u["balance_cents"], billing_type="blocked")
                 return
             if bt == "free":
                 u = _wa_user(from_num)
@@ -5225,13 +5225,11 @@ def _send_payment_prompt(wa_id, balance_cents, billing_type=None):
         # No Stripe configured — fall back to text message
         _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
         return
-    u = _wa_user(wa_id)
-    free_checks_used = u.get("free_checks_used") or 0
-    is_paid_user = billing_type == "paid" or (free_checks_used >= FREE_CHECKS_LIMIT and balance_cents <= 0)
-    if is_paid_user:
-        body_text = f"Your balance is ${(balance_cents or 0)/100:.2f}.\n\nTop up to continue fact checking with Fred."
+    if billing_type == "paid":
+        body_text = f"Your balance is ${(balance_cents or 0)/100:.2f}.\n\nTop up to add more checks."
+    elif billing_type == "blocked":
+        body_text = "Your balance is $0.00.\n\nTop up to continue fact checking with Fred."
     else:
-        # Free user who has used all free checks
         free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
         body_text = f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact checking with Fred."
     url = f"{WEBSITE_URL}/topup?ref=wa_{wa_id}"
