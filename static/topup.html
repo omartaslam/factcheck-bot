@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred • Top Up</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#D4AF37;--black:#0a0a0a;--border:#ebebeb;--muted:#888;--radius:14px}
+body{font-family:'Inter',sans-serif;background:#f7f7f7;color:var(--black);min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px 48px}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none;margin-bottom:32px}
+.logo img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.logo-text{font-size:1.1rem;font-weight:700;color:var(--black)}
+.logo-text span{color:var(--muted);font-weight:400}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:28px 24px;width:100%;max-width:400px}
+h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
+.subtitle{color:var(--muted);font-size:.9rem;margin-bottom:24px}
+.tiers{display:flex;flex-direction:column;gap:12px}
+.tier{border:2px solid var(--border);border-radius:var(--radius);padding:16px 18px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:#fff;transition:border-color .15s,background .15s;position:relative}
+.tier:hover{border-color:var(--gold);background:#fffdf0}
+.tier.loading{opacity:.6;pointer-events:none}
+.tier-left .amount{font-size:1.4rem;font-weight:700}
+.tier-left .checks{font-size:.85rem;color:var(--muted);margin-top:2px}
+.tier-arrow{font-size:1.2rem;color:var(--muted)}
+.tier:hover .tier-arrow{color:var(--gold)}
+.error{color:#c0392b;font-size:.85rem;margin-top:16px;display:none}
+.powered{text-align:center;margin-top:20px;font-size:.78rem;color:var(--muted)}
+.spinner{display:none;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<a class="logo" href="/">
+  <img src="/static/fred-logo.png" alt="Fred">
+  <div class="logo-text">Fred • Fact Check <span>/ Top Up</span></div>
+</a>
+
+<div class="card">
+  <h1>Choose a top-up</h1>
+  <p class="subtitle">Secure payment via Stripe. Returns you to WhatsApp.</p>
+
+  <div class="tiers">
+    <div class="tier" data-amount="100" onclick="pay(this)">
+      <div class="tier-left">
+        <div class="amount">$1</div>
+        <div class="checks">~5 checks</div>
+      </div>
+      <div class="tier-right">
+        <div class="tier-arrow">→</div>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <div class="tier" data-amount="500" onclick="pay(this)">
+      <div class="tier-left">
+        <div class="amount">$5</div>
+        <div class="checks">~26 checks</div>
+      </div>
+      <div class="tier-right">
+        <div class="tier-arrow">→</div>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <div class="tier" data-amount="1000" onclick="pay(this)">
+      <div class="tier-left">
+        <div class="amount">$10</div>
+        <div class="checks">~52 checks</div>
+      </div>
+      <div class="tier-right">
+        <div class="tier-arrow">→</div>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <div class="tier" data-amount="2500" onclick="pay(this)">
+      <div class="tier-left">
+        <div class="amount">$25</div>
+        <div class="checks">~131 checks</div>
+      </div>
+      <div class="tier-right">
+        <div class="tier-arrow">→</div>
+        <div class="spinner"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="error" id="err">Something went wrong. Please try again.</p>
+</div>
+
+<p class="powered">Powered by Stripe &nbsp;·&nbsp; fredcheck.com</p>
+
+<script>
+const ref = new URLSearchParams(location.search).get('ref') || '';
+
+async function pay(el) {
+  if (!ref) { showErr('Missing payment reference. Return to WhatsApp and try again.'); return; }
+  const amount = parseInt(el.dataset.amount);
+  el.classList.add('loading');
+  el.querySelector('.tier-arrow').style.display = 'none';
+  el.querySelector('.spinner').style.display = 'block';
+  document.getElementById('err').style.display = 'none';
+  try {
+    const res = await fetch('/api/topup-wa', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ref, amount_cents: amount})
+    });
+    const data = await res.json();
+    if (data.url) {
+      location.href = data.url;
+    } else {
+      throw new Error(data.error || 'No URL returned');
+    }
+  } catch(e) {
+    el.classList.remove('loading');
+    el.querySelector('.tier-arrow').style.display = 'block';
+    el.querySelector('.spinner').style.display = 'none';
+    showErr('Payment error: ' + e.message);
+  }
+}
+
+function showErr(msg) {
+  const el = document.getElementById('err');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
+</body>
+</html>

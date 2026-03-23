@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred • Payment Confirmed</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#D4AF37;--black:#0a0a0a;--border:#ebebeb;--muted:#888;--radius:14px;--green:#1a9e5c}
+body{font-family:'Inter',sans-serif;background:#f7f7f7;color:var(--black);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 16px}
+.card{background:#fff;border:1px solid var(--border);border-radius:var(--radius);padding:36px 28px;width:100%;max-width:380px;text-align:center}
+.tick{font-size:3rem;margin-bottom:16px}
+h1{font-size:1.4rem;font-weight:700;margin-bottom:8px}
+.subtitle{color:var(--muted);font-size:.9rem;margin-bottom:28px;line-height:1.5}
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#25D366;color:#fff;font-family:'Inter',sans-serif;font-size:1rem;font-weight:600;border:none;border-radius:var(--radius);padding:15px 24px;width:100%;cursor:pointer;text-decoration:none;transition:background .15s}
+.btn:hover{background:#1ebe5d}
+.btn-icon{font-size:1.2rem}
+.countdown{margin-top:16px;font-size:.8rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="tick">✅</div>
+  <h1>Payment confirmed!</h1>
+  <p class="subtitle">Your credits are being added to your Fred account. Return to WhatsApp to continue fact-checking.</p>
+  <a class="btn" id="wa-btn" href="#">
+    <span class="btn-icon">💬</span>
+    Return to Fred on WhatsApp
+  </a>
+  <p class="countdown" id="cd">Returning automatically in <span id="n">5</span>s…</p>
+</div>
+
+<script>
+// Set WhatsApp deep link — opens Fred's chat
+const waUrl = 'https://wa.me/447863795638';
+document.getElementById('wa-btn').href = waUrl;
+
+// Auto-redirect countdown
+let secs = 5;
+const ticker = setInterval(() => {
+  secs--;
+  document.getElementById('n').textContent = secs;
+  if (secs <= 0) {
+    clearInterval(ticker);
+    location.href = waUrl;
+  }
+}, 1000);
+</script>
+</body>
+</html>

@@ -33,6 +33,8 @@ TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Paymen
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
 SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for subscription (not active)
 BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
+WEBSITE_URL         = os.getenv("WEBSITE_URL", "https://fredcheck.com")
+FRED_WA_NUMBER      = os.getenv("FRED_WA_NUMBER", "447863795638")       # Fred's WhatsApp number (no +)
 DEV_AUTOSELECT_NUM  = os.getenv("DEV_AUTOSELECT_NUM", "")               # Phone number that skips claim selection (dev only)
 DEV_AUTOSELECT_ON   = os.getenv("DEV_AUTOSELECT_ON", "false").lower() == "true"  # Toggle dev auto-select
 WA_CONVERSATION_COST = float(os.getenv("WA_CONVERSATION_COST", "0.041"))  # WhatsApp per-conversation charge (Europe/Spain rate)
@@ -3619,6 +3621,20 @@ def send(to, text):
             log.error("Send: %s", e)
     return last_msg_id
 
+def send_interactive(to, interactive_payload):
+    """Send a WhatsApp interactive message (e.g. CTA URL button)."""
+    try:
+        r = requests.post(WHATSAPP_URL,
+            json={"messaging_product": "whatsapp", "to": to,
+                  "type": "interactive", "interactive": interactive_payload},
+            headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}",
+                     "Content-Type": "application/json"},
+            timeout=10)
+        if not r.ok:
+            log.error("send_interactive failed %s: %s", r.status_code, r.text[:200])
+    except Exception as e:
+        log.error("send_interactive: %s", e)
+
 _TAGLINES = [
     "Truth Beyond Borders",
     "Facts don't have a postcode",
@@ -5192,7 +5208,23 @@ def _wa_credit(wa_id, cents, description, stripe_session_id=None):
     _pcredit("whatsapp", wa_id, cents, description, stripe_session_id)
 
 def _send_payment_prompt(wa_id, balance_cents):
-    _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
+    if not STRIPE_SECRET_KEY:
+        # No Stripe configured — fall back to text message
+        _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
+        return
+    free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
+    url = f"{WEBSITE_URL}/topup?ref=wa_{wa_id}"
+    send_interactive(wa_id, {
+        "type": "cta_url",
+        "body": {"text": f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact-checking with Fred."},
+        "action": {
+            "name": "cta_url",
+            "parameters": {
+                "display_text": "💳 Choose a top-up",
+                "url": url
+            }
+        }
+    })
 
 def _is_new_wa_user(wa_id):
     """Return True if this WhatsApp number has never sent a message before."""
@@ -5275,9 +5307,15 @@ def _pcredit(platform, uid, cents, description, stripe_session_id=None):
                   (platform, uid, "credit", cents, description, stripe_session_id, int(t.time())))
     log.info("Credited %s/%s: %d¢", platform, uid, cents)
 
+_PLATFORM_PREFIX = {
+    "whatsapp": "wa", "messenger": "msgr", "instagram": "inst",
+    "telegram": "tg", "twitter": "tw", "web": "web",
+}
+
 def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
     """Send Stripe payment links via any platform's send_fn."""
-    cid = f"{platform[:4]}_{uid}"
+    prefix = _PLATFORM_PREFIX.get(platform, platform[:4])
+    cid = f"{prefix}_{uid}"
     suffix = f"?client_reference_id={cid}"
     free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
     lines = [
@@ -5523,6 +5561,39 @@ def api_topup():
         return jsonify({"url": r.json().get("url", "")})
     except Exception as e:
         log.error("Stripe checkout error: %s", e)
+        return jsonify({"error": "Payment system error"}), 500
+
+@app.route("/api/topup-wa", methods=["POST"])
+def api_topup_wa():
+    """Create a Stripe Checkout Session for WhatsApp/platform users via the /topup page."""
+    if not STRIPE_SECRET_KEY:
+        return jsonify({"error": "Payment system not configured"}), 503
+    data = request.get_json() or {}
+    ref = (data.get("ref") or "").strip()          # e.g. "wa_447863795638"
+    amount_cents = int(data.get("amount_cents", 500))
+    if amount_cents not in (100, 500, 1000, 2500):
+        return jsonify({"error": "Invalid amount"}), 400
+    if not ref:
+        return jsonify({"error": "Missing ref"}), 400
+    try:
+        payload = {
+            "mode": "payment",
+            "line_items[0][price_data][currency]": "usd",
+            "line_items[0][price_data][product_data][name]": "Fred Check Credits",
+            "line_items[0][price_data][unit_amount]": str(amount_cents),
+            "line_items[0][quantity]": "1",
+            "client_reference_id": ref,
+            "success_url": f"{WEBSITE_URL}/topup/thankyou",
+            "cancel_url": f"{WEBSITE_URL}/topup?ref={ref}",
+        }
+        r = requests.post("https://api.stripe.com/v1/checkout/sessions",
+            headers={"Authorization": f"Bearer {STRIPE_SECRET_KEY}",
+                     "Content-Type": "application/x-www-form-urlencoded"},
+            data=payload, timeout=15)
+        r.raise_for_status()
+        return jsonify({"url": r.json().get("url", "")})
+    except Exception as e:
+        log.error("Stripe WA checkout error: %s", e)
         return jsonify({"error": "Payment system error"}), 500
 
 @app.route("/webhook/stripe", methods=["POST"])
@@ -5938,6 +6009,14 @@ def api_contact():
     except Exception as e:
         log.error("contact email error: %s", e)
     return jsonify({"ok": True})
+
+@app.route("/topup")
+def topup_page():
+    return send_from_directory("static", "topup.html")
+
+@app.route("/topup/thankyou")
+def topup_thankyou():
+    return send_from_directory("static", "topup-thankyou.html")
 
 @app.route("/privacy", methods=["GET"])
 def privacy_policy():
