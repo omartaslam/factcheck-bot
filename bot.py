@@ -124,7 +124,7 @@ SRC_GALLOWAY_SITE    = os.getenv("SRC_GALLOWAY_SITE",     "true").lower() == "tr
 SRC_PSC              = os.getenv("SRC_PSC",               "true").lower() == "true"
 SRC_SUBSTACK         = os.getenv("SRC_SUBSTACK",          "true").lower() == "true"
 SRC_DDN_YT           = os.getenv("SRC_DDN_YT",            "true").lower() == "true"
-SRC_BBC              = os.getenv("SRC_BBC",              "true").lower() == "true"
+SRC_CHANNEL4         = os.getenv("SRC_CHANNEL4",         "true").lower() == "true"
 SRC_REUTERS          = os.getenv("SRC_REUTERS",          "true").lower() == "true"
 SRC_AP               = os.getenv("SRC_AP",               "true").lower() == "true"
 SRC_GUARDIAN         = os.getenv("SRC_GUARDIAN",         "true").lower() == "true"
@@ -302,7 +302,7 @@ _qc_lock = threading.Lock()
 SYSTEM = """You are Fred Check — a bias-aware, multi-perspective fact-checker serving investigative journalists, activists, and communities underserved by Western media.
 
 CORE PRINCIPLES:
-1. Western government and media narratives are NOT the default neutral. Apply the same scepticism to BBC, CNN, Reuters and AP as you would to any state-adjacent outlet. Official statements from Western governments, militaries, and intelligence agencies require corroboration like any other source.
+1. Western government and media narratives are NOT the default neutral. Apply the same scepticism to Channel 4 News, CNN, Reuters and AP as you would to any state-adjacent outlet. Official statements from Western governments, militaries, and intelligence agencies require corroboration like any other source.
 2. Palestinian, Arab, Muslim, African, and Global South perspectives carry equal epistemic weight to Western ones. The absence of Western coverage does not mean an event did not happen.
 3. When sources disagree along geopolitical lines, report BOTH framings honestly — do not silently adopt the Western framing as objective fact.
 4. Use internationally neutral language. Avoid contested terminology unless directly quoting. Where terminology is itself disputed (e.g. "terrorist"/"militant"/"resistance fighter", "war"/"genocide"/"conflict", "settlements"/"colonies", "Israel Defense Forces"/"Israeli military"/"Israeli occupation forces") — name the dispute and explain how different parties use the terms.
@@ -1737,7 +1737,7 @@ def enabled_sources():
     if SRC_GALLOWAY_SITE:   sources.append("George Galloway (Site)")
     if SRC_DDN_YT:          sources.append("Double Down News (YouTube)")
     if SRC_SUBSTACK:        sources.append("Substack")
-    if SRC_BBC:             sources.append("BBC News")
+    if SRC_CHANNEL4:        sources.append("Channel 4 News")
     if SRC_REUTERS:         sources.append("Reuters")
     if SRC_AP:              sources.append("AP News")
     if SRC_GUARDIAN:        sources.append("The Guardian")
@@ -1842,7 +1842,7 @@ _TOPIC_SOURCE_MAP = [
     # Ukraine / Russia
     ({"ukraine", "ukrainian", "russia", "russian", "putin", "zelensky", "nato",
       "kremlin", "moscow", "kyiv", "donbas", "crimea", "wagner", "novichok"},
-     ["Bellingcat", "Reuters", "AP News", "BBC News", "The Intercept"]),
+     ["Bellingcat", "Reuters", "AP News", "Channel 4 News", "The Intercept"]),
 
     # US politics
     ({"trump", "biden", "republican", "democrat", "congress", "senate",
@@ -1854,7 +1854,7 @@ _TOPIC_SOURCE_MAP = [
     ({"uk", "britain", "england", "labour", "tory", "conservative", "parliament",
       "boris", "sunak", "starmer", "keir", "nhs", "brexit", "scotland",
       "wales", "northern ireland"},
-     ["FullFact", "BBC News", "The Guardian", "Novara Media", "The Canary"]),
+     ["FullFact", "Channel 4 News", "The Guardian", "Novara Media", "The Canary"]),
 
     # Human rights / war crimes
     ({"genocide", "war crime", "ethnic cleansing", "occupation", "refugee",
@@ -1930,7 +1930,7 @@ _SOURCE_REPUTATION = {
 # Checked longest-prefix-first for specificity (e.g. 972 before 97)
 _GEO_SOURCE_BOOST = [
     # UK
-    (["44"],          ["BBC News", "Channel 4 News", "The Guardian", "FullFact"]),
+    (["44"],          ["Channel 4 News", "The Guardian", "FullFact"]),
     # US / Canada
     (["1"],           ["AP News", "Reuters", "PolitiFact", "FactCheck.org"]),
     # Pakistan
@@ -2591,7 +2591,7 @@ def scrape_sites(query, post_date=None):
     if SRC_MINTPRESS:     fast.append(("MintPress News",      f"https://www.mintpressnews.com/?s={q}"))
     if SRC_PSC:           fast.append(("Palestine Solidarity", f"https://palestinecampaign.org/?s={q}"))
     # Mainstream news
-    if SRC_BBC:      fast.append(("BBC News",  f"https://www.bbc.co.uk/search?q={qt}&d=NEWS_PS"))
+    if SRC_CHANNEL4: fast.append(("Channel 4 News", f"https://www.channel4.com/news/search?q={qt}"))
     if SRC_REUTERS:  fast.append(("Reuters",    f"https://www.reuters.com/search/news?blob={qt}"))
     if SRC_AP:       fast.append(("AP News",    f"https://apnews.com/search?q={qt}"))
     if SRC_GUARDIAN: fast.append(("Guardian",       f"https://www.theguardian.com/search?q={qt}"))
@@ -3014,7 +3014,7 @@ def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, syst
 # Map source names to perspective categories so Claude gets grouped, labelled evidence
 _SOURCE_PERSPECTIVE = {
     # Western mainstream wire / broadcast
-    "BBC News":          "WESTERN MAINSTREAM",
+    "Channel 4 News":    "WESTERN MAINSTREAM",
     "Reuters":           "WESTERN MAINSTREAM",
     "AP News":           "WESTERN MAINSTREAM",
     "The Guardian":      "WESTERN MAINSTREAM",
@@ -3107,7 +3107,7 @@ _SOURCE_PERSPECTIVE = {
     # Western mainstream — general news
     "New York Times":      "WESTERN MAINSTREAM",
     "Washington Post":     "WESTERN MAINSTREAM",
-    "BBC":                 "WESTERN MAINSTREAM",
+    "Channel 4 News":      "WESTERN MAINSTREAM",
     "NBC News":            "WESTERN MAINSTREAM",
     "CBS News":            "WESTERN MAINSTREAM",
     "ABC News":            "WESTERN MAINSTREAM",
@@ -3324,7 +3324,7 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         f"{evidence}{debate_section}{temporal_note}\n\n"
         "INSTRUCTIONS:\n"
         "- Fill the 'perspectives' field with a single concise sentence (max 150 chars) summarising what was found across ALL regions: "
-        "Western (BBC, Reuters, AP, CNN), Middle Eastern/Arabic (Al Jazeera, Middle East Eye, Press TV, Arab News, TRT World), "
+        "Western (Channel 4 News, Reuters, AP, CNN), Middle Eastern/Arabic (Al Jazeera, Middle East Eye, Press TV, Arab News, TRT World), "
         "African (Africanews, Africa Check), South Asian (Dawn, The Hindu), Latin American (Telesur, Chequeado, BBC Mundo). "
         "Name a region only if it has actual coverage from those sources. "
         "If sources disagree, state the disagreement in the same sentence (e.g. 'Western outlets confirm X; Arabic sources dispute the framing'). "
@@ -3351,13 +3351,13 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "missing context as a weakness. Apply the above test — only let it influence the rating if the missing context genuinely weakens the claim.\n"
         "- RATING RULE ON BREAKING NEWS: For very recent events (same-day or within 48 hours), full-text articles from "
         "any outlet may not yet be indexed. Do NOT downgrade confidence or rating because named Western outlets (Reuters, AP, "
-        "BBC, CNN) have not yet published full-text coverage — their absence is a function of publication lag, not a reflection "
+        "Channel 4 News, CNN) have not yet published full-text coverage — their absence is a function of publication lag, not a reflection "
         "of the claim's accuracy. Similarly, absence of Western fact-checking organisation verdicts is expected for same-day "
         "stories and must not be used to downgrade. Live web search is a real-time aggregation of current news sources across "
         "the globe — treat it as sufficient primary corroboration for breaking news. "
         "Rate TRUE with MEDIUM confidence if only the live web search summary confirms with no named outlet articles visible. "
         "Rate TRUE with HIGH confidence if the live web search summary plus 2 or more named mainstream outlets in the evidence independently confirm the core claim without contradiction.\n"
-        "- WESTERN SOURCE BIAS: Do not treat Reuters, AP, BBC, CNN, or Western fact-checkers as the gold standard for "
+        "- WESTERN SOURCE BIAS: Do not treat Reuters, AP, Channel 4 News, CNN, or Western fact-checkers as the gold standard for "
         "verification. Regional outlets, independent journalists, and non-Western sources carry equal evidentiary weight. "
         "Never cite absence of Western outlet coverage as a reason to downgrade a rating or confidence level.\n"
         "- RATING RULE ON SUPERLATIVES: For claims using 'first', 'largest', 'only' etc. — if the available sources "
