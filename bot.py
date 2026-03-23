@@ -6299,11 +6299,16 @@ def admin_set_balance():
     platform = data.get("platform", "whatsapp")
     uid = str(data.get("uid", ""))
     cents = int(data.get("cents", 0))
+    free_checks_used = data.get("free_checks_used")
     if not uid:
         return jsonify({"error": "uid required"}), 400
     with _db() as c:
-        c.execute("UPDATE platform_users SET balance_cents=? WHERE platform=? AND platform_id=?", (cents, platform, uid))
-    return jsonify({"ok": True, "platform": platform, "uid": uid, "balance_cents": cents})
+        if free_checks_used is not None:
+            c.execute("UPDATE platform_users SET balance_cents=?, free_checks_used=? WHERE platform=? AND platform_id=?",
+                      (cents, int(free_checks_used), platform, uid))
+        else:
+            c.execute("UPDATE platform_users SET balance_cents=? WHERE platform=? AND platform_id=?", (cents, platform, uid))
+    return jsonify({"ok": True, "platform": platform, "uid": uid, "balance_cents": cents, "free_checks_used": free_checks_used})
 
 @app.route("/admin/stats", methods=["GET"])
 def admin_stats():
