@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 19 — auto-save 4)
+**Last updated:** 2026-03-23 (session 19 — auto-save 6)
 
 ---
 
@@ -315,11 +315,23 @@ Type HELP anytime for a full guide.
 
 ### Session 19 — 2026-03-23
 
+- **Editorial/rhetorical question filter — holistic fix** (commits `4b4cfaa`, `c6870bd`):
+  - Root cause: `assess_content_claims` was extracting video titles like "Is the Iran war a big problem for the chancellor?" as a claim, converting it to an assertion, then returning UNVERIFIABLE.
+  - Fix applied across ALL non-text source types (video, image, url, audio, document):
+    - Prompt: titles/headlines/captions/channel names are metadata — extract claims from content body only
+    - Prompt: editorial/rhetorical questions ("Is X a problem for Y?", "What does X mean for Z?") are framing devices, never claims — ignore and look to content body
+    - Post-processing: discard any claim that is a broad question ending in `?` for all non-text types
+  - Text source_type unchanged: user-sent questions correctly convert to assertions (user IS asking Fred to verify the claim)
+
 - **4 output quality fixes shipped** (commit `2744581`):
   1. OCR: removed `"no text"`/`"no visible text"` from refusal list — these are valid responses not safety refusals; was causing intermittent "Could not analyse image" on cartoons/illustrations
   2. `no_claims_msg`: fixed doubled text ("This image The image is...") — prompt now instructs predicate-only reason; code defensively strips leading subject
   3. `fmt_report`: claim display now strips raw extraction metadata blobs (Video:, Audio:, Post caption:) if claim extraction fell back to full context
   4. Prompt: 3 new rules — VERDICT TEXT RULE (no hedging about absent Western coverage), ATTRIBUTION CLAIMS (no source confirms = FALSE not UNVERIFIABLE), media_bias (editorial framing only, not coverage gaps)
+
+- **URL fetch failure — specific error messages** (commit `900ad9c`): when article fetch fails, Fred now detects why and tells the user specifically. Known paywalled domains (NYT, FT, Medium, Bloomberg, WSJ etc.) → "behind a paywall". HTTP 403 → "blocking automated access". HTTP 404/410 → "no longer available". HTTP 429 → "rate-limiting". HTTP 451 → "unavailable for legal reasons". Fallback → "may require login". Suggestion to copy claim as text always included.
+
+- **Confirmation skip bug fixed** (commit `f4e3fdd`): was using `query` length (Tavily-enriched, always >300 chars) instead of `body` length (raw user input). Now correctly skips for short text inputs.
 
 - **HALF TRUE range broadened** (commit `538afde`): now covers ~40/60 band, not exact 50/50. Use when MOSTLY TRUE or MOSTLY FALSE both feel wrong and the honest answer is genuinely mixed.
 
