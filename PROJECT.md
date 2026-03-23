@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 18 — in progress)
+**Last updated:** 2026-03-23 (session 18 — auto-save 2)
 
 ---
 
@@ -319,6 +319,14 @@ Type HELP anytime for a full guide.
 - **`rating_reason` schema tightened**: For MOSTLY TRUE, must name the precise material factual error. If you can't name one, the rating must be TRUE.
 - **Anti-Western-framing reinforced in memory**: Added session-start reminder to `feedback_verdict_philosophy.md` — non-Western sources carry equal weight, absence of Western coverage ≠ downgrade, no default deference to Western official positions.
 - **B'Tselem / Chequeado source rotation** (under investigation): Both appearing too frequently in source preview. B'Tselem wins HUMAN RIGHTS slot when HRW/Amnesty fail to return results; Chequeado is the most reliable SPANISH/LATIN AMERICAN source. Options identified: narrow B'Tselem priority boost to Palestine-only keywords; or remove both from status preview while still searching them. Decision pending.
+- **Verdict quality — batch of bias/hedging fixes** (commits `43dcca4`, `b5f5458`, `c4aa0bd`, `808ee7c`, `2388c8c`):
+  - Idiomatic language rule: "cleared of all wrongdoing" = cleared in the specific matter, not hyper-literal contract parsing
+  - Political background context blocked as downgrade reason: "resigned amid controversies" cannot weaken a specific factual claim
+  - Irrelevant qualifications banned from verdict text (scope-limiting caveats not in the original claim)
+  - Debate prompts decoupled from Western/Global South framing — both sides now draw from all evidence regardless of region
+  - BBC News replaced with Channel 4 News throughout (search, topic boosts, prompts, reputation map)
+  - Confidence rule: 2+ named outlets confirming a confidential document = HIGH confidence; non-public source ≠ MEDIUM cap
+  - Ethos audit checklist added to session-start memory with 7 named recurring failure modes
 
 ### Session 17 — 2026-03-23
 
