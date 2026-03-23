@@ -3536,9 +3536,9 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
             lines += [""]
     version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
     if checks_remaining is not None:
-        footer = [f"{checks_remaining} check{'s' if checks_remaining != 1 else ''} remaining  •  {version}"]
+        footer = ["──────────────", f"{checks_remaining} check{'s' if checks_remaining != 1 else ''} remaining  •  {version}"]
     else:
-        footer = [version]
+        footer = ["──────────────", version]
     footer.append(f"_{random.choice(_TAGLINES)}_")
     footer.append(WEBSITE_URL)
     lines += footer
