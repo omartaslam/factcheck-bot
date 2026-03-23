@@ -2759,7 +2759,7 @@ ANALYSE_JSON_SCHEMA = (
     '"media_bias":"1 sentence on source concentration bias, or empty",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
     '"confidence":"HIGH|MEDIUM|LOW",'
-    '"confidence_reason":"1 sentence, max 120 chars"}'
+    '"confidence_reason":"1 sentence, max 120 chars. NOTE: confidence reflects corroboration by independent sources — NOT whether the underlying document is publicly accessible. Confidential reports, sealed findings, and leaked documents reported by 2+ independent named outlets = HIGH confidence."}'
 )
 
 def neutralize_claim(raw_text):
@@ -3357,6 +3357,12 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "the globe — treat it as sufficient primary corroboration for breaking news. "
         "Rate TRUE with MEDIUM confidence if only the live web search summary confirms with no named outlet articles visible. "
         "Rate TRUE with HIGH confidence if the live web search summary plus 2 or more named mainstream outlets in the evidence independently confirm the core claim without contradiction.\n"
+        "- CONFIDENCE RULE — DOCUMENT ACCESSIBILITY: Confidence reflects how well the claim is corroborated by independent "
+        "sources — NOT whether the underlying document or report is publicly accessible. Confidential findings, sealed rulings, "
+        "leaked documents, and non-public reports that are confirmed by 2 or more independent named outlets = HIGH confidence. "
+        "Do NOT cap confidence at MEDIUM because 'full public verification is not possible' — if named journalists and outlets "
+        "have independently confirmed the finding, that is verification. The public cannot always access primary documents; "
+        "that is normal journalism and does not introduce uncertainty about whether the event occurred.\n"
         "- WESTERN SOURCE BIAS: Do not treat Reuters, AP, Channel 4 News, CNN, or Western fact-checkers as the gold standard for "
         "verification. Regional outlets, independent journalists, and non-Western sources carry equal evidentiary weight. "
         "Never cite absence of Western outlet coverage as a reason to downgrade a rating or confidence level.\n"
