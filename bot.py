@@ -4423,14 +4423,12 @@ def process(from_num, message, profile_name=None):
                 return
             if bt == "free":
                 u = _wa_user(from_num)
-                remaining = FREE_CHECKS_LIMIT - (u.get("free_checks_used") or 0) - 1
+                remaining = FREE_DAILY_LIMIT - _daily_free_used(u) - 1
                 if remaining <= 0:
-                    suffix = "last free check"
+                    suffix = "last free check today"
                 else:
-                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining"
+                    suffix = f"{remaining} free check{'s' if remaining != 1 else ''} remaining today"
                 status_line = f"✓ Free check — {suffix}"
-                if remaining == 0:
-                    status_line += "\n_This is your last free check today. Your allowance resets at midnight._"
             elif bt == "paid":
                 u = _wa_user(from_num)
                 status_line = f"✓ Balance: ${u['balance_cents']/100:.2f}"
