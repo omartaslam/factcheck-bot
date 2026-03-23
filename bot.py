@@ -2001,13 +2001,19 @@ def _source_preview_msg(topic_text="", from_num=""):
         by_cat.setdefault(cat, []).append(s)
 
     def pick_from(pool, n):
-        """Pick n from pool: topic-priority first, then reputation-weighted with jitter."""
+        """Pick n from pool: topic-priority first, then shuffle within each reputation tier."""
         prio = [s for s in pool if s in priority_set]
         rest = [s for s in pool if s not in priority_set]
-        # Sort rest by reputation tier (T1 first), add small random jitter so T1s rotate
-        rest.sort(key=lambda s: (_SOURCE_REPUTATION.get(s, 2), random.random()))
-        ordered = prio + rest
-        return ordered[:n]
+        # Group by tier, shuffle within each tier so same-tier sources rotate freely
+        by_tier = {}
+        for s in rest:
+            by_tier.setdefault(_SOURCE_REPUTATION.get(s, 2), []).append(s)
+        shuffled = []
+        for tier in sorted(by_tier):
+            bucket = by_tier[tier]
+            random.shuffle(bucket)
+            shuffled.extend(bucket)
+        return (prio + shuffled)[:n]
 
     # Regional quota — one slot per region, 2 for Western mainstream
     _quota = [
