@@ -2919,7 +2919,7 @@ def claims_confirm_msg(claims, source_type, cost, is_free=False):
     plural = "claims" if len(claims) > 1 else "claim"
     claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
     if len(claims) == 1:
-        reply_prompt = "Reply *Y* to fact-check\nReply *N* to cancel"
+        reply_prompt = "Reply *Y* to fact check\nReply *N* to cancel"
     elif is_free:
         nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
         reply_prompt = (
@@ -2929,7 +2929,7 @@ def claims_confirm_msg(claims, source_type, cost, is_free=False):
     else:
         nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
         reply_prompt = (
-            f"Reply {nums} or *ALL* to fact-check\n"
+            f"Reply {nums} or *ALL* to fact check\n"
             f"Reply *N* to cancel"
         )
     return (
@@ -2952,21 +2952,21 @@ def no_claims_msg(reason, source_type, suggestions):
     # Only show suggestions for non-URL types — for URL posts, Claude's suggestions
     # are often unhelpful (e.g. "share the video" when user already shared a URL)
     if source_type not in ("url",) and suggestions:
-        lines.append("\n*To fact-check this, try:*")
+        lines.append("\n*To fact check this, try:*")
         for sg in suggestions:
             lines.append(f"• {sg}")
     elif source_type not in ("url",):
         # Default suggestions for non-URL types
         if source_type == "video":
             lines += [
-                "\n*To fact-check this video, try:*",
+                "\n*To fact check this video, try:*",
                 "• Send the original URL (TikTok / YouTube / Facebook / Instagram link)",
                 "• Take a screenshot of the text overlay or caption and send it as an image",
                 "• Copy the claim text and paste it as a WhatsApp message",
             ]
         elif source_type == "image":
             lines += [
-                "\n*To fact-check this image, try:*",
+                "\n*To fact check this image, try:*",
                 "• Copy the text in the image and send it as a message",
                 "• Describe the specific claim you want checked",
             ]
@@ -3566,7 +3566,7 @@ HELP_MSG = (
     "• Voice notes / audio\n"
     "• Text claims or quotes\n\n"
     "*Commands:*\n"
-    "• *Y* — confirm a fact-check\n"
+    "• *Y* — confirm a fact check\n"
     "• *N* — cancel\n"
     "• *BALANCE* — check your remaining credits\n"
     "• *HELP* — show this message\n\n"
@@ -3574,7 +3574,7 @@ HELP_MSG = (
     "• React 👍 or 👎 to any verdict to rate its accuracy\n"
     "• Long-press a verdict → Reply to leave a comment\n\n"
     "*About Fred:*\n"
-    "Balanced, bias-aware fact-checking using Western, Middle Eastern, Arabic, and independent sources. "
+    "Balanced, bias-aware fact checking using Western, Middle Eastern, Arabic, and independent sources. "
     "Identifies contested language, geopolitical framing, and who benefits from a claim.\n\n"
     f"🌐 {WEBSITE_URL}\n\n"
     "_Truth Beyond Borders — built for journalists, activists & curious minds._"
@@ -3583,7 +3583,7 @@ HELP_MSG = (
 def confirm_msg(st, preview, cost):
     src = {"text":"Text","image":"Image","audio":"Voice Note","video":"Video","url":"Article","document":"Document"}
     HDR = "*━━━━━━━━━━━━━━*"
-    return (f"{HDR}\n*Fred Check*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\nReply *Y* to fact-check\nReply *N* to cancel")
+    return (f"{HDR}\n*Fred Check*\n_{src.get(st,st)}_\n{HDR}\n\n*CLAIM PREVIEW*\n_{preview[:180]}_\n\nReply *Y* to fact check\nReply *N* to cancel")
 
 def _split_message(text, limit=4000):
     """Split text at newline boundaries near limit to avoid mid-sentence cuts."""
@@ -4049,7 +4049,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f}")
         elif bt == "subscriber":
             send_fn("✓ Subscriber — unlimited access")
-        send_fn("Starting fact-check...")
+        send_fn("🔍 Starting fact check...")
         threading.Thread(
             target=run_check_platform,
             args=(platform, uid, data["query"], data["source_type"], bt, send_fn),
@@ -4428,8 +4428,8 @@ def process(from_num, message, profile_name=None):
             elif bt == "subscriber":
                 status_line = "✓ Subscriber — unlimited access"
             else:
-                status_line = "✓ Starting fact-check..."
-            send(from_num, f"{status_line}\nStarting fact-check...")
+                status_line = "🔍 Starting fact check..."
+            send(from_num, f"{status_line}\n🔍 Starting fact check...")
             threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
                              kwargs={"billing_type": bt, "pre_claims": selected_claims or data.get("claims"),
                                      "post_date": data.get("post_date", ""),
@@ -4462,7 +4462,7 @@ def process(from_num, message, profile_name=None):
                         mins = duration_secs // 60
                         send(from_num,
                             f"⏱️ This video is {mins} minutes long.\n\n"
-                            f"Fred can only fact-check videos up to {MAX_VIDEO_MINUTES} minutes. "
+                            f"Fred can only fact check videos up to {MAX_VIDEO_MINUTES} minutes. "
                             f"Try sending a shorter clip or a specific timestamp.")
                         return jsonify({"status": "ok"}), 200
                     video_bytes, metadata, post_date = download_video_url(url)
@@ -4585,16 +4585,16 @@ def process(from_num, message, profile_name=None):
                                     query = f"Social media post: {metadata}\n\nAudio transcript:\n{transcript_fb}"
                                     source_type = "video"
                                 else:
-                                    send(from_num, "⚠️ Could not transcribe audio — fact-checking post text only.\n_Note: the video content itself has not been verified._")
+                                    send(from_num, "⚠️ Could not transcribe audio — fact checking post text only.\n_Note: the video content itself has not been verified._")
                                     query = f"Social media post: {metadata}\n\nURL: {url}"
                                     source_type = "url"
                             except Exception as e:
                                 log.error(f"yt-dlp audio transcription fallback: {e}")
-                                send(from_num, "⚠️ Could not access video content — fact-checking post text only.\n_Note: the video content itself has not been verified._")
+                                send(from_num, "⚠️ Could not access video content — fact checking post text only.\n_Note: the video content itself has not been verified._")
                                 query = f"Social media post: {metadata}\n\nURL: {url}"
                                 source_type = "url"
                         else:
-                            send(from_num, "⚠️ Could not access video content — fact-checking post text only.\n_Note: the video content itself has not been verified._")
+                            send(from_num, "⚠️ Could not access video content — fact checking post text only.\n_Note: the video content itself has not been verified._")
                             query = f"Social media post: {metadata}\n\nURL: {url}"
                             source_type = "url"
                     else:
@@ -4602,7 +4602,7 @@ def process(from_num, message, profile_name=None):
                         if _check_url_unavailable(url):
                             send(from_num, "🔒 This content appears to be private, deleted, or restricted and cannot be accessed.")
                         else:
-                            send(from_num, "❌ Could not access this video. To fact-check it, please describe the claim in text or paste a direct quote.")
+                            send(from_num, "❌ Could not access this video. To fact check it, please describe the claim in text or paste a direct quote.")
                         return
                 except Exception as e:
                     send(from_num, f"❌ Video error: {str(e)[:200]}\n\nTrying page scrape instead...")
@@ -5228,7 +5228,7 @@ def _send_payment_prompt(wa_id, balance_cents):
     url = f"{WEBSITE_URL}/topup?ref=wa_{wa_id}"
     send_interactive(wa_id, {
         "type": "cta_url",
-        "body": {"text": f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact-checking with Fred."},
+        "body": {"text": f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact checking with Fred."},
         "action": {
             "name": "cta_url",
             "parameters": {
@@ -5651,7 +5651,7 @@ def stripe_webhook():
                         "telegram": lambda t, u=uid: send_telegram(u, t),
                         "twitter": lambda t, u=uid: send_twitter_dm(u, t),
                     }.get(platform, lambda t: None)
-                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact-checking. Post any claim to get started.")
+                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact checking. Post any claim to get started.")
                 elif mode == "subscription":
                     with _db() as c:
                         c.execute("UPDATE platform_users SET tier='subscriber', stripe_customer_id=? WHERE platform=? AND platform_id=?", (customer_id, platform, uid))
@@ -5838,7 +5838,7 @@ def telegram_receive():
                                              msg_id=mid, msg_time=mt)
                 threading.Thread(target=_tg_doc, daemon=True).start()
             else:
-                send_fn("⚠️ Please send text, image, voice note, or URL to fact-check.")
+                send_fn("⚠️ Please send text, image, voice note, or URL to fact check.")
         else:
             send_fn("⚠️ Send a text claim, image, voice note, or URL to get started.")
 
