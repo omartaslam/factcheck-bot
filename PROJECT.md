@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 19 — auto-save 1)
+**Last updated:** 2026-03-23 (session 19 — auto-save 2)
 
 ---
 
@@ -315,7 +315,13 @@ Type HELP anytime for a full guide.
 
 ### Session 19 — 2026-03-23
 
-- **Regression/QA investigation (in progress)**: User raised concern about formatting and language quality issues recurring after prompt changes. Root cause identified: existing `qa_runner.py` only checks verdict *rating* and *source count* — it does not check formatting, forbidden phrases, message structure, or prose quality. Three-part fix being designed: (1) add format/language assertions to QA evaluator, (2) build golden-output regression fixture per bug found, (3) wire fast subset of fixtures as pre-push gate. Awaiting user's specific example issues before implementing.
+- **Root cause analysis complete — 4 targeted fixes identified (pending implementation)**:
+  User shared 4 example outputs showing bugs. Full code + prompt audit done. Architecture confirmed already correct (JSON output → Python formatting). No big refactor needed. Specific bugs:
+  1. **"This image The image is..."** — code bug, `"This image "` prefix prepended to Claude output in no-claims path
+  2. **Raw metadata in CLAIM field** (intermittent) — `claim` variable sometimes contains raw input context blob instead of clean extracted claim
+  3. **Prompt logic**: `media_bias` field wrongly flags absent Western coverage; `verdict` text hedges against its own TRUE rating; UNVERIFIABLE used instead of FALSE for misattributed quotes with no confirming sources
+  4. **Intermittent image analysis failure** — same image works once, fails next time — OCR/vision pipeline reliability
+  - User confirmed: proceed with all 4 fixes in one go.
 
 ---
 
