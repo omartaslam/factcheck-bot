@@ -6283,6 +6283,21 @@ def admin_run_qa():
     return jsonify({"ok": True, "message": msg, "email": "hello@fredcheck.com"})
 
 
+@app.route("/admin/set-balance", methods=["POST"])
+def admin_set_balance():
+    """Temporarily set a platform user's balance. Admin use only."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    platform = data.get("platform", "whatsapp")
+    uid = str(data.get("uid", ""))
+    cents = int(data.get("cents", 0))
+    if not uid:
+        return jsonify({"error": "uid required"}), 400
+    with _db() as c:
+        c.execute("UPDATE platform_users SET balance_cents=? WHERE platform=? AND platform_id=?", (cents, platform, uid))
+    return jsonify({"ok": True, "platform": platform, "uid": uid, "balance_cents": cents})
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     log.info("Fred Check v3.2 starting (dev mode)...")
