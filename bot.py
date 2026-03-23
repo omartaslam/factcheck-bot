@@ -176,6 +176,37 @@ CUSTOM_SOURCES_RAW = os.getenv("CUSTOM_SOURCES", "")
 
 MAX_VIDEO_MINUTES    = int(os.getenv("MAX_VIDEO_MINUTES", "10"))  # reject videos longer than this
 
+# Known paywalled / subscription-only domains
+_PAYWALLED_DOMAINS = {
+    "nytimes.com", "ft.com", "thetimes.co.uk", "thetimes.com",
+    "telegraph.co.uk", "economist.com", "wsj.com", "bloomberg.com",
+    "washingtonpost.com", "theathletic.com", "businessinsider.com",
+    "wired.com", "newyorker.com", "theatlantic.com", "hbr.org",
+    "spectator.co.uk", "newstatesman.com", "medium.com",
+}
+
+def _url_fetch_reason(url):
+    """Return a human-readable explanation of why a URL couldn't be accessed."""
+    from urllib.parse import urlparse
+    domain = urlparse(url).netloc.lower().lstrip("www.")
+    if any(d in domain for d in _PAYWALLED_DOMAINS):
+        return "behind a paywall or subscription wall"
+    try:
+        r = requests.head(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=8, allow_redirects=True)
+        if r.status_code in (401, 402):
+            return "behind a paywall or subscription wall"
+        if r.status_code == 403:
+            return "blocking automated access (bot protection)"
+        if r.status_code == 429:
+            return "rate-limiting access right now — try again shortly"
+        if r.status_code in (404, 410):
+            return "no longer available (deleted or moved)"
+        if r.status_code == 451:
+            return "unavailable for legal reasons in this region"
+    except Exception:
+        pass
+    return "not accessible (it may require a login, or the site blocks scrapers)"
+
 COBALT_API = "https://api.cobalt.tools/api/json"
 COBALT_HEADERS = {"Accept": "application/json", "Content-Type": "application/json"}
 RAPIDAPI_KEY = os.getenv("RAPIDAPI_KEY", "")
@@ -4199,7 +4230,11 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             url = urls[0]
             send_fn("🔍 Analysing post/article...")
             page_text = fetch(url) or _og_metadata(url)
-            query = page_text or body
+            if not page_text:
+                reason = _url_fetch_reason(url)
+                send_fn(f"🔒 I couldn't access this article — it appears to be {reason}.\n\nTry copying the specific claim as text and sending it instead.")
+                return
+            query = page_text
             source_type = "url"
         else:
             query, source_type = body, "text"
@@ -5067,7 +5102,13 @@ def process(from_num, message, profile_name=None):
                     except Exception as oe:
                         log.debug(f"Article og:image OCR failed: {oe}")
 
-                query = page_text or body
+                if not page_text:
+                    reason = _url_fetch_reason(url)
+                    send(from_num,
+                         f"🔒 I couldn't access this article — it appears to be {reason}.\n\n"
+                         f"Try copying the specific claim as text and sending it instead.")
+                    return jsonify({"status": "ok"}), 200
+                query = page_text
                 source_type = "url"
             # For any additional URLs in the message, fetch article text and append.
             # Skip social/video platforms — those need the full pipeline.
