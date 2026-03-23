@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 17)
+**Last updated:** 2026-03-23 (session 17 — continued)
 
 ---
 
@@ -324,6 +324,10 @@ Type HELP anytime for a full guide.
   - Bot `/api/topup-wa` allowlist updated to accept 5000 cents ($50)
 
 - **Price raised to 25¢** (`COST_PER_CHECK_CENTS=25`) — needs setting in Railway env vars
+
+- **Payment prompt message fix** (commits `2fd4f65`, `e48416a`): paid users now correctly see "Your balance is $X.XX" instead of "You've used your 12 free checks." Root cause: `billing_type` was never passed to `_send_payment_prompt` from the TOPUP handler, so inference logic failed when balance > 0. Fixed by passing `billing_type=bt` explicitly from all call sites.
+
+- **WhatsApp return link** (commit `0c92292`): cancel button on topup page and auto-redirect on thank-you page now use `whatsapp://send?phone=447863795638` instead of `wa.me/...` — bypasses iOS browser interstitial popup for a smoother UX.
 
 ### Session 16 — 2026-03-23
 
