@@ -3904,7 +3904,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         u = _wa_user(from_num)
         if 0 < u["balance_cents"] < COST_PER_CHECK_CENTS:
             send(from_num, f"⚠️ _Low balance: ${u['balance_cents']/100:.2f} — not enough for another check._")
-            _send_payment_prompt(from_num, u["balance_cents"])
+            _send_payment_prompt(from_num, u["balance_cents"], billing_type="paid")
 
 def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_claims=None, post_date=None):
     """Platform-agnostic fact-check runner. Used by Messenger/Instagram/Telegram."""
@@ -5220,16 +5220,16 @@ def _wa_deduct(wa_id, cents, description, billing_type):
 def _wa_credit(wa_id, cents, description, stripe_session_id=None):
     _pcredit("whatsapp", wa_id, cents, description, stripe_session_id)
 
-def _send_payment_prompt(wa_id, balance_cents):
+def _send_payment_prompt(wa_id, balance_cents, billing_type=None):
     if not STRIPE_SECRET_KEY:
         # No Stripe configured — fall back to text message
         _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
         return
     u = _wa_user(wa_id)
     free_checks_used = u.get("free_checks_used") or 0
-    if free_checks_used >= FREE_CHECKS_LIMIT and balance_cents <= 0:
-        # Paid user who has run out of balance
-        body_text = f"Your balance is $0.00.\n\nTop up to continue fact checking with Fred."
+    is_paid_user = billing_type == "paid" or (free_checks_used >= FREE_CHECKS_LIMIT and balance_cents <= 0)
+    if is_paid_user:
+        body_text = f"Your balance is ${(balance_cents or 0)/100:.2f}.\n\nTop up to continue fact checking with Fred."
     else:
         # Free user who has used all free checks
         free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
