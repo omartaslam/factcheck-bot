@@ -3267,23 +3267,20 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
     pro_text, con_text = "", ""
     if ANTHROPIC_KEY:
         pro_prompt = (
-            "You are a fact-checker arguing from a WESTERN MAINSTREAM MEDIA perspective "
-            "(BBC, Reuters, AP, CNN, NYT, official government and military statements). "
-            "Using ONLY the evidence provided, make the strongest honest case that the claim "
-            "below is TRUE or mostly accurate from this perspective. Be specific, cite sources. "
-            "3-4 sentences.\n\n"
+            "You are a fact-checker. Using ALL available evidence provided — drawing from any "
+            "source regardless of region or outlet — make the strongest honest case that the "
+            "claim below is TRUE or accurate. Cite the most compelling evidence that supports "
+            "the claim. Be specific. 3-4 sentences.\n\n"
             f"CLAIM: {claim[:800]}\n\n{evidence}"
         )
         con_prompt = (
-            "You are a fact-checker arguing from a REGIONAL / GLOBAL SOUTH / AFFECTED COMMUNITY "
-            "perspective (Al Jazeera, Middle East Eye, regional outlets, independent journalists, "
-            "people directly affected by the events, international law, human rights organisations). "
-            "Using ONLY the evidence provided, make the strongest honest case that the claim "
-            "below is FALSE, misleading, or missing crucial context from this perspective. "
-            "IMPORTANT DISTINCTION: Only raise omitted context if it makes the claim actively "
-            "misleading or creates a false impression — not if it merely adds further weight or "
-            "significance to an already accurate claim. "
-            "Be specific, cite sources. 3-4 sentences.\n\n"
+            "You are a fact-checker. Using ALL available evidence provided — drawing from any "
+            "source regardless of region or outlet — make the strongest honest case that the "
+            "claim below is FALSE, inaccurate, or materially misleading. "
+            "IMPORTANT: Only raise omitted context if it makes the claim actively misleading "
+            "or creates a false impression — not if it merely adds nuance to an already accurate "
+            "claim. Only argue FALSE/misleading if the evidence genuinely supports that — do not "
+            "manufacture doubt. Be specific, cite sources. 3-4 sentences.\n\n"
             f"CLAIM: {claim[:800]}\n\n{evidence}"
         )
         with ThreadPoolExecutor(max_workers=2) as ex:
