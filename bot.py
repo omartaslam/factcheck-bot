@@ -4020,6 +4020,56 @@ def clean_query(q):
         lines.append(s)
     return "\n".join(lines).strip()
 
+def _pending_set(platform, uid, data):
+    """Write pending state to in-memory dict AND DB (survives redeploy)."""
+    import base64 as _b64, json as _json
+    pkey = (platform, str(uid))
+    with pending_lock:
+        pending[pkey] = data
+    try:
+        db_data = {k: (_b64.b64encode(v).decode() if k == "image_bytes" and v else v)
+                   for k, v in data.items()}
+        with _db() as c:
+            c.execute("UPDATE platform_users SET pending_json=?, pending_ts=? WHERE platform=? AND platform_id=?",
+                      (_json.dumps(db_data), int(t.time()), platform, str(uid)))
+    except Exception as e:
+        log.warning("pending_set DB write failed: %s", e)
+
+def _pending_get(platform, uid):
+    """Get pending state: memory first, then DB fallback."""
+    import base64 as _b64, json as _json
+    pkey = (platform, str(uid))
+    with pending_lock:
+        if pkey in pending:
+            return pending[pkey]
+    try:
+        with _db() as c:
+            row = c.execute("SELECT pending_json, pending_ts FROM platform_users WHERE platform=? AND platform_id=?",
+                            (platform, str(uid))).fetchone()
+        if row and row[0] and row[1] and (t.time() - row[1]) < PENDING_TTL:
+            data = _json.loads(row[0])
+            if data.get("image_bytes"):
+                data["image_bytes"] = _b64.b64decode(data["image_bytes"])
+            with pending_lock:
+                pending[pkey] = data
+            log.info("Restored pending for %s/%s from DB (age %.0fs)", platform, uid, t.time() - row[1])
+            return data
+    except Exception as e:
+        log.warning("pending_get DB read failed: %s", e)
+    return None
+
+def _pending_clear(platform, uid):
+    """Clear pending state from memory and DB."""
+    pkey = (platform, str(uid))
+    with pending_lock:
+        pending.pop(pkey, None)
+    try:
+        with _db() as c:
+            c.execute("UPDATE platform_users SET pending_json=NULL, pending_ts=NULL WHERE platform=? AND platform_id=?",
+                      (platform, str(uid)))
+    except Exception as e:
+        log.warning("pending_clear DB write failed: %s", e)
+
 def expire_pending():
     now = t.time()
     with pending_lock:
@@ -4027,6 +4077,12 @@ def expire_pending():
         for k in stale:
             log.info(f"Expiring stale pending for {k}")
             del pending[k]
+    try:
+        with _db() as c:
+            c.execute("UPDATE platform_users SET pending_json=NULL, pending_ts=NULL WHERE pending_ts IS NOT NULL AND pending_ts < ?",
+                      (int(now - PENDING_TTL),))
+    except Exception as e:
+        log.warning("expire_pending DB cleanup failed: %s", e)
 
 # Shared pending state uses (platform, uid) as key
 # WhatsApp process() uses ("whatsapp", from_num) — updated below
@@ -4059,16 +4115,16 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
     is_selection = bool(re.match(r'^[\d][,\s\d]*$', body_upper.strip()))
     is_pending_response = is_cancel or is_check_all or is_selection
 
-    with pending_lock:
-        has_p = pkey in pending
-        data = pending.get(pkey)
+    data = _pending_get(platform, uid)
+    has_p = data is not None
 
     if has_p and is_pending_response:
         if is_cancel:
-            with pending_lock: pending.pop(pkey, None)
+            _pending_clear(platform, uid)
             send_fn("Cancelled.")
             return
-        with pending_lock: data = pending.pop(pkey)
+        data = _pending_get(platform, uid)
+        _pending_clear(platform, uid)
         # Filter to selected claims
         all_claims = data.get("claims") or []
         if is_check_all or not all_claims:
@@ -4105,7 +4161,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
         ).start()
         return
     elif has_p and not is_yn:
-        with pending_lock: pending.pop(pkey, None)
+        _pending_clear(platform, uid)
 
     # ── Process content ────────────────────────────────────────────────────
     query, source_type = "", "text"
@@ -4186,14 +4242,12 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
                              kwargs={"pre_claims": claims}, daemon=True).start()
             return
         bt_now = _pbilling_type(platform, uid)
-        with pending_lock:
-            pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
-                             "cost": cost, "timestamp": t.time(), "claims": claims}
+        _pending_set(platform, uid, {"query": query, "source_type": source_type, "image_bytes": image_bytes,
+                             "cost": cost, "timestamp": t.time(), "claims": claims})
         send_fn(claims_confirm_msg(claims, source_type, cost, is_free=(bt_now == "free")))
     else:
-        with pending_lock:
-            pending[pkey] = {"query": query, "source_type": source_type,
-                             "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()}
+        _pending_set(platform, uid, {"query": query, "source_type": source_type,
+                             "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()})
         send_fn(confirm_msg(source_type, query, cost))
 
 def _send_daily_summary(date_str=None):
@@ -4435,12 +4489,14 @@ def process(from_num, message, profile_name=None):
         is_check_all = body_upper in ("YES", "Y", "ALL", "A")
         is_selection = bool(re.match(r'^[\d][,\s\d]*$', body_upper.strip()))
         is_pending_response = is_cancel or is_check_all or is_selection
-        with pending_lock: has_p = pkey in pending; data = pending.get(pkey)
+        data = _pending_get("whatsapp", from_num)
+        has_p = data is not None
         if has_p and is_pending_response:
             if is_cancel:
-                with pending_lock: pending.pop(pkey, None)
+                _pending_clear("whatsapp", from_num)
                 send(from_num, "Cancelled."); return
-            with pending_lock: data = pending.pop(pkey)
+            data = _pending_get("whatsapp", from_num)
+            _pending_clear("whatsapp", from_num)
             # ── Filter to selected claims ──────────────────────────────────
             all_claims = data.get("claims") or []
             if is_check_all or not all_claims:
@@ -4484,7 +4540,7 @@ def process(from_num, message, profile_name=None):
                                      "msg_id": data.get("msg_id","")}, daemon=True).start()
             return
         elif has_p and not is_pending_response:
-            with pending_lock: pending.pop(pkey, None)
+            _pending_clear("whatsapp", from_num)
             log.info("New content received, clearing stale pending")
     query, source_type, image_bytes, post_date, urls = "", "text", None, "", []
     if msg_type == "text":
@@ -5100,18 +5156,16 @@ def process(from_num, message, profile_name=None):
                                      "msg_id": msg_id}, daemon=True).start()
             return
         bt_now = _wa_billing_type(from_num)
-        with pending_lock:
-            pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
+        _pending_set("whatsapp", from_num, {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "claims": claims,
                              "post_date": post_date, "source_url": urls[0] if urls else "",
-                             "msg_id": msg_id}
+                             "msg_id": msg_id})
         send(from_num, claims_confirm_msg(claims, source_type, cost, is_free=(bt_now == "free")))
     else:
         # document — no claim extraction, show raw preview
-        with pending_lock:
-            pending[pkey] = {"query": query, "source_type": source_type, "image_bytes": image_bytes,
+        _pending_set("whatsapp", from_num, {"query": query, "source_type": source_type, "image_bytes": image_bytes,
                              "cost": cost, "timestamp": t.time(), "post_date": post_date,
-                             "source_url": urls[0] if urls else "", "msg_id": msg_id}
+                             "source_url": urls[0] if urls else "", "msg_id": msg_id})
         send(from_num, confirm_msg(source_type, query, cost))
 
 # ── Web API: database, auth, rate-limiting ───────────────────────────────────
@@ -5204,6 +5258,10 @@ def init_db():
         try: c.execute("ALTER TABLE platform_users ADD COLUMN profile_name TEXT")
         except Exception: pass
         try: c.execute("ALTER TABLE platform_users ADD COLUMN free_checks_date TEXT")
+        except Exception: pass
+        try: c.execute("ALTER TABLE platform_users ADD COLUMN pending_json TEXT")
+        except Exception: pass
+        try: c.execute("ALTER TABLE platform_users ADD COLUMN pending_ts INTEGER")
         except Exception: pass
         try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_emoji TEXT")
         except Exception: pass
