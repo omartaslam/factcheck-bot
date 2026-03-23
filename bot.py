@@ -4665,7 +4665,16 @@ def process(from_num, message, profile_name=None):
                         # we actually get frames or audio out of it
                         parts = []
                         if metadata and not _is_useless_title(metadata):
-                            parts.append(f"Video: {metadata}")
+                            # Only include title if it is a substantive description, not an editorial question.
+                            # Editorial question titles (e.g. "Is the Iran war a problem for the chancellor?")
+                            # confuse claim extraction — Claude extracts the question instead of the transcript.
+                            # When we have a transcript/visual below, skip question titles entirely.
+                            import re as _re_eq
+                            _is_eq_title = bool(_re_eq.match(
+                                r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how|who|where|when)\b.{5,}\?$',
+                                metadata.strip(), _re_eq.IGNORECASE))
+                            if not _is_eq_title:
+                                parts.append(f"Video title: {metadata}")
                         try:
                             frames, duration = extract_video_frames(video_bytes, num_frames=5)
                             if frames:
@@ -4776,20 +4785,25 @@ def process(from_num, message, profile_name=None):
                                 transcript_fb = transcribe(audio_bytes_fb, mime_map.get(audio_ext_fb, "audio/mp4"))
                                 if transcript_fb:
                                     send(from_num, "✓ Audio extracted and transcribed")
-                                    query = f"Social media post: {metadata}\n\nAudio transcript:\n{transcript_fb}"
+                                    import re as _re_eq3
+                                    _is_eq3 = bool(_re_eq3.match(
+                                        r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how|who|where|when)\b.{5,}\?$',
+                                        (metadata or "").strip(), _re_eq3.IGNORECASE))
+                                    _meta_prefix = "" if _is_eq3 else f"Video title: {metadata}\n\n"
+                                    query = f"{_meta_prefix}Audio transcript:\n{transcript_fb}"
                                     source_type = "video"
                                 else:
                                     send(from_num, "⚠️ Could not transcribe audio — fact checking post text only.\n_Note: the video content itself has not been verified._")
-                                    query = f"Social media post: {metadata}\n\nURL: {url}"
+                                    query = f"Video title: {metadata}\n\nURL: {url}"
                                     source_type = "url"
                             except Exception as e:
                                 log.error(f"yt-dlp audio transcription fallback: {e}")
                                 send(from_num, "⚠️ Could not access video content — fact checking post text only.\n_Note: the video content itself has not been verified._")
-                                query = f"Social media post: {metadata}\n\nURL: {url}"
+                                query = f"Video title: {metadata}\n\nURL: {url}"
                                 source_type = "url"
                         else:
                             send(from_num, "⚠️ Could not access video content — fact checking post text only.\n_Note: the video content itself has not been verified._")
-                            query = f"Social media post: {metadata}\n\nURL: {url}"
+                            query = f"Video title: {metadata}\n\nURL: {url}"
                             source_type = "url"
                     else:
                         # No video bytes and no metadata — check if content is private/deleted
@@ -4829,7 +4843,12 @@ def process(from_num, message, profile_name=None):
                                 post_date = vid_date_try
                             vid_parts = []
                             if vid_meta_try and not _is_useless_title(vid_meta_try):
-                                vid_parts.append(f"Video: {vid_meta_try}")
+                                import re as _re_eq2
+                                _is_eq2 = bool(_re_eq2.match(
+                                    r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how|who|where|when)\b.{5,}\?$',
+                                    vid_meta_try.strip(), _re_eq2.IGNORECASE))
+                                if not _is_eq2:
+                                    vid_parts.append(f"Video title: {vid_meta_try}")
                             _vid_frames = []
                             try:
                                 _vid_frames, _ = extract_video_frames(vid_bytes_try, num_frames=5)
