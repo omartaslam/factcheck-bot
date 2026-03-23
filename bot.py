@@ -5225,11 +5225,19 @@ def _send_payment_prompt(wa_id, balance_cents):
         # No Stripe configured — fall back to text message
         _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
         return
-    free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
+    u = _wa_user(wa_id)
+    free_checks_used = u.get("free_checks_used") or 0
+    if free_checks_used >= FREE_CHECKS_LIMIT and balance_cents <= 0:
+        # Paid user who has run out of balance
+        body_text = f"Your balance is $0.00.\n\nTop up to continue fact checking with Fred."
+    else:
+        # Free user who has used all free checks
+        free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
+        body_text = f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact checking with Fred."
     url = f"{WEBSITE_URL}/topup?ref=wa_{wa_id}"
     send_interactive(wa_id, {
         "type": "cta_url",
-        "body": {"text": f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact checking with Fred."},
+        "body": {"text": body_text},
         "action": {
             "name": "cta_url",
             "parameters": {
