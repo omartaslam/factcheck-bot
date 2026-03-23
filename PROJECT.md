@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 16 — closing)
+**Last updated:** 2026-03-23 (session 16 — continued)
 
 ---
 
@@ -212,22 +212,28 @@ Type HELP anytime for a full guide.
 
 ## 9. Cost Model
 
-| Claim type | AI cost | + WA ($0.041) | Total |
-|---|---|---|---|
-| Text | ~$0.111 | $0.041 | ~$0.152 |
-| Image | ~$0.119 | $0.041 | ~$0.160 |
-| Audio | ~$0.123 | $0.041 | ~$0.164 |
-| Video | ~$0.140 | $0.041 | ~$0.181 |
+**Verified from live dashboards (March 2026):**
+| Cost component | Per check |
+|---|---|
+| Tavily (~9 credits × $0.0047) | ~$0.042 |
+| Claude Sonnet + Haiku | ~$0.040–0.060 |
+| Brave Search | ~$0.005 |
+| **Total API cost** | **~$0.09–0.11** |
+| WhatsApp conversation fee | ~$0.041 |
+| **Total true cost to Fred** | **~$0.13–0.15** |
 
-**Note:** `estimate_cost()` in code currently returns values ~12× too low. Must fix before charging users.
+**Retail price:** `COST_PER_CHECK_CENTS = 19` (19¢) → ~36% margin
+**Billing:** fixed 19¢ deducted per check (changed from variable `_cost_get()` tracking which was only capturing ~6¢)
 
-**Cost breakdown per claim:**
-- Tavily searches: $0.064 (58% of total)
-- Claude Sonnet synthesis: $0.035
-- Claude claim extraction: $0.005
-- Brave Search: $0.005
-- Claude Haiku debate: $0.002
-- Claude Haiku neutralise: $0.0002
+**Tavily actual rate:** $0.0047/credit (cheaper than $0.008/credit previously assumed)
+
+**Topup tiers (pending review):**
+| Tier | Checks | $/check |
+|---|---|---|
+| $1 | 5 checks | 20¢ |
+| $5 | 26 checks | 19.2¢ |
+| $10 | 52 checks | 19.2¢ |
+| $25 | 131 checks | 19.1¢ |
 
 ---
 
@@ -319,6 +325,21 @@ Type HELP anytime for a full guide.
 - **Cancel button** (commit `588c4c5`): `← Cancel, return to WhatsApp` link added below tier options on topup page.
 
 - **"Post" vs "Send"** (commit `10ac994`): payment confirmation now says `Post any claim to get started.` Other "send" instances reviewed — left as-is (all refer to sending a WA message to Fred, which is correct WA language).
+
+- **TOPUP command** (commit `f2fbfe3`): `TOPUP` added as a WhatsApp command — sends CTA button directly. BALANCE response now hints `Reply *TOPUP* anytime`. HELP message updated. Blocked/zero-balance users now see CTA button via BALANCE too.
+
+- **Payment prompt message fix** (commit `52fbfbb`): paid users at $0 now see `Your balance is $0.00` instead of `You've used your 12 free checks`.
+
+- **🔍 Starting fact check** (commit `f03974b`): added emoji + removed hyphens from "fact-check" → "fact check" across all 19 user-facing strings. AI system prompts unchanged.
+
+- **Fixed billing deduction** (commit `8114e40`): was deducting `_cost_get()` (~6¢, partial tracking) — now deducts fixed `COST_PER_CHECK_CENTS` (19¢). Users pay exactly 19¢/check, topup page estimates are now accurate.
+
+- **Verified true cost per check** from live dashboards (March 2026):
+  - Anthropic: $14.99 (includes heavy QA testing mid-month)
+  - Tavily: $11.17 / 2,400 credits = $0.0047/credit
+  - Estimated true cost to Fred: ~11-13¢/check (API) + 4.1¢ WA = ~14¢ total
+  - At 19¢ retail: ~36% margin per check (slim but acceptable for beta)
+  - Topup tiers pending review: $1/5checks, $5/26checks, $10/52checks, $25/131checks
 
 - **`/admin/set-balance`** (commit `a36b918`): temporary admin endpoint to set a user's balance for testing. Protected by `X-Admin-Token`.
 
