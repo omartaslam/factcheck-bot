@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 18 — auto-save 2)
+**Last updated:** 2026-03-23 (session 18 — auto-save 3)
 
 ---
 
@@ -319,6 +319,9 @@ Type HELP anytime for a full guide.
 - **`rating_reason` schema tightened**: For MOSTLY TRUE, must name the precise material factual error. If you can't name one, the rating must be TRUE.
 - **Anti-Western-framing reinforced in memory**: Added session-start reminder to `feedback_verdict_philosophy.md` — non-Western sources carry equal weight, absence of Western coverage ≠ downgrade, no default deference to Western official positions.
 - **B'Tselem / Chequeado source rotation** (under investigation): Both appearing too frequently in source preview. B'Tselem wins HUMAN RIGHTS slot when HRW/Amnesty fail to return results; Chequeado is the most reliable SPANISH/LATIN AMERICAN source. Options identified: narrow B'Tselem priority boost to Palestine-only keywords; or remove both from status preview while still searching them. Decision pending.
+- **Pending state persisted to DB** (commit `1b78327`): pending selection (claims, query, image_bytes) now survives redeployments via `platform_users.pending_json` + `pending_ts` columns. Auto-restores from DB on next message if not in memory. Fixes "Found 1 verifiable claim: 1." after a deploy.
+- **ADMIN.md created** (commit `43ad9cd`): maintenance reference — curl commands, Railway DB edits, deploy/rollback, cookie rotation, env vars, external dashboards.
+- **Red flags restricted to accuracy concerns** (commit `8d4d767`): red_flags must only flag things that affect claim accuracy. Source confidentiality, verification methodology, absence of coverage — all banned from red_flags.
 - **Verdict quality — batch of bias/hedging fixes** (commits `43dcca4`, `b5f5458`, `c4aa0bd`, `808ee7c`, `2388c8c`):
   - Idiomatic language rule: "cleared of all wrongdoing" = cleared in the specific matter, not hyper-literal contract parsing
   - Political background context blocked as downgrade reason: "resigned amid controversies" cannot weaken a specific factual claim
