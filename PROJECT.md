@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 16 — in progress)
+**Last updated:** 2026-03-23 (session 16 — closing)
 
 ---
 
@@ -288,7 +288,7 @@ Type HELP anytime for a full guide.
 6. **Meta app review** — submit once business verification approved
 
 ### Ready to implement
-7. **`STRIPE_WEBHOOK_SECRET`** — webhook URL now correct (`https://fredcheck.com/webhook/stripe` ✅, account renamed to "Fred • Fact Check" ✅). Copy signing secret (`whsec_...`) from Stripe Dashboard → Webhooks → `fascinating-breeze` → set as `STRIPE_WEBHOOK_SECRET` in Railway. Currently skipped in code if not set (harmless but insecure).
+7. **`STRIPE_WEBHOOK_SECRET`** — set in Railway for security. Copy `whsec_...` from Stripe Dashboard → Webhooks → `fascinating-breeze`. Currently skipped in code if not set (harmless but insecure).
 8. **QA automation suite** — ⏸ SHELVED. Infrastructure complete: `scripts/qa_runner.py` + `scripts/qa_fixtures.json`, 28 fixtures across all categories, POST `/admin/run-qa` endpoint live. Shelved 2026-03-21 because Claude's capacity limitations make the suite too slow and fragile to be a useful daily tool (~70 min runtime, context pressure, no mid-run visibility). Known quality issues: FALSE returned instead of UNVERIFIABLE for ambiguous claims; "vaccines kill more than COVID" returns FALSE not MISLEADING. Do not delete — park until either (a) Claude is faster/cheaper or (b) a lightweight 5–8 fixture subset is carved out for quick iteration.
 8. **Service health monitoring** — email alert when RapidAPI/Hive/SendGrid/FB-IG cookies go down
 9. **Split verdict into multiple WA messages**
@@ -307,6 +307,24 @@ Type HELP anytime for a full guide.
 ## 12. Recently Completed Work
 
 ### Session 16 — 2026-03-23
+
+- **Payment flow fully verified** — live $1 test payment completed. Webhook fired, $1.00 credited correctly, confirmation message sent to user. Full UX working end to end.
+
+- **Footer cleanup** (commit `21ed1a5`): removed `──────────────────────` divider (was wrapping on mobile), removed 🌐 globe emoji, URL now plain `https://fredcheck.com` (auto-links in WA).
+
+- **Cost figure replaced with checks remaining** (commit `88cb507`): footer now shows `X checks remaining  •  Fred Check (Beta)` instead of raw dollar cost. Free users see free checks remaining, paid users see balance ÷ COST_PER_CHECK_CENTS. Platform handler updated too.
+
+- **Topup page polish** (commit `88cb507`): removed tildes from check counts (`~26 checks` → `26 checks`).
+
+- **Cancel button** (commit `588c4c5`): `← Cancel, return to WhatsApp` link added below tier options on topup page.
+
+- **"Post" vs "Send"** (commit `10ac994`): payment confirmation now says `Post any claim to get started.` Other "send" instances reviewed — left as-is (all refer to sending a WA message to Fred, which is correct WA language).
+
+- **`/admin/set-balance`** (commit `a36b918`): temporary admin endpoint to set a user's balance for testing. Protected by `X-Admin-Token`.
+
+- **Stripe account renamed** to "Fred • Fact Check" ✅
+
+- **Stripe webhook URL fixed** to `https://fredcheck.com/webhook/stripe` ✅ (was `/stripe-webhook`, causing 100% error rate)
 
 - **Payment flow overhaul** (commit `647aa83`):
   - **Root cause fix**: `client_reference_id` was built with `platform[:4]` → `"what_447..."` for WhatsApp. Webhook parsed for `"wa_"` prefix — never matched, credits never applied to any WA/Messenger/Telegram user. Fixed with `_PLATFORM_PREFIX` dict (`"whatsapp"→"wa"`, `"messenger"→"msgr"`, `"telegram"→"tg"`, etc.).
