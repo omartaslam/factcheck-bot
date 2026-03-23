@@ -4269,7 +4269,8 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             return
         bt_now = _pbilling_type(platform, uid)
         # Skip confirmation for single text claims — user can see exactly what they sent
-        if source_type == "text" and len(claims) == 1 and len(query.strip()) < 300:
+        # Use body length not query length — query may be enriched with Tavily context
+        if source_type == "text" and len(claims) == 1 and len(body.strip()) < 300:
             threading.Thread(target=run_check_platform,
                              args=(platform, uid, query, source_type, bt_now, send_fn),
                              kwargs={"pre_claims": claims}, daemon=True).start()
@@ -5189,7 +5190,8 @@ def process(from_num, message, profile_name=None):
             return
         bt_now = _wa_billing_type(from_num)
         # Skip confirmation for single text claims — user can see exactly what they sent
-        if source_type == "text" and len(claims) == 1 and len(query.strip()) < 300:
+        # Use body length not query length — query may be enriched with Tavily context
+        if source_type == "text" and len(claims) == 1 and len(body.strip()) < 300:
             threading.Thread(target=run_check, args=(from_num, query, source_type, image_bytes, cost),
                              kwargs={"billing_type": bt_now, "pre_claims": claims,
                                      "post_date": post_date, "source_url": urls[0] if urls else "",
