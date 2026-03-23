@@ -2907,9 +2907,15 @@ def assess_content_claims(text, source_type, post_date=None):
         "- Do NOT infer or add context not directly stated (e.g. do not add 'Mark Carney is PM of Canada' if that wasn't the claim made)\n"
         "- Include ALL distinct assertions — do not merge separate claims into one\n"
         "- Prioritise claims that are newsworthy, potentially disputed, or surprising. Deprioritise background biographical facts (job titles, roles, affiliations) that are widely known and uncontroversial — only include them if they are themselves disputed or central to the claim being verified.\n"
-        "- Treat factual QUESTIONS as implicit claims to verify: convert them to assertions. "
+        "- Treat specific factual QUESTIONS as implicit claims to verify: convert them to assertions. "
         "e.g. 'Has Iran asked for a ceasefire?' → 'Iran has asked for a ceasefire'. "
         "'Did Bardem speak at the Oscars?' → 'Javier Bardem spoke at the Oscars'.\n"
+        "- NEVER convert editorial/rhetorical questions into claims. These are framing devices, not assertions: "
+        "'Is X a problem for Y?', 'What does X mean for Z?', 'Is X good/bad?', 'Why is X happening?' — these are editorial questions. "
+        "If a video or article title is a broad editorial question, IGNORE the title and extract claims from the actual content body instead.\n"
+        "- For VIDEO content specifically: the video title, thumbnail text, and channel/creator name are metadata — do NOT use them as claims. "
+        "Extract claims only from what is SAID in the transcript or SHOWN as text/graphics in the video body. "
+        "If no substantive factual claims can be found in the transcript/visual content, return checkable=false with reason 'could not identify specific factual claims in this video'.\n"
         "- Exclude pure rhetoric, predictions, and non-falsifiable philosophical statements\n"
         "- NEVER extract metadata claims. The day/time it was said, which outlet reported it, and where it was published are NOT claims — they are reporting context. "
         "BAD (do not extract): 'Bessent made this statement on Monday', 'Reuters reported this on March 15', 'Bessent spoke at a press conference on Tuesday'. "
@@ -2931,6 +2937,15 @@ def assess_content_claims(text, source_type, post_date=None):
         if s >= 0 and e > s:
             data = json.loads(raw[s:e])
             claims = [c.strip() for c in data.get("claims", []) if isinstance(c, str) and c.strip()][:4]
+            # For video: discard any claim that is itself a broad editorial question
+            # (e.g. "Is the Iran war a big problem for the chancellor?" slipped through)
+            if source_type == "video":
+                import re as _re2
+                _editorial_q = _re2.compile(
+                    r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b.{5,}\?$',
+                    _re2.IGNORECASE
+                )
+                claims = [c for c in claims if not _editorial_q.match(c)]
             checkable = bool(data.get("checkable", bool(claims)))
             if claims:
                 checkable = True  # if we have claims, always checkable
