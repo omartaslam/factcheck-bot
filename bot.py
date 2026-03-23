@@ -5592,7 +5592,7 @@ def api_topup_wa():
     data = request.get_json() or {}
     ref = (data.get("ref") or "").strip()          # e.g. "wa_447863795638"
     amount_cents = int(data.get("amount_cents", 500))
-    if amount_cents not in (100, 500, 1000, 2500):
+    if amount_cents not in (100, 500, 1000, 2500, 5000):
         return jsonify({"error": "Invalid amount"}), 400
     if not ref:
         return jsonify({"error": "Missing ref"}), 400

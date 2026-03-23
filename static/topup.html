@@ -24,6 +24,9 @@ h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
 .tier.loading{opacity:.6;pointer-events:none}
 .tier-left .amount{font-size:1.4rem;font-weight:700}
 .tier-left .checks{font-size:.85rem;color:var(--muted);margin-top:2px}
+.bonus{font-style:italic;color:var(--muted)}
+.volume{margin-top:20px;font-size:.82rem;color:var(--muted);text-align:center}
+.volume a{color:var(--muted)}
 .tier-arrow{font-size:1.2rem;color:var(--muted)}
 .tier:hover .tier-arrow{color:var(--gold)}
 .error{color:#c0392b;font-size:.85rem;margin-top:16px;display:none}
@@ -68,7 +71,7 @@ h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
     <div class="tier" data-amount="1000" onclick="pay(this)">
       <div class="tier-left">
         <div class="amount">$10</div>
-        <div class="checks">40 checks</div>
+        <div class="checks">44 checks <span class="bonus">(+4 bonus)</span></div>
       </div>
       <div class="tier-right">
         <div class="tier-arrow">→</div>
@@ -78,7 +81,17 @@ h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
     <div class="tier" data-amount="2500" onclick="pay(this)">
       <div class="tier-left">
         <div class="amount">$25</div>
-        <div class="checks">100 checks</div>
+        <div class="checks">115 checks <span class="bonus">(+15 bonus)</span></div>
+      </div>
+      <div class="tier-right">
+        <div class="tier-arrow">→</div>
+        <div class="spinner"></div>
+      </div>
+    </div>
+    <div class="tier" data-amount="5000" onclick="pay(this)">
+      <div class="tier-left">
+        <div class="amount">$50</div>
+        <div class="checks">240 checks <span class="bonus">(+40 bonus)</span></div>
       </div>
       <div class="tier-right">
         <div class="tier-arrow">→</div>
@@ -86,6 +99,8 @@ h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
       </div>
     </div>
   </div>
+
+  <p class="volume">Newsroom or volume user? Contact us for custom rates —<br><a href="mailto:hello@fredcheck.com">hello@fredcheck.com</a></p>
 
   <p class="error" id="err">Something went wrong. Please try again.</p>
   <a class="cancel" href="https://wa.me/447863795638">← Cancel, return to WhatsApp</a>
