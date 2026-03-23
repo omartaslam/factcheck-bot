@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 17 — closing)
+**Last updated:** 2026-03-23 (session 18 — in progress)
 
 ---
 
@@ -312,6 +312,13 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 18 — 2026-03-23
+
+- **Verdict boldness fix** (commit `b5c3e4e`): Raised the bar for MOSTLY TRUE — now requires a specific, material factual error in the claim itself. Vague caveats, unverified peripheral details, devil's-advocate uncertainty, and "high but not absolute" confidence are explicitly NOT valid reasons to use MOSTLY TRUE. "When in doubt, choose TRUE." Epistemic cowardice called out directly in the prompt.
+- **`rating_reason` schema tightened**: For MOSTLY TRUE, must name the precise material factual error. If you can't name one, the rating must be TRUE.
+- **Anti-Western-framing reinforced in memory**: Added session-start reminder to `feedback_verdict_philosophy.md` — non-Western sources carry equal weight, absence of Western coverage ≠ downgrade, no default deference to Western official positions.
+- **B'Tselem / Chequeado source rotation** (under investigation): Both appearing too frequently in source preview. B'Tselem wins HUMAN RIGHTS slot when HRW/Amnesty fail to return results; Chequeado is the most reliable SPANISH/LATIN AMERICAN source. Options identified: narrow B'Tselem priority boost to Palestine-only keywords; or remove both from status preview while still searching them. Decision pending.
 
 ### Session 17 — 2026-03-23
 
