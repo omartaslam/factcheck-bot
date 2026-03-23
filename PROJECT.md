@@ -323,11 +323,13 @@ Type HELP anytime for a full guide.
   - Tightened padding/spacing for mobile — all 5 tiers + volume message now fit on one screen without scrolling
   - Bot `/api/topup-wa` allowlist updated to accept 5000 cents ($50)
 
-- **Price raised to 25¢** (`COST_PER_CHECK_CENTS=25`) — needs setting in Railway env vars
+- **Price raised to 25¢** (`COST_PER_CHECK_CENTS=25`) — set in Railway ✅ (verify deduction on next real check)
 
-- **Payment prompt message fix** (commits `2fd4f65`, `e48416a`): paid users now correctly see "Your balance is $X.XX" instead of "You've used your 12 free checks." Root cause: `billing_type` was never passed to `_send_payment_prompt` from the TOPUP handler, so inference logic failed when balance > 0. Fixed by passing `billing_type=bt` explicitly from all call sites.
+- **Payment prompt message fix** (commits `2fd4f65`, `e48416a`, `dbaf827`): all billing states now show correct message — paid users see balance, blocked users see $0.00, free users see remaining checks. Root cause: `billing_type` not passed from TOPUP handler.
 
-- **WhatsApp return link** (commit `0c92292`): cancel button on topup page and auto-redirect on thank-you page now use `whatsapp://send?phone=447863795638` instead of `wa.me/...` — bypasses iOS browser interstitial popup for a smoother UX.
+- **WhatsApp return link** (commit `4c3f8a2`): reverted to `wa.me` — best available option on iOS (small bottom sheet, one tap).
+
+- **PENDING: Daily free checks model** — proposal: 3 checks/day for 7 days, then hard block. After 3rd daily check: "checks reset tomorrow — or top up now" + CTA. Day-7 end behaviour decision pending before implementation. Infrastructure (daily reset logic) already exists in codebase commented out.
 
 ### Session 16 — 2026-03-23
 
