@@ -176,13 +176,9 @@ CUSTOM_SOURCES_RAW = os.getenv("CUSTOM_SOURCES", "")
 
 MAX_VIDEO_MINUTES    = int(os.getenv("MAX_VIDEO_MINUTES", "10"))  # reject videos longer than this
 
-# Known paywalled / subscription-only domains
+# Hard paywalled domains — virtually no free articles, always subscription required
 _PAYWALLED_DOMAINS = {
-    "nytimes.com", "ft.com", "thetimes.co.uk", "thetimes.com",
-    "telegraph.co.uk", "economist.com", "wsj.com", "bloomberg.com",
-    "washingtonpost.com", "theathletic.com", "businessinsider.com",
-    "wired.com", "newyorker.com", "theatlantic.com", "hbr.org",
-    "spectator.co.uk", "newstatesman.com",
+    "ft.com", "thetimes.co.uk", "thetimes.com", "wsj.com", "theathletic.com",
 }
 
 def _url_fetch_reason(url):
