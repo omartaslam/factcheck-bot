@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 19 — auto-save 2)
+**Last updated:** 2026-03-23 (session 19 — auto-save 3)
 
 ---
 
@@ -315,13 +315,18 @@ Type HELP anytime for a full guide.
 
 ### Session 19 — 2026-03-23
 
-- **Root cause analysis complete — 4 targeted fixes identified (pending implementation)**:
-  User shared 4 example outputs showing bugs. Full code + prompt audit done. Architecture confirmed already correct (JSON output → Python formatting). No big refactor needed. Specific bugs:
-  1. **"This image The image is..."** — code bug, `"This image "` prefix prepended to Claude output in no-claims path
-  2. **Raw metadata in CLAIM field** (intermittent) — `claim` variable sometimes contains raw input context blob instead of clean extracted claim
-  3. **Prompt logic**: `media_bias` field wrongly flags absent Western coverage; `verdict` text hedges against its own TRUE rating; UNVERIFIABLE used instead of FALSE for misattributed quotes with no confirming sources
-  4. **Intermittent image analysis failure** — same image works once, fails next time — OCR/vision pipeline reliability
-  - User confirmed: proceed with all 4 fixes in one go.
+- **4 output quality fixes shipped** (commit `2744581`):
+  1. OCR: removed `"no text"`/`"no visible text"` from refusal list — these are valid responses not safety refusals; was causing intermittent "Could not analyse image" on cartoons/illustrations
+  2. `no_claims_msg`: fixed doubled text ("This image The image is...") — prompt now instructs predicate-only reason; code defensively strips leading subject
+  3. `fmt_report`: claim display now strips raw extraction metadata blobs (Video:, Audio:, Post caption:) if claim extraction fell back to full context
+  4. Prompt: 3 new rules — VERDICT TEXT RULE (no hedging about absent Western coverage), ATTRIBUTION CLAIMS (no source confirms = FALSE not UNVERIFIABLE), media_bias (editorial framing only, not coverage gaps)
+
+- **PANTS ON FIRE rating removed** (commit `4f57068`):
+  - American PolitiFact jargon, not universally understood
+  - Collapsed into FALSE — now the definitive bottom rating covering both honest mistakes and deliberate disinformation
+  - New symmetric meter: TRUE=10🟩, MOSTLY TRUE=8🟩/2🟥, HALF TRUE=5/5, MOSTLY FALSE=2🟩/8🟥, FALSE=10🟥
+  - Prompt rule added: FALSE is definitive bottom, no hesitation on egregious claims
+  - Subtitles updated: "Minor inaccuracy", "Mostly inaccurate"
 
 ---
 
