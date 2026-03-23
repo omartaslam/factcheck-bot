@@ -5651,7 +5651,7 @@ def stripe_webhook():
                         "telegram": lambda t, u=uid: send_telegram(u, t),
                         "twitter": lambda t, u=uid: send_twitter_dm(u, t),
                     }.get(platform, lambda t: None)
-                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact-checking. Send any claim to get started.")
+                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact-checking. Post any claim to get started.")
                 elif mode == "subscription":
                     with _db() as c:
                         c.execute("UPDATE platform_users SET tier='subscriber', stripe_customer_id=? WHERE platform=? AND platform_id=?", (customer_id, platform, uid))
