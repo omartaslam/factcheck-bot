@@ -4436,7 +4436,8 @@ def process(from_num, message, profile_name=None):
                 status_line = "✓ Subscriber — unlimited access"
             else:
                 status_line = "🔍 Starting fact check..."
-            send(from_num, f"{status_line}\n🔍 Starting fact check...")
+            send(from_num, status_line)
+            send(from_num, "🔍 Starting fact check...")
             threading.Thread(target=run_check, args=(from_num,data["query"],data["source_type"],data.get("image_bytes"),data["cost"]),
                              kwargs={"billing_type": bt, "pre_claims": selected_claims or data.get("claims"),
                                      "post_date": data.get("post_date", ""),
