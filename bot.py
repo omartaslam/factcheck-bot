@@ -5229,6 +5229,11 @@ def _send_payment_prompt(wa_id, balance_cents, billing_type=None):
         body_text = f"Your balance is ${(balance_cents or 0)/100:.2f}.\n\nTop up to add more checks."
     elif billing_type == "blocked":
         body_text = "Your balance is $0.00.\n\nTop up to continue fact checking with Fred."
+    elif billing_type == "free":
+        u = _wa_user(wa_id)
+        remaining = max(0, FREE_CHECKS_LIMIT - (u.get("free_checks_used") or 0))
+        free_word = "check" if remaining == 1 else "checks"
+        body_text = f"You have {remaining} free {free_word} remaining.\n\nTop up now to add paid credits."
     else:
         free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
         body_text = f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact checking with Fred."
