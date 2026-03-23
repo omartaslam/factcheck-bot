@@ -3569,6 +3569,7 @@ HELP_MSG = (
     "• *Y* — confirm a fact check\n"
     "• *N* — cancel\n"
     "• *BALANCE* — check your remaining credits\n"
+    "• *TOPUP* — add credits to your account\n"
     "• *HELP* — show this message\n\n"
     "*Feedback:*\n"
     "• React 👍 or 👎 to any verdict to rate its accuracy\n"
@@ -4352,7 +4353,7 @@ def process(from_num, message, profile_name=None):
             except Exception as e:
                 log.warning("Reply-feedback store failed: %s", e)
     _body_upper = message.get("text", {}).get("body", "").strip().upper() if _is_text else ""
-    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
+    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "TOPUP", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
     if not is_new and not _is_command:
         _bt_early = _wa_billing_type(from_num)
         if _bt_early == "blocked":
@@ -4369,19 +4370,19 @@ def process(from_num, message, profile_name=None):
             send(from_num, HELP_MSG)
             return
         # ── BALANCE command ───────────────────────────────────────────────
-        if body_upper == "BALANCE":
+        if body_upper in ("BALANCE", "TOPUP"):
             u = _wa_user(from_num)
             bt = _wa_billing_type(from_num)
-            if bt == "subscriber":
+            if body_upper == "TOPUP" or bt == "blocked":
+                _send_payment_prompt(from_num, u.get("balance_cents", 0))
+            elif bt == "subscriber":
                 send(from_num, "♾ *Subscriber* — unlimited access.")
             elif bt == "free":
                 used = u.get("free_checks_used") or 0
                 remaining = max(0, FREE_CHECKS_LIMIT - used)
-                send(from_num, f"✓ *Free checks remaining:* {remaining} of {FREE_CHECKS_LIMIT}")
+                send(from_num, f"✓ *Free checks remaining:* {remaining} of {FREE_CHECKS_LIMIT}\n\nReply *TOPUP* anytime to add credits.")
             elif bt == "paid":
-                send(from_num, f"✓ *Balance:* ${u['balance_cents']/100:.2f}")
-            else:
-                send(from_num, f"✓ *Balance:* $0.00\n\nYour free checks have been used. Reply with a claim to top up.")
+                send(from_num, f"✓ *Balance:* ${u['balance_cents']/100:.2f}\n\nReply *TOPUP* anytime to add credits.")
             return
         is_cancel = body_upper in ("NO", "N")
         is_check_all = body_upper in ("YES", "Y", "ALL", "A")
