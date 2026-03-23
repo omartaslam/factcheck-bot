@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 19 — auto-save 3)
+**Last updated:** 2026-03-23 (session 19 — auto-save 4)
 
 ---
 
@@ -320,6 +320,10 @@ Type HELP anytime for a full guide.
   2. `no_claims_msg`: fixed doubled text ("This image The image is...") — prompt now instructs predicate-only reason; code defensively strips leading subject
   3. `fmt_report`: claim display now strips raw extraction metadata blobs (Video:, Audio:, Post caption:) if claim extraction fell back to full context
   4. Prompt: 3 new rules — VERDICT TEXT RULE (no hedging about absent Western coverage), ATTRIBUTION CLAIMS (no source confirms = FALSE not UNVERIFIABLE), media_bias (editorial framing only, not coverage gaps)
+
+- **HALF TRUE range broadened** (commit `538afde`): now covers ~40/60 band, not exact 50/50. Use when MOSTLY TRUE or MOSTLY FALSE both feel wrong and the honest answer is genuinely mixed.
+
+- **Skip confirmation for single short text claims** (commit `aab1c34`): text input + 1 claim + under 300 chars → goes straight to fact-check. Confirmation still shown for images/video/audio/URLs (user needs to verify extraction) and multiple claims (user needs to pick).
 
 - **PANTS ON FIRE rating removed** (commit `4f57068`):
   - American PolitiFact jargon, not universally understood
