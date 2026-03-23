@@ -182,7 +182,7 @@ _PAYWALLED_DOMAINS = {
     "telegraph.co.uk", "economist.com", "wsj.com", "bloomberg.com",
     "washingtonpost.com", "theathletic.com", "businessinsider.com",
     "wired.com", "newyorker.com", "theatlantic.com", "hbr.org",
-    "spectator.co.uk", "newstatesman.com", "medium.com",
+    "spectator.co.uk", "newstatesman.com",
 }
 
 def _url_fetch_reason(url):
