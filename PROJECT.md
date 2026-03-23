@@ -329,7 +329,7 @@ Type HELP anytime for a full guide.
 
 - **WhatsApp return link** (commit `4c3f8a2`): reverted to `wa.me` — best available option on iOS (small bottom sheet, one tap).
 
-- **PENDING: Daily free checks model** — proposal: 3 checks/day for 7 days, then hard block. After 3rd daily check: "checks reset tomorrow — or top up now" + CTA. Day-7 end behaviour decision pending before implementation. Infrastructure (daily reset logic) already exists in codebase commented out.
+- **Daily free checks model** (commit `7ed06f8`): replaced lifetime 12-check limit with 3 checks/day for 7 days. New billing states: `daily_capped` (hit today's limit, trial active) and `trial_expired` (day 8+). Post-check nudge after 3rd daily check: *"checks reset tomorrow — or top up now."* Day 8+: hard paywall. Admin endpoint supports `reset_trial=true` to restart trial for existing beta testers. New env vars: `FREE_DAILY_LIMIT=3`, `FREE_TRIAL_DAYS=7`.
 
 ### Session 16 — 2026-03-23
 
