@@ -3459,7 +3459,7 @@ def _trunc(text, limit):
     cut = chunk.rsplit(' ', 1)[0].rstrip('.,;:—- ')
     return cut + '…'
 
-def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None, wa_cost=0.0):
+def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None, wa_cost=0.0, checks_remaining=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -3527,8 +3527,10 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
     version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
-    cost_str = f"Cost: ${cost + wa_cost:.4f}"
-    footer = [f"{cost_str}  •  {version}"]
+    if checks_remaining is not None:
+        footer = [f"{checks_remaining} check{'s' if checks_remaining != 1 else ''} remaining  •  {version}"]
+    else:
+        footer = [version]
     footer.append(f"_{random.choice(_TAGLINES)}_")
     footer.append(WEBSITE_URL)
     lines += footer
@@ -3875,7 +3877,12 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
                            source_content=query if st in ("url", "video") else None)
         all_ratings.append(a.get("rating", "UNVERIFIABLE"))
         ad = get_random_ad() if show_ad else None
-        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST)
+        _u = _wa_user(from_num)
+        if billing_type == "free":
+            _checks_remaining = max(0, FREE_CHECKS_LIMIT - (_u.get("free_checks_used") or 0) - 1)
+        else:
+            _checks_remaining = max(0, ((_u.get("balance_cents") or 0) - cost) // COST_PER_CHECK_CENTS)
+        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST, checks_remaining=_checks_remaining)
         log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*")
@@ -3931,7 +3938,12 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         a = claude_analyse(claim, g, sc, st, post_date=post_date,
                            source_content=query if st in ("url", "video") else None)
         ad = get_random_ad() if show_ad else None
-        report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date)
+        _u = _puser(platform, uid)
+        if billing_type == "free":
+            _checks_remaining = max(0, FREE_CHECKS_LIMIT - (_u.get("free_checks_used") or 0) - 1)
+        else:
+            _checks_remaining = max(0, ((_u.get("balance_cents") or 0) - cost_est) // COST_PER_CHECK_CENTS)
+        report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date, checks_remaining=_checks_remaining)
         _log_request(platform, uid, st, query, claim, a, report, cost_est)
         log.info("VERDICT SENT to %s/%s:\n%s", platform, uid, report)
         if multi:
