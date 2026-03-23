@@ -30,6 +30,8 @@ h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
 .powered{text-align:center;margin-top:20px;font-size:.78rem;color:var(--muted)}
 .spinner{display:none;width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--gold);border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+.cancel{display:block;text-align:center;margin-top:16px;color:var(--muted);font-size:.88rem;text-decoration:none}
+.cancel:hover{color:var(--black)}
 </style>
 </head>
 <body>
@@ -86,6 +88,7 @@ h1{font-size:1.3rem;font-weight:700;margin-bottom:6px}
   </div>
 
   <p class="error" id="err">Something went wrong. Please try again.</p>
+  <a class="cancel" href="https://wa.me/447863795638">← Cancel, return to WhatsApp</a>
 </div>
 
 <p class="powered">Powered by Stripe &nbsp;·&nbsp; fredcheck.com</p>
