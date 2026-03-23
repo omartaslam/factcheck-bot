@@ -2754,7 +2754,7 @@ ANALYSE_JSON_SCHEMA = (
     '"perspectives":"Single sentence covering what all regions found — Western, Middle Eastern/Arabic, African, South Asian, Latin American. Mention any region by name only if it has actual coverage; otherwise say \'No coverage found across all regions\' or \'No coverage found except [region] which reports X\'. Max 150 chars.",'
     '"contested_language":["term — dispute in max 90 chars"],'
     '"context":"1-2 sentences of structural/historical background. Max 180 chars.",'
-    '"red_flags":["1 sentence per flag, max 120 chars"],'
+    '"red_flags":["1 sentence per flag, max 120 chars. ONLY flag things that give a reader reason to doubt the claim\'s ACCURACY — e.g. source has a known bias, figures come from an interested party, claim is disputed by credible counter-evidence, known manipulation detected. DO NOT flag: source confidentiality, how evidence was obtained, verification methodology, absence of coverage, or anything already captured in the confidence rating. Empty array [] if no genuine accuracy concerns."],'
     '"who_benefits":"Who gains if this claim is believed. One sentence, max 120 chars. Empty string if benign.",'
     '"media_bias":"1 sentence on source concentration bias, or empty",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
