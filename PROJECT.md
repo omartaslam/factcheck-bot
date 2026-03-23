@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 16 — continued)
+**Last updated:** 2026-03-23 (session 17)
 
 ---
 
@@ -222,18 +222,19 @@ Type HELP anytime for a full guide.
 | WhatsApp conversation fee | ~$0.041 |
 | **Total true cost to Fred** | **~$0.13–0.15** |
 
-**Retail price:** `COST_PER_CHECK_CENTS = 19` (19¢) → ~36% margin
-**Billing:** fixed 19¢ deducted per check (changed from variable `_cost_get()` tracking which was only capturing ~6¢)
+**Retail price:** `COST_PER_CHECK_CENTS = 25` (25¢) → ~67% margin (raised session 16 after verifying true cost ~15¢)
+**Billing:** fixed 25¢ deducted per check
 
 **Tavily actual rate:** $0.0047/credit (cheaper than $0.008/credit previously assumed)
 
-**Topup tiers (pending review):**
-| Tier | Checks | $/check |
-|---|---|---|
-| $1 | 5 checks | 20¢ |
-| $5 | 26 checks | 19.2¢ |
-| $10 | 52 checks | 19.2¢ |
-| $25 | 131 checks | 19.1¢ |
+**Topup tiers (live as of session 17):**
+| Tier | Base | Bonus | Total checks | $/check |
+|---|---|---|---|---|
+| $1 | 4 | — | 4 | 25¢ |
+| $5 | 20 | — | 20 | 25¢ |
+| $10 | 40 | +4 | 44 | 22.7¢ |
+| $25 | 100 | +15 | 115 | 21.7¢ |
+| $50 | 200 | +40 | 240 | 20.8¢ |
 
 ---
 
@@ -311,6 +312,18 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 17 — 2026-03-23
+
+- **Topup page redesign** (commits `c652e82`, `510dd74`):
+  - Added $50 tier: 200 base + 40 bonus = 240 checks
+  - Updated $10 → 44 checks (+4 bonus), $25 → 115 checks (+15 bonus)
+  - Bonus amounts shown as italic muted text: `(+4 bonus)`, no emoji
+  - Added volume enquiries message: *"Newsroom or volume user? Contact us for custom rates — hello@fredcheck.com"*
+  - Tightened padding/spacing for mobile — all 5 tiers + volume message now fit on one screen without scrolling
+  - Bot `/api/topup-wa` allowlist updated to accept 5000 cents ($50)
+
+- **Price raised to 25¢** (`COST_PER_CHECK_CENTS=25`) — needs setting in Railway env vars
 
 ### Session 16 — 2026-03-23
 
