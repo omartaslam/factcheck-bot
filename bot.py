@@ -2940,8 +2940,22 @@ def assess_content_claims(text, source_type, post_date=None):
             return {"claims": claims, "checkable": checkable, "reason": reason, "suggestions": suggestions}
     except Exception as e:
         log.warning(f"assess_content_claims failed: {e}")
-    # Fallback: treat as one claim
-    return {"claims": [text[:500].strip()], "checkable": True, "reason": "", "suggestions": []}
+    # Fallback: treat as one claim — clean metadata before returning
+    return {"claims": [_clean_claim(text[:500])], "checkable": True, "reason": "", "suggestions": []}
+
+
+_CLAIM_META_MARKERS = ("Video:", "Audio:", "Post caption:", "Source:", "VISUAL ANALYSIS:",
+                       "VIDEO CONTENT", "SOURCE ARTICLE", "Creator:", "Channel:")
+
+def _clean_claim(claim):
+    """Strip raw extraction metadata from a claim string. Used before displaying to users."""
+    if not any(m in claim for m in _CLAIM_META_MARKERS):
+        return claim.strip()
+    # Metadata leaked — extract first clean non-metadata line
+    clean_lines = [l.strip() for l in claim.split('\n')
+                   if l.strip() and not any(m in l for m in _CLAIM_META_MARKERS)
+                   and not l.strip().startswith('@')]
+    return clean_lines[0][:220] if clean_lines else claim.strip()[:220]
 
 
 def claims_confirm_msg(claims, source_type, cost, is_free=False):
@@ -2950,7 +2964,7 @@ def claims_confirm_msg(claims, source_type, cost, is_free=False):
            "url": "Post / Article", "document": "Document"}
     HDR = "*━━━━━━━━━━━━━━*"
     plural = "claims" if len(claims) > 1 else "claim"
-    claim_lines = "\n".join(f"  *{i+1}.* _{c[:150]}_" for i, c in enumerate(claims))
+    claim_lines = "\n".join(f"  *{i+1}.* _{_clean_claim(c)[:150]}_" for i, c in enumerate(claims))
     if len(claims) == 1:
         reply_prompt = "Reply *Y* to fact check\nReply *N* to cancel"
     elif is_free:
@@ -3552,14 +3566,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
     badge = badge_map.get(rating, f"VERDICT: {rating}")
     hdr_beta = " _(Beta)_" if BETA_MODE else ""
-    # Clean claim for display — strip raw extraction metadata if claim extraction fell back to full context blob
-    _meta_markers = ("Video:", "Audio:", "Post caption:", "Source:", "VISUAL ANALYSIS:", "VIDEO CONTENT", "SOURCE ARTICLE")
-    display_claim = claim.strip()
-    if any(m in display_claim for m in _meta_markers):
-        # Fallback blob leaked through — extract first clean non-metadata line
-        clean_lines = [l.strip() for l in display_claim.split('\n') if l.strip() and not any(m in l for m in _meta_markers)]
-        display_claim = clean_lines[0] if clean_lines else display_claim
-    display_claim = _trunc(display_claim, 220)
+    display_claim = _trunc(_clean_claim(claim), 220)
     lines = [f"*Fred Check*{hdr_beta}  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{display_claim}_","",f"*{badge}*","",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
