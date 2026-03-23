@@ -2749,7 +2749,7 @@ ANALYSE_JSON_SCHEMA = (
     '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
     '"lenz_score":7,'
     '"rating_reason":"For MOSTLY TRUE: state the specific material factual error in the claim — not a caveat, not an unverified detail, but the precise factual inaccuracy and why it matters. If you cannot name a specific material factual error, the rating should be TRUE, not MOSTLY TRUE. For all other non-TRUE/non-FALSE ratings: 1 sentence on why. Empty string if rating is TRUE or FALSE.",'
-    '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default. Max 400 chars.",'
+    '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default. Max 400 chars. CRITICAL: Do NOT append irrelevant qualifications, caveats, or \'this does not affect X\' statements that were not part of the original claim — even if technically accurate, they are irrelevant to the claim being checked and read as attempts to undermine the finding. Stick strictly to what the claim states and what the evidence confirms.",'
     '"key_facts":["1 sentence per fact, max 120 chars each"],'
     '"perspectives":"Single sentence covering what all regions found — Western, Middle Eastern/Arabic, African, South Asian, Latin American. Mention any region by name only if it has actual coverage; otherwise say \'No coverage found across all regions\' or \'No coverage found except [region] which reports X\'. Max 150 chars.",'
     '"contested_language":["term — dispute in max 90 chars"],'
