@@ -2748,7 +2748,7 @@ def _parse_json_result(text):
 ANALYSE_JSON_SCHEMA = (
     '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
     '"lenz_score":7,'
-    '"rating_reason":"1 sentence explaining specifically why this rating was chosen over a higher or lower one — e.g. which element could not be confirmed, or what makes it not fully true/false. Empty string if rating is TRUE or FALSE.",'
+    '"rating_reason":"For MOSTLY TRUE: state the specific material factual error in the claim — not a caveat, not an unverified detail, but the precise factual inaccuracy and why it matters. If you cannot name a specific material factual error, the rating should be TRUE, not MOSTLY TRUE. For all other non-TRUE/non-FALSE ratings: 1 sentence on why. Empty string if rating is TRUE or FALSE.",'
     '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default. Max 400 chars.",'
     '"key_facts":["1 sentence per fact, max 120 chars each"],'
     '"perspectives":"Single sentence covering what all regions found — Western, Middle Eastern/Arabic, African, South Asian, Latin American. Mention any region by name only if it has actual coverage; otherwise say \'No coverage found across all regions\' or \'No coverage found except [region] which reports X\'. Max 150 chars.",'
@@ -3379,6 +3379,20 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "When a minor approximation exists, briefly note it in the verdict text and explain why it is immaterial to the "
         "central claim — e.g. 'The claim says six weeks; the actual interval was approximately seven weeks — a minor "
         "approximation that does not affect the substance of the claim.'\n"
+        "- RATING RULE ON TRUE vs MOSTLY TRUE — THE HIGHEST PRIORITY RULE: MOSTLY TRUE must ONLY be used when there is "
+        "a specific, identifiable, material factual error IN THE CLAIM ITSELF — something demonstrably incorrect. "
+        "The bar is: you must be able to state the precise factual error and explain how it changes the meaning of the claim. "
+        "The following are NOT valid reasons to rate MOSTLY TRUE instead of TRUE: "
+        "(a) secondary or peripheral details could not be independently verified; "
+        "(b) the claim could be 'more complete' with additional context; "
+        "(c) one source out of many has a slightly different framing; "
+        "(d) the devil's advocate argument raises theoretical uncertainties; "
+        "(e) minor caveats or nuances exist around an otherwise confirmed fact; "
+        "(f) you have high but not absolute certainty. "
+        "If the core assertion of the claim is confirmed by the evidence, rate it TRUE. "
+        "When in genuine doubt between TRUE and MOSTLY TRUE, always choose TRUE. "
+        "MOSTLY TRUE is for claims with a clear, specific, material factual inaccuracy — not for claims that are 'probably true but I'm being cautious'. "
+        "Excessive use of MOSTLY TRUE when evidence supports TRUE is a form of epistemic cowardice — be bold and honest.\n"
         "- RATING RULE ON POLITICAL FRAMING LABELS: Never use labels such as 'antisemitic framing', 'far-right narrative', "
         "'conspiracy theory framing', 'Islamist framing', or similar social/political categorisations as a reason to "
         "downgrade a verdict or switch to NEEDS CONTEXT. These are editorial judgements, not factual assessments. "
