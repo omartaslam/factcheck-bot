@@ -413,7 +413,7 @@ def download_media(mid):
 
 OCR_PROMPT = "Extract ALL text verbatim from this image. Then in 2 sentences describe what it depicts. Note any signs of manipulation."
 
-_OCR_REFUSALS = ["i'm sorry", "i'm unable", "i cannot", "i can't", "unable to extract", "cannot extract", "can't extract", "no text", "no visible text"]
+_OCR_REFUSALS = ["i'm sorry", "i'm unable", "i cannot", "i can't", "unable to extract", "cannot extract", "can't extract"]
 
 def _is_ocr_refusal(text):
     t = text.lower()
@@ -2756,7 +2756,7 @@ ANALYSE_JSON_SCHEMA = (
     '"context":"1-2 sentences of structural/historical background. Max 180 chars.",'
     '"red_flags":["1 sentence per flag, max 120 chars. ONLY flag things that give a reader reason to doubt the claim\'s ACCURACY — e.g. source has a known bias, figures come from an interested party, claim is disputed by credible counter-evidence, known manipulation detected. DO NOT flag: source confidentiality, how evidence was obtained, verification methodology, absence of coverage, or anything already captured in the confidence rating. Empty array [] if no genuine accuracy concerns."],'
     '"who_benefits":"Who gains if this claim is believed. One sentence, max 120 chars. Empty string if benign.",'
-    '"media_bias":"1 sentence on source concentration bias, or empty",'
+    '"media_bias":"1 sentence on EDITORIAL FRAMING BIAS only — e.g. state media downplaying casualties, partisan outlet selectively citing statistics. Do NOT use this field to note absence of coverage from any outlet or region. Empty string if no actual editorial bias detected.",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
     '"confidence":"HIGH|MEDIUM|LOW",'
     '"confidence_reason":"1 sentence, max 120 chars. NOTE: confidence reflects corroboration by independent sources — NOT whether the underlying document is publicly accessible. Confidential reports, sealed findings, and leaked documents reported by 2+ independent named outlets = HIGH confidence."}'
@@ -2874,7 +2874,7 @@ def assess_content_claims(text, source_type, post_date=None):
         "Return a JSON object with exactly these fields:\n"
         '  "claims": array of short, direct factual assertions (max 3), ranked by importance — most significant or potentially false claim first, least important last. State each claim concisely as it was made — do not add background, context, or inferred information not explicitly stated. Empty array if none.\n'
         '  "checkable": true if there are meaningful verifiable claims; false if content is purely opinion, satire, greeting, or too vague/incomplete to check.\n'
-        '  "reason": if checkable=false, one short sentence explaining why. Empty string if checkable=true.\n'
+        '  "reason": if checkable=false, a SHORT PREDICATE starting with a verb — e.g. "contains no verifiable factual claims", "appears to be satirical content", "shows only a cartoon with no text or assertions". Do NOT start with "The image", "This image", "The video" etc. Empty string if checkable=true.\n'
         '  "suggestions": if checkable=false, list 1-3 specific things the user could send to enable fact-checking. Empty array if checkable=true.\n\n'
         "Rules:\n"
         "- Keep claims SHORT — 5 to 12 words ideally (e.g. 'Persians are not Arabs', 'Mark Carney called America a mafia state at WEF')\n"
@@ -2953,7 +2953,10 @@ def no_claims_msg(reason, source_type, suggestions):
                  "video": "video", "url": "post", "document": "document"}.get(source_type, "content")
     lines = ["⚠️ *No verifiable claims found*\n"]
     if reason:
-        lines.append(f"This {src_label} {reason}.")
+        import re as _re
+        # Strip any leading "The/This {src_label}" Claude may have included despite instructions
+        clean_reason = _re.sub(rf'^\s*(?:the|this)\s+{_re.escape(src_label)}\s+', '', reason.strip(), flags=_re.IGNORECASE).strip()
+        lines.append(f"This {src_label} {clean_reason}.")
     else:
         lines.append(f"I couldn't identify any specific, verifiable facts in this {src_label}.")
 
@@ -3366,6 +3369,16 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "- WESTERN SOURCE BIAS: Do not treat Reuters, AP, Channel 4 News, CNN, or Western fact-checkers as the gold standard for "
         "verification. Regional outlets, independent journalists, and non-Western sources carry equal evidentiary weight. "
         "Never cite absence of Western outlet coverage as a reason to downgrade a rating or confidence level.\n"
+        "- VERDICT TEXT RULE: Never write caveats about mainstream or Western media not having covered the story inside the "
+        "'verdict' field. If the claim is verified by primary evidence (video, official statement, direct source), write a "
+        "confident verdict without hedging. Phrases like 'Major media sources have not widely covered this' or 'mainstream "
+        "outlets have not reported on this' are Western-framing bias and must not appear in the verdict text. The verdict "
+        "must be consistent with the rating and confidence — a TRUE/HIGH verdict must read confidently.\n"
+        "- RATING RULE ON ATTRIBUTION CLAIMS (MISATTRIBUTED QUOTES): If the claim states that a specific named person said "
+        "or wrote a particular quote, and no primary source, collected works, credible biography, or fact-checker confirms "
+        "the attribution, rate it FALSE — not UNVERIFIABLE. 'No credible source links this quote to the named person' is "
+        "sufficient evidence of a false attribution. The burden of proof is on the claim. Only use UNVERIFIABLE for "
+        "unrecorded private conversations or cases where sources genuinely contradict each other about the attribution.\n"
         "- RATING RULE ON SUPERLATIVES: For claims using 'first', 'largest', 'only' etc. — if the available sources "
         "directly state or confirm the superlative without contradiction, that is sufficient to verify it. Do not demand "
         "exhaustive historical comparison data that cannot reasonably exist for same-day breaking news.\n"
@@ -3506,7 +3519,15 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
     badge = badge_map.get(rating, f"VERDICT: {rating}")
     hdr_beta = " _(Beta)_" if BETA_MODE else ""
-    lines = [f"*Fred Check*{hdr_beta}  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{claim}_","",f"*{badge}*","",meter_visual(rating),""]
+    # Clean claim for display — strip raw extraction metadata if claim extraction fell back to full context blob
+    _meta_markers = ("Video:", "Audio:", "Post caption:", "Source:", "VISUAL ANALYSIS:", "VIDEO CONTENT", "SOURCE ARTICLE")
+    display_claim = claim.strip()
+    if any(m in display_claim for m in _meta_markers):
+        # Fallback blob leaked through — extract first clean non-metadata line
+        clean_lines = [l.strip() for l in display_claim.split('\n') if l.strip() and not any(m in l for m in _meta_markers)]
+        display_claim = clean_lines[0] if clean_lines else display_claim
+    display_claim = _trunc(display_claim, 220)
+    lines = [f"*Fred Check*{hdr_beta}  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{display_claim}_","",f"*{badge}*","",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
         lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
     lines += ["*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
