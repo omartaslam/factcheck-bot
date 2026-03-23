@@ -6313,12 +6313,12 @@ def admin_stats():
     if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
         return jsonify({"error": "Unauthorized"}), 403
     with _db() as c:
-        total_checks = c.execute("SELECT COUNT(*) FROM request_log WHERE user_type != 'qctest'").fetchone()[0]
-        checks_today = c.execute("SELECT COUNT(*) FROM request_log WHERE user_type != 'qctest' AND created_at >= ?", (int(t.time()) - 86400,)).fetchone()[0]
-        checks_this_month = c.execute("SELECT COUNT(*) FROM request_log WHERE user_type != 'qctest' AND created_at >= ?", (int(t.time()) - 30*86400,)).fetchone()[0]
+        total_checks = c.execute("SELECT COUNT(*) FROM request_log WHERE uid NOT LIKE 'qctest%'").fetchone()[0]
+        checks_today = c.execute("SELECT COUNT(*) FROM request_log WHERE uid NOT LIKE 'qctest%' AND created_at >= ?", (int(t.time()) - 86400,)).fetchone()[0]
+        checks_this_month = c.execute("SELECT COUNT(*) FROM request_log WHERE uid NOT LIKE 'qctest%' AND created_at >= ?", (int(t.time()) - 30*86400,)).fetchone()[0]
         total_users = c.execute("SELECT COUNT(*) FROM platform_users WHERE platform='whatsapp'").fetchone()[0]
         paid_users = c.execute("SELECT COUNT(*) FROM platform_users WHERE platform='whatsapp' AND balance_cents > 0").fetchone()[0]
-        total_revenue = c.execute("SELECT COALESCE(SUM(amount_cents),0) FROM transactions WHERE txn_type='credit' AND user_type != 'qctest'").fetchone()[0]
+        total_revenue = c.execute("SELECT COALESCE(SUM(amount_cents),0) FROM transactions WHERE txn_type='credit' AND user_id NOT LIKE 'qctest%'").fetchone()[0]
     return jsonify({
         "snapshot_utc": __import__('datetime').datetime.utcnow().strftime("%Y-%m-%d %H:%M"),
         "checks_total": total_checks,
