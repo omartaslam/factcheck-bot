@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-21 (session 15 — closed)
+**Last updated:** 2026-03-23 (session 16 — in progress)
 
 ---
 
@@ -170,6 +170,9 @@ User sees: `🔒 This content appears to be private, deleted, or restricted and 
 | `_og_metadata(url)` | ~line 1256 | Last-resort og:tag + og:image OCR from any URL |
 | `fetch(url)` | ~line 384 | Simple GET → html_text; logs 403/404/410/451 distinctly |
 | `send(to, text)` | — | Send WhatsApp message via Cloud API |
+| `send_interactive(to, payload)` | ~line 3622 | Send WhatsApp interactive message (CTA URL button etc.) |
+| `_send_payment_prompt(wa_id, balance_cents)` | ~line 5210 | Send payment CTA button → /topup page (falls back to text if no Stripe key) |
+| `_psend_payment_prompt(platform, uid, ...)` | ~line 5315 | Generic cross-platform payment text prompt (uses `_PLATFORM_PREFIX` map) |
 | `estimate_cost()` | — | WARN: hardcoded values ~12× too low — must fix before charging users |
 
 ---
@@ -285,7 +288,8 @@ Type HELP anytime for a full guide.
 6. **Meta app review** — submit once business verification approved
 
 ### Ready to implement
-7. **QA automation suite** — ⏸ SHELVED. Infrastructure complete: `scripts/qa_runner.py` + `scripts/qa_fixtures.json`, 28 fixtures across all categories, POST `/admin/run-qa` endpoint live. Shelved 2026-03-21 because Claude's capacity limitations make the suite too slow and fragile to be a useful daily tool (~70 min runtime, context pressure, no mid-run visibility). Known quality issues: FALSE returned instead of UNVERIFIABLE for ambiguous claims; "vaccines kill more than COVID" returns FALSE not MISLEADING. Do not delete — park until either (a) Claude is faster/cheaper or (b) a lightweight 5–8 fixture subset is carved out for quick iteration.
+7. **Stripe webhook registration** — must be done in Stripe Dashboard: add endpoint `https://fredcheck.com/webhook/stripe`, event `checkout.session.completed`, copy signing secret → set `STRIPE_WEBHOOK_SECRET` in Railway. Without this, credits won't apply even though the code is now correct.
+8. **QA automation suite** — ⏸ SHELVED. Infrastructure complete: `scripts/qa_runner.py` + `scripts/qa_fixtures.json`, 28 fixtures across all categories, POST `/admin/run-qa` endpoint live. Shelved 2026-03-21 because Claude's capacity limitations make the suite too slow and fragile to be a useful daily tool (~70 min runtime, context pressure, no mid-run visibility). Known quality issues: FALSE returned instead of UNVERIFIABLE for ambiguous claims; "vaccines kill more than COVID" returns FALSE not MISLEADING. Do not delete — park until either (a) Claude is faster/cheaper or (b) a lightweight 5–8 fixture subset is carved out for quick iteration.
 8. **Service health monitoring** — email alert when RapidAPI/Hive/SendGrid/FB-IG cookies go down
 9. **Split verdict into multiple WA messages**
 10. **source_url stored in request_log** — ✅ done (commit `5149819`)
@@ -300,7 +304,20 @@ Type HELP anytime for a full guide.
 
 ---
 
-## 12. Recently Completed Work (Session 15 — 2026-03-21)
+## 12. Recently Completed Work
+
+### Session 16 — 2026-03-23
+
+- **Payment flow overhaul** (commit `647aa83`):
+  - **Root cause fix**: `client_reference_id` was built with `platform[:4]` → `"what_447..."` for WhatsApp. Webhook parsed for `"wa_"` prefix — never matched, credits never applied to any WA/Messenger/Telegram user. Fixed with `_PLATFORM_PREFIX` dict (`"whatsapp"→"wa"`, `"messenger"→"msgr"`, `"telegram"→"tg"`, etc.).
+  - **CTA button**: `_send_payment_prompt()` now sends a WhatsApp interactive CTA URL button (`💳 Choose a top-up`) instead of a wall of 4 raw URLs. Added `send_interactive()` function.
+  - **Top-up page**: `fredcheck.com/topup?ref=wa_{number}` — mobile-optimised tier picker ($1/$5/$10/$25). JS calls `/api/topup-wa` → Stripe Checkout → payment.
+  - **New `/api/topup-wa` endpoint**: creates Stripe Checkout Session for platform users. `success_url` → `/topup/thankyou`, `cancel_url` → back to `/topup`.
+  - **Thank-you page**: `fredcheck.com/topup/thankyou` — branded confirmation, 5s countdown, auto-redirects to `wa.me/447863795638` (returns user to Fred chat).
+  - **New env vars**: `WEBSITE_URL` (default `https://fredcheck.com`), `FRED_WA_NUMBER` (default `447863795638`).
+  - **Still needed**: Register webhook in Stripe Dashboard → set `STRIPE_WEBHOOK_SECRET` in Railway (see Outstanding Tasks #7).
+
+### Session 15 — 2026-03-21 (closed)
 
 - **Suppress qctest_ from new-user emails** (commit `4afaf25`):
   - `_notify_new_user()` returns early for any wa_id starting with `qctest_`
