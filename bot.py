@@ -314,16 +314,15 @@ CORE PRINCIPLES:
 EXPERTISE: Gaza conflict, West Bank occupation, Lebanese civil conflicts, Iran-US-Israel tensions, Iraqi and Syrian wars, Yemeni conflict, Sudanese crisis, global Muslim communities, colonialism's ongoing effects, Western foreign policy in MENA and beyond.
 9. Never treat the social or political origin of a claim as evidence about its truth. A factually accurate claim is TRUE regardless of who shares it, what community circulates it, or what narrative it is used to support. Do not use labels like 'antisemitic framing', 'conspiracy theory framing', 'far-right narrative', or similar social/political categorisations as verdict modifiers — these are editorial categories, not factual assessments. Criticism of a government (including the Israeli government), a political ideology (including Zionism), or a state's actions is not the same as hatred of an ethnic or religious group and must not be treated as such."""
 
-TRUTH_METER = {"TRUE": ("✅","TRUE",5),"MOSTLY TRUE": ("🟢","MOSTLY TRUE",4),"HALF TRUE": ("🟡","HALF TRUE",3),"MOSTLY FALSE": ("🟠","MOSTLY FALSE",2),"FALSE": ("❌","FALSE",1),"PANTS ON FIRE": ("🔥","PANTS ON FIRE",0),"UNVERIFIABLE": ("❓","UNVERIFIABLE",-1),"MISLEADING": ("⚠️","MISLEADING",-1),"NEEDS CONTEXT": ("📌","NEEDS CONTEXT",-1)}
+TRUTH_METER = {"TRUE": ("✅","TRUE",5),"MOSTLY TRUE": ("🟢","MOSTLY TRUE",4),"HALF TRUE": ("🟡","HALF TRUE",3),"MOSTLY FALSE": ("🟠","MOSTLY FALSE",2),"FALSE": ("❌","FALSE",1),"UNVERIFIABLE": ("❓","UNVERIFIABLE",-1),"MISLEADING": ("⚠️","MISLEADING",-1),"NEEDS CONTEXT": ("📌","NEEDS CONTEXT",-1)}
 
 def verdict_header(rating):
     styles = {
         "TRUE":          ("✅","VERIFIED TRUE","Claim checks out"),
-        "MOSTLY TRUE":   ("🟢","MOSTLY TRUE","Minor inaccuracies"),
+        "MOSTLY TRUE":   ("🟢","MOSTLY TRUE","Minor inaccuracy"),
         "HALF TRUE":     ("🟡","HALF TRUE","Mixed evidence"),
-        "MOSTLY FALSE":  ("🟠","MOSTLY FALSE","Mainly inaccurate"),
+        "MOSTLY FALSE":  ("🟠","MOSTLY FALSE","Mostly inaccurate"),
         "FALSE":         ("❌","FALSE","Not supported by evidence"),
-        "PANTS ON FIRE": ("🔥","PANTS ON FIRE","Dangerous disinformation"),
         "UNVERIFIABLE":  ("🔍","UNVERIFIABLE","Cannot be confirmed"),
         "MISLEADING":    ("⚠️","MISLEADING","Framed to deceive"),
         "NEEDS CONTEXT": ("📌","NEEDS CONTEXT","Missing crucial context"),
@@ -332,18 +331,17 @@ def verdict_header(rating):
     return f"{icon} *{label}*\n_{sub}_"
 
 def truth_gauge(rating):
-    pos = {"PANTS ON FIRE":0,"FALSE":1,"MOSTLY FALSE":2,"HALF TRUE":3,"MOSTLY TRUE":4,"TRUE":5}
+    pos = {"FALSE":0,"MOSTLY FALSE":1,"HALF TRUE":2,"MOSTLY TRUE":3,"TRUE":4}
     if rating not in pos: return ""
     segs = ["▱","▱","▱","▱","▱","▱"]; segs[pos[rating]] = "▰"
     return f"`{' '.join(segs)}`\n_FALSE          TRUE_"
 
 RATINGS_MAP = {
     "TRUE":          ("VERIFIED TRUE",   "[++++++]", "Claim checks out"),
-    "MOSTLY TRUE":   ("MOSTLY TRUE",     "[+++++.]", "Minor inaccuracies"),
+    "MOSTLY TRUE":   ("MOSTLY TRUE",     "[+++++.]", "Minor inaccuracy"),
     "HALF TRUE":     ("HALF TRUE",       "[++++..]", "Mixed evidence"),
-    "MOSTLY FALSE":  ("MOSTLY FALSE",    "[+++...]", "Mainly inaccurate"),
-    "FALSE":         ("FALSE",           "[++....]", "Not supported by evidence"),
-    "PANTS ON FIRE": ("PANTS ON FIRE",   "[......]", "Dangerous disinformation"),
+    "MOSTLY FALSE":  ("MOSTLY FALSE",    "[+++...]", "Mostly inaccurate"),
+    "FALSE":         ("FALSE",           "[......]", "Not supported by evidence"),
     "UNVERIFIABLE":  ("UNVERIFIABLE",    None,       "Cannot be confirmed"),
     "MISLEADING":    ("MISLEADING",      None,       "Framed to deceive"),
     "NEEDS CONTEXT": ("NEEDS CONTEXT",   None,       "Missing crucial context"),
@@ -371,8 +369,8 @@ def build_meter(r):
     return verdict_block(r)
 
 def meter_visual(r):
-    patterns = {"TRUE":(0,10),"MOSTLY TRUE":(2,8),"HALF TRUE":(5,5),"MOSTLY FALSE":(7,3),"FALSE":(9,1),"PANTS ON FIRE":(10,0)}
-    labels = {"TRUE":"✅ VERIFIED TRUE","MOSTLY TRUE":"🟢 MOSTLY TRUE","HALF TRUE":"🟡 HALF TRUE","MOSTLY FALSE":"🟠 MOSTLY FALSE","FALSE":"❌ FALSE","PANTS ON FIRE":"🔥 PANTS ON FIRE","UNVERIFIABLE":"❓ UNVERIFIABLE","MISLEADING":"⚠️ MISLEADING","NEEDS CONTEXT":"📌 NEEDS CONTEXT"}
+    patterns = {"TRUE":(0,10),"MOSTLY TRUE":(2,8),"HALF TRUE":(5,5),"MOSTLY FALSE":(8,2),"FALSE":(10,0)}
+    labels = {"TRUE":"✅ VERIFIED TRUE","MOSTLY TRUE":"🟢 MOSTLY TRUE","HALF TRUE":"🟡 HALF TRUE","MOSTLY FALSE":"🟠 MOSTLY FALSE","FALSE":"❌ FALSE","UNVERIFIABLE":"❓ UNVERIFIABLE","MISLEADING":"⚠️ MISLEADING","NEEDS CONTEXT":"📌 NEEDS CONTEXT"}
     if r not in patterns: return labels.get(r, r)
     red, green = patterns[r]
     bar = "🟩" * green + "🟥" * red
@@ -2746,7 +2744,7 @@ def _parse_json_result(text):
         return json.loads(raw)
 
 ANALYSE_JSON_SCHEMA = (
-    '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|PANTS ON FIRE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
+    '{"rating":"TRUE|MOSTLY TRUE|HALF TRUE|MOSTLY FALSE|FALSE|UNVERIFIABLE|MISLEADING|NEEDS CONTEXT",'
     '"lenz_score":7,'
     '"rating_reason":"For MOSTLY TRUE: state the specific material factual error in the claim — not a caveat, not an unverified detail, but the precise factual inaccuracy and why it matters. If you cannot name a specific material factual error, the rating should be TRUE, not MOSTLY TRUE. For all other non-TRUE/non-FALSE ratings: 1 sentence on why. Empty string if rating is TRUE or FALSE.",'
     '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default. Max 400 chars. CRITICAL: Do NOT append irrelevant qualifications, caveats, or \'this does not affect X\' statements that were not part of the original claim — even if technically accurate, they are irrelevant to the claim being checked and read as attempts to undermine the finding. Stick strictly to what the claim states and what the evidence confirms.",'
@@ -3395,6 +3393,10 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "When a minor approximation exists, briefly note it in the verdict text and explain why it is immaterial to the "
         "central claim — e.g. 'The claim says six weeks; the actual interval was approximately seven weeks — a minor "
         "approximation that does not affect the substance of the claim.'\n"
+        "- RATING RULE ON FALSE: FALSE is the definitive bottom rating — use it for claims that are demonstrably incorrect, "
+        "not supported by evidence, or conclusively debunked. This includes both honest mistakes AND deliberate "
+        "disinformation — do not hesitate to rate FALSE on egregious or dangerous falsehoods. There is no separate "
+        "'stronger' rating below FALSE.\n"
         "- RATING RULE ON TRUE vs MOSTLY TRUE — THE HIGHEST PRIORITY RULE: MOSTLY TRUE must ONLY be used when there is "
         "a specific, identifiable, material factual error IN THE CLAIM ITSELF — something demonstrably incorrect. "
         "The bar is: you must be able to state the precise factual error and explain how it changes the meaning of the claim. "
@@ -3516,7 +3518,7 @@ def _trunc(text, limit):
 def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None, wa_cost=0.0, checks_remaining=None):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
-    badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","PANTS ON FIRE":"🔥  VERDICT: PANTS ON FIRE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
+    badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
     badge = badge_map.get(rating, f"VERDICT: {rating}")
     hdr_beta = " _(Beta)_" if BETA_MODE else ""
     # Clean claim for display — strip raw extraction metadata if claim extraction fell back to full context blob
@@ -3559,7 +3561,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
         "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
-        "MOSTLY FALSE": 3, "FALSE": 1, "PANTS ON FIRE": 0,
+        "MOSTLY FALSE": 3, "FALSE": 0,
     }
     if rating in _rating_score:
         s = _rating_score[rating]
@@ -3725,10 +3727,9 @@ _VERDICT_REACTION = {
     "MOSTLY FALSE":   "👎",
     "MISLEADING":     "⚠️",
     "FALSE":          "❌",
-    "PANTS ON FIRE":  "🔥",
     "UNVERIFIABLE":   "❓",
 }
-_VERDICT_PRIORITY = ["PANTS ON FIRE","FALSE","MISLEADING","MOSTLY FALSE",
+_VERDICT_PRIORITY = ["FALSE","MISLEADING","MOSTLY FALSE",
                      "HALF TRUE","NEEDS CONTEXT","UNVERIFIABLE","MOSTLY TRUE","TRUE"]
 
 def send_reaction(to, message_id, emoji):
