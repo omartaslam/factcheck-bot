@@ -3528,9 +3528,9 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
             lines += [""]
     version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
     cost_str = f"Cost: ${cost + wa_cost:.4f}"
-    footer = ["──────────────────────", f"{cost_str}  •  {version}"]
+    footer = [f"{cost_str}  •  {version}"]
     footer.append(f"_{random.choice(_TAGLINES)}_")
-    footer.append(f"🌐 {WEBSITE_URL}")
+    footer.append(WEBSITE_URL)
     lines += footer
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
