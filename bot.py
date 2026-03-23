@@ -23,7 +23,9 @@ ADMIN_NUMBER = os.getenv("ADMIN_NUMBER", "")  # WhatsApp number to receive credi
 DB_PATH = os.getenv("DB_PATH", "/tmp/factcheck.db")  # Set to a Railway Volume path for persistence
 
 # ── Billing / monetisation config ─────────────────────────────────────────────
-FREE_CHECKS_LIMIT   = int(os.getenv("FREE_CHECKS_LIMIT", "3"))   # free checks per WA number
+FREE_DAILY_LIMIT    = int(os.getenv("FREE_DAILY_LIMIT", "3"))    # free checks per day during trial
+FREE_TRIAL_DAYS     = int(os.getenv("FREE_TRIAL_DAYS", "7"))     # trial length in days
+FREE_CHECKS_LIMIT   = FREE_DAILY_LIMIT                           # backward compat alias
 PROFIT_MARGIN       = float(os.getenv("PROFIT_MARGIN", "2.0"))   # cost multiplier (2.0 = 100% margin)
 STRIPE_SECRET_KEY   = os.getenv("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET", "")
@@ -3553,6 +3555,7 @@ def _welcome_msg():
         "• A text claim, headline or quote\n"
         "• A URL (news article, Facebook, Instagram, TikTok, YouTube)\n"
         "• An image, video or voice note\n\n"
+        f"You have *{FREE_DAILY_LIMIT} free checks per day* for {FREE_TRIAL_DAYS} days to try it out.\n\n"
         "Type *HELP* anytime for a full guide.\n"
         f"🌐 {WEBSITE_URL}"
         + beta_line
@@ -3880,7 +3883,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         ad = get_random_ad() if show_ad else None
         _u = _wa_user(from_num)
         if billing_type == "free":
-            _checks_remaining = max(0, FREE_CHECKS_LIMIT - (_u.get("free_checks_used") or 0) - 1)
+            _checks_remaining = max(0, FREE_DAILY_LIMIT - _daily_free_used(_u) - 1)
         else:
             _checks_remaining = max(0, ((_u.get("balance_cents") or 0) - cost) // COST_PER_CHECK_CENTS)
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST, checks_remaining=_checks_remaining)
@@ -3900,7 +3903,11 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
     actual_cents = COST_PER_CHECK_CENTS
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
-    if billing_type == "paid":
+    if billing_type == "free":
+        u = _wa_user(from_num)
+        if _daily_free_used(u) >= FREE_DAILY_LIMIT:
+            _send_payment_prompt(from_num, u["balance_cents"], billing_type="daily_capped")
+    elif billing_type == "paid":
         u = _wa_user(from_num)
         if 0 < u["balance_cents"] < COST_PER_CHECK_CENTS:
             send(from_num, f"⚠️ _Low balance: ${u['balance_cents']/100:.2f} — not enough for another check._")
@@ -4356,9 +4363,9 @@ def process(from_num, message, profile_name=None):
     _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "TOPUP", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
     if not is_new and not _is_command:
         _bt_early = _wa_billing_type(from_num)
-        if _bt_early == "blocked":
+        if _bt_early in ("daily_capped", "trial_expired"):
             u = _wa_user(from_num)
-            _send_payment_prompt(from_num, u["balance_cents"], billing_type="blocked")
+            _send_payment_prompt(from_num, u["balance_cents"], billing_type=_bt_early)
             return
     if msg_type == "video":
         send(from_num, "📹 Video detected!")
@@ -4373,14 +4380,15 @@ def process(from_num, message, profile_name=None):
         if body_upper in ("BALANCE", "TOPUP"):
             u = _wa_user(from_num)
             bt = _wa_billing_type(from_num)
-            if body_upper == "TOPUP" or bt == "blocked":
+            if body_upper == "TOPUP" or bt in ("daily_capped", "trial_expired"):
                 _send_payment_prompt(from_num, u.get("balance_cents", 0), billing_type=bt)
             elif bt == "subscriber":
                 send(from_num, "♾ *Subscriber* — unlimited access.")
             elif bt == "free":
-                used = u.get("free_checks_used") or 0
-                remaining = max(0, FREE_CHECKS_LIMIT - used)
-                send(from_num, f"✓ *Free checks remaining:* {remaining} of {FREE_CHECKS_LIMIT}\n\nReply *TOPUP* anytime to add credits.")
+                remaining = max(0, FREE_DAILY_LIMIT - _daily_free_used(u))
+                trial_day = min(FREE_TRIAL_DAYS, int((t.time() - (u.get("created_at") or t.time())) / 86400) + 1)
+                free_word = "check" if remaining == 1 else "checks"
+                send(from_num, f"✓ *{remaining} free {free_word} remaining today* (day {trial_day} of {FREE_TRIAL_DAYS} trial).\n\nReply *TOPUP* anytime to add paid credits.")
             elif bt == "paid":
                 send(from_num, f"✓ *Balance:* ${u['balance_cents']/100:.2f}\n\nReply *TOPUP* anytime to add credits.")
             return
@@ -4409,9 +4417,9 @@ def process(from_num, message, profile_name=None):
             if bt == "free" and selected_claims and len(selected_claims) > 1:
                 send(from_num, "_Free plan — checking first selected claim only. Upgrade for multi-claim checks._")
                 selected_claims = selected_claims[:1]
-            if bt == "blocked":
+            if bt in ("daily_capped", "trial_expired"):
                 u = _wa_user(from_num)
-                _send_payment_prompt(from_num, u["balance_cents"], billing_type="blocked")
+                _send_payment_prompt(from_num, u["balance_cents"], billing_type=bt)
                 return
             if bt == "free":
                 u = _wa_user(from_num)
@@ -5227,16 +5235,18 @@ def _send_payment_prompt(wa_id, balance_cents, billing_type=None):
         return
     if billing_type == "paid":
         body_text = f"Your balance is ${(balance_cents or 0)/100:.2f}.\n\nTop up to add more checks."
-    elif billing_type == "blocked":
-        body_text = "Your balance is $0.00.\n\nTop up to continue fact checking with Fred."
+    elif billing_type == "daily_capped":
+        free_word = "check" if FREE_DAILY_LIMIT == 1 else "checks"
+        body_text = f"You've used your {FREE_DAILY_LIMIT} free {free_word} for today.\n\nYour checks reset tomorrow — or top up now to continue."
+    elif billing_type == "trial_expired":
+        body_text = "Your free trial has ended.\n\nTop up to continue fact checking with Fred."
     elif billing_type == "free":
         u = _wa_user(wa_id)
-        remaining = max(0, FREE_CHECKS_LIMIT - (u.get("free_checks_used") or 0))
+        remaining = max(0, FREE_DAILY_LIMIT - _daily_free_used(u))
         free_word = "check" if remaining == 1 else "checks"
-        body_text = f"You have {remaining} free {free_word} remaining.\n\nTop up now to add paid credits."
+        body_text = f"You have {remaining} free {free_word} remaining today.\n\nTop up now to add paid credits."
     else:
-        free_word = "check" if FREE_CHECKS_LIMIT == 1 else "checks"
-        body_text = f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.\n\nTop up to continue fact checking with Fred."
+        body_text = "Your free trial has ended.\n\nTop up to continue fact checking with Fred."
     url = f"{WEBSITE_URL}/topup?ref=wa_{wa_id}"
     send_interactive(wa_id, {
         "type": "cta_url",
@@ -5283,21 +5293,26 @@ def _today():
     import datetime as _dt
     return _dt.date.today().isoformat()
 
-# ── Daily free check logic (commented out — switched back to lifetime total) ──
-# def _daily_free_used(u):
-#     """Return how many free checks the user has used today (resets at midnight)."""
-#     if u.get("free_checks_date") != _today():
-#         return 0
-#     return u.get("free_checks_used") or 0
+def _daily_free_used(u):
+    """Return how many free checks the user has used today (resets at UTC midnight)."""
+    if u.get("free_checks_date") != _today():
+        return 0
+    return u.get("free_checks_used") or 0
+
+def _is_trial_expired(u):
+    """Return True if the user's FREE_TRIAL_DAYS trial has ended."""
+    import time as _t
+    return (_t.time() - (u.get("created_at") or 0)) > (FREE_TRIAL_DAYS * 86400)
 
 def _pbilling_type(platform, uid):
-    """Returns 'subscriber' | 'free' | 'paid' | 'blocked'."""
+    """Returns 'subscriber' | 'free' | 'paid' | 'daily_capped' | 'trial_expired'."""
     u = _puser(platform, uid)
     if u["tier"] == "subscriber": return "subscriber"
-    if (u.get("free_checks_used") or 0) < FREE_CHECKS_LIMIT: return "free"  # lifetime total
-    # Daily mode: if _daily_free_used(u) < FREE_CHECKS_LIMIT: return "free"
+    # Free daily checks take priority over paid balance (while trial is active)
+    if not _is_trial_expired(u) and _daily_free_used(u) < FREE_DAILY_LIMIT: return "free"
     if u["balance_cents"] > 0: return "paid"
-    return "blocked"
+    if _is_trial_expired(u): return "trial_expired"
+    return "daily_capped"
 
 def _pdeduct(platform, uid, cents, description, billing_type):
     """Record usage and deduct balance."""
@@ -5308,15 +5323,13 @@ def _pdeduct(platform, uid, cents, description, billing_type):
         with _db() as c:
             c.execute("UPDATE platform_users SET balance_cents = MAX(0, balance_cents - ?) WHERE platform=? AND platform_id=?", (cents, platform, uid))
     elif billing_type == "free":
+        today = _today()
         with _db() as c:
-            c.execute("UPDATE platform_users SET free_checks_used = free_checks_used + 1 WHERE platform=? AND platform_id=?", (platform, uid))
-        # ── Daily reset mode (commented out) ──
-        # today = _today()
-        # u = c.execute("SELECT free_checks_used, free_checks_date FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
-        # if u and u["free_checks_date"] != today:
-        #     c.execute("UPDATE platform_users SET free_checks_used=1, free_checks_date=? WHERE platform=? AND platform_id=?", (today, platform, uid))
-        # else:
-        #     c.execute("UPDATE platform_users SET free_checks_used = free_checks_used + 1, free_checks_date=? WHERE platform=? AND platform_id=?", (today, platform, uid))
+            row = c.execute("SELECT free_checks_used, free_checks_date FROM platform_users WHERE platform=? AND platform_id=?", (platform, uid)).fetchone()
+            if row and row["free_checks_date"] != today:
+                c.execute("UPDATE platform_users SET free_checks_used=1, free_checks_date=? WHERE platform=? AND platform_id=?", (today, platform, uid))
+            else:
+                c.execute("UPDATE platform_users SET free_checks_used=free_checks_used+1, free_checks_date=? WHERE platform=? AND platform_id=?", (today, platform, uid))
     with _db() as c:
         c.execute("INSERT INTO transactions (user_type,user_id,txn_type,amount_cents,description,created_at) VALUES (?,?,?,?,?,?)",
                   (platform, uid, txn_type, cents, description, now))
@@ -6305,15 +6318,21 @@ def admin_set_balance():
     uid = str(data.get("uid", ""))
     cents = int(data.get("cents", 0))
     free_checks_used = data.get("free_checks_used")
+    reset_trial = data.get("reset_trial", False)  # resets created_at to now (restarts 7-day trial)
     if not uid:
         return jsonify({"error": "uid required"}), 400
+    import time as _t
     with _db() as c:
+        fields = ["balance_cents=?"]
+        vals = [cents]
         if free_checks_used is not None:
-            c.execute("UPDATE platform_users SET balance_cents=?, free_checks_used=? WHERE platform=? AND platform_id=?",
-                      (cents, int(free_checks_used), platform, uid))
-        else:
-            c.execute("UPDATE platform_users SET balance_cents=? WHERE platform=? AND platform_id=?", (cents, platform, uid))
-    return jsonify({"ok": True, "platform": platform, "uid": uid, "balance_cents": cents, "free_checks_used": free_checks_used})
+            fields.append("free_checks_used=?"); vals.append(int(free_checks_used))
+            fields.append("free_checks_date=?"); vals.append(None)
+        if reset_trial:
+            fields.append("created_at=?"); vals.append(int(_t.time()))
+        vals += [platform, uid]
+        c.execute(f"UPDATE platform_users SET {', '.join(fields)} WHERE platform=? AND platform_id=?", vals)
+    return jsonify({"ok": True, "uid": uid, "balance_cents": cents, "reset_trial": reset_trial})
 
 @app.route("/admin/stats", methods=["GET"])
 def admin_stats():
