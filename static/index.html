@@ -507,6 +507,31 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   font-size:0.78rem;color:#ccc;cursor:pointer;
 }
 .modal-close:hover{color:#888}
+.modal-pw{
+  display:block;width:100%;padding:11px 14px;
+  border:1.5px solid var(--border);border-radius:10px;
+  font-family:'Inter',sans-serif;font-size:0.9rem;color:var(--black);
+  outline:none;margin-bottom:0.75rem;
+}
+.modal-pw:focus{border-color:#aaa}
+.modal-error{font-size:0.82rem;color:#c0392b;margin-bottom:0.85rem;min-height:1.1rem}
+.modal-success{font-size:0.82rem;color:#27ae60;margin-bottom:0.85rem}
+.auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;border:1.5px solid var(--border);border-radius:10px;overflow:hidden}
+.auth-tab{flex:1;padding:9px 0;font-size:0.85rem;font-weight:700;cursor:pointer;border:none;background:#fff;color:#aaa;font-family:inherit;transition:all 0.15s}
+.auth-tab.active{background:var(--black);color:#fff}
+.nav-user{display:flex;align-items:center;gap:0.6rem}
+.nav-credits{font-size:0.78rem;font-weight:700;color:#555;padding:5px 10px;border:1px solid var(--border);border-radius:8px;white-space:nowrap}
+.nav-email{font-size:0.78rem;color:#888;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.topup-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);z-index:999;align-items:center;justify-content:center;padding:1.5rem}
+.topup-modal.visible{display:flex}
+.topup-card{background:#fff;border-radius:20px;padding:2.5rem;max-width:400px;width:100%;box-shadow:0 24px 80px rgba(0,0,0,0.18);animation:modalIn 0.25s ease}
+.topup-card h3{font-size:1.4rem;font-weight:900;letter-spacing:-0.5px;margin-bottom:0.4rem}
+.topup-card p{font-size:0.88rem;color:#888;margin-bottom:1.5rem}
+.topup-options{display:flex;flex-direction:column;gap:0.6rem;margin-bottom:1.25rem}
+.topup-btn{padding:13px 16px;border-radius:10px;border:1.5px solid var(--border);background:#fff;cursor:pointer;font-family:inherit;display:flex;justify-content:space-between;align-items:center;transition:border-color 0.15s}
+.topup-btn:hover{border-color:#aaa}
+.topup-btn strong{font-size:0.95rem;font-weight:800}
+.topup-btn span{font-size:0.82rem;color:#888}
 
 
 /* ── ROTATING BADGE ── */
@@ -582,9 +607,10 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     <a href="#pricing">Pricing</a>
     <a href="#contact">Contact</a>
   </div>
-  <div class="nav-right">
-    <button class="btn-ghost" onclick="document.getElementById('gateModal').classList.add('visible')">Sign in</button>
-    <button class="btn-demo" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book a demo →</button>
+  <div class="nav-right" id="navAuth">
+    <!-- populated by initAuth() -->
+    <button class="btn-ghost" onclick="openModal('login')">Sign in</button>
+    <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
   </div>
 </nav>
 
@@ -656,16 +682,38 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   <p class="hero-note">Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
 </div>
 
-<!-- GATE MODAL -->
+<!-- AUTH MODAL -->
 <div class="modal-overlay" id="gateModal">
   <div class="modal-card">
-    <h3>Get <em>3 more</em> free checks.</h3>
-    <p>You've used your free check. Create a free account to get 3 more — or subscribe for unlimited access for journalists and newsrooms.</p>
-    <input type="email" class="modal-email" id="modalEmail" placeholder="your@email.com">
-    <button class="modal-submit" onclick="modalSignup()">Create free account →</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tabSignup" onclick="switchTab('signup')">Create account</button>
+      <button class="auth-tab" id="tabLogin" onclick="switchTab('login')">Sign in</button>
+    </div>
+    <h3 id="modalTitle">Get <em>started free.</em></h3>
+    <p id="modalSubtitle">Create a free account to top up credits and access your check history.</p>
+    <input type="email" class="modal-email" id="modalEmail" placeholder="your@email.com" autocomplete="email">
+    <input type="password" class="modal-pw" id="modalPw" placeholder="Password (min 8 characters)" autocomplete="new-password">
+    <input type="password" class="modal-pw" id="modalPw2" placeholder="Confirm password" autocomplete="new-password">
+    <div class="modal-error" id="modalError"></div>
+    <button class="modal-submit" id="modalSubmit" onclick="submitAuth()">Create free account →</button>
     <div class="modal-divider">or</div>
     <a href="https://wa.me/447863795638" class="modal-wa">Continue on WhatsApp →</a>
     <span class="modal-close" onclick="closeModal()">No thanks, I'll come back later</span>
+  </div>
+</div>
+
+<!-- TOPUP MODAL -->
+<div class="topup-modal" id="topupModal">
+  <div class="topup-card">
+    <h3>Top up credits</h3>
+    <p id="topupBalanceLine">Each credit = 1 fact-check.</p>
+    <div class="topup-options">
+      <button class="topup-btn" onclick="doTopup(500)"><strong>$5</strong><span>20 checks</span></button>
+      <button class="topup-btn" onclick="doTopup(1000)"><strong>$10</strong><span>40 checks</span></button>
+      <button class="topup-btn" onclick="doTopup(2500)"><strong>$25</strong><span>100 checks</span></button>
+    </div>
+    <div class="modal-error" id="topupError"></div>
+    <span class="modal-close" onclick="closeTopup()">Cancel</span>
   </div>
 </div>
 
@@ -1079,19 +1127,189 @@ const API = window.location.hostname === 'localhost' || window.location.protocol
   ? 'https://web-production-1f0a4.up.railway.app'
   : '';
 const FREE_KEY = 'fred_free_used';
+const TOKEN_KEY = 'fred_token';
+let _authUser = null; // {email, credits, balance_cents}
+let _modalMode = 'signup';
 
-// Auto-grow textarea
+// ── AUTH INIT ──────────────────────────────────────────────
+async function initAuth(){
+  const token = localStorage.getItem(TOKEN_KEY);
+  // Handle return from Stripe
+  if(new URLSearchParams(window.location.search).get('paid') === '1'){
+    window.history.replaceState({}, '', window.location.pathname);
+    if(token) setTimeout(()=>{ fetchMe(token); showBanner('Payment received! Credits added to your account.'); }, 800);
+  }
+  if(!token) return;
+  await fetchMe(token);
+}
+
+async function fetchMe(token){
+  try {
+    const res = await fetch(API + '/api/me', {headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok){ localStorage.removeItem(TOKEN_KEY); return; }
+    const u = await res.json();
+    _authUser = u;
+    renderNavAuth(u);
+    updateSearchHint(u.credits);
+  } catch(e){}
+}
+
+function renderNavAuth(u){
+  const nav = document.getElementById('navAuth');
+  nav.innerHTML = `
+    <span class="nav-email">${u.email}</span>
+    <span class="nav-credits">${u.credits} credit${u.credits!==1?'s':''}</span>
+    <button class="btn-ghost" onclick="openTopup()">Top up</button>
+    <button class="btn-ghost" onclick="logout()">Log out</button>
+  `;
+}
+
+function renderNavAnon(){
+  const nav = document.getElementById('navAuth');
+  nav.innerHTML = `
+    <button class="btn-ghost" onclick="openModal('login')">Sign in</button>
+    <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
+  `;
+}
+
+function updateSearchHint(credits){
+  const el = document.getElementById('searchHint');
+  if(_authUser) el.textContent = credits + ' credit' + (credits!==1?'s':'') + ' remaining';
+  else if(localStorage.getItem(FREE_KEY)) el.textContent = 'Free check used · Sign up for more';
+  else el.textContent = '1 free check · No account needed';
+}
+
+function logout(){
+  localStorage.removeItem(TOKEN_KEY);
+  _authUser = null;
+  renderNavAnon();
+  updateSearchHint(0);
+}
+
+function showBanner(msg){
+  let b = document.getElementById('siteBanner');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'siteBanner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#27ae60;color:#fff;text-align:center;padding:10px 1rem;font-size:0.88rem;font-weight:700;z-index:9999';
+    document.body.prepend(b);
+  }
+  b.textContent = msg;
+  setTimeout(()=>b.remove(), 5000);
+}
+
+// ── AUTH MODAL ─────────────────────────────────────────────
+function openModal(mode){
+  _modalMode = mode || 'signup';
+  switchTab(_modalMode);
+  document.getElementById('modalError').textContent = '';
+  document.getElementById('modalEmail').value = '';
+  document.getElementById('modalPw').value = '';
+  document.getElementById('modalPw2').value = '';
+  document.getElementById('gateModal').classList.add('visible');
+  setTimeout(()=>document.getElementById('modalEmail').focus(), 100);
+}
+
+function closeModal(){
+  document.getElementById('gateModal').classList.remove('visible');
+}
+
+function switchTab(mode){
+  _modalMode = mode;
+  document.getElementById('tabSignup').classList.toggle('active', mode==='signup');
+  document.getElementById('tabLogin').classList.toggle('active', mode==='login');
+  document.getElementById('modalPw2').style.display = mode==='signup' ? 'block' : 'none';
+  document.getElementById('modalTitle').innerHTML = mode==='signup' ? 'Get <em>started free.</em>' : 'Welcome <em>back.</em>';
+  document.getElementById('modalSubtitle').textContent = mode==='signup'
+    ? 'Create a free account to top up credits and access your check history.'
+    : 'Sign in to your Fred account.';
+  document.getElementById('modalSubmit').textContent = mode==='signup' ? 'Create free account →' : 'Sign in →';
+  document.getElementById('modalPw').placeholder = mode==='signup' ? 'Password (min 8 characters)' : 'Password';
+  document.getElementById('modalPw').autocomplete = mode==='signup' ? 'new-password' : 'current-password';
+  document.getElementById('modalError').textContent = '';
+}
+
+async function submitAuth(){
+  const email = document.getElementById('modalEmail').value.trim();
+  const pw = document.getElementById('modalPw').value;
+  const pw2 = document.getElementById('modalPw2').value;
+  const errEl = document.getElementById('modalError');
+  const btn = document.getElementById('modalSubmit');
+
+  if(!email || !email.includes('@')){ errEl.textContent = 'Please enter a valid email.'; return; }
+  if(!pw || pw.length < 8){ errEl.textContent = 'Password must be at least 8 characters.'; return; }
+  if(_modalMode === 'signup' && pw !== pw2){ errEl.textContent = 'Passwords do not match.'; return; }
+
+  btn.disabled = true;
+  btn.textContent = _modalMode === 'signup' ? 'Creating account…' : 'Signing in…';
+  errEl.textContent = '';
+
+  const endpoint = _modalMode === 'signup' ? '/api/register' : '/api/login';
+  try {
+    const res = await fetch(API + endpoint, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password:pw})
+    });
+    const data = await res.json();
+    if(!res.ok){ errEl.textContent = data.error || 'Something went wrong.'; return; }
+    localStorage.setItem(TOKEN_KEY, data.token);
+    localStorage.removeItem(FREE_KEY);
+    await fetchMe(data.token);
+    closeModal();
+    showBanner(_modalMode === 'signup' ? 'Account created! Welcome to Fred.' : 'Signed in successfully.');
+  } catch(e){
+    errEl.textContent = 'Could not connect. Please try again.';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = _modalMode === 'signup' ? 'Create free account →' : 'Sign in →';
+  }
+}
+
+document.getElementById('gateModal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+document.addEventListener('keydown', function(e){ if(e.key==='Escape'){ closeModal(); closeTopup(); }});
+
+// ── TOPUP MODAL ────────────────────────────────────────────
+function openTopup(){
+  document.getElementById('topupError').textContent = '';
+  if(_authUser) document.getElementById('topupBalanceLine').textContent =
+    'Current balance: ' + _authUser.credits + ' credit' + (_authUser.credits!==1?'s':'') + '. Each credit = 1 fact-check.';
+  document.getElementById('topupModal').classList.add('visible');
+}
+
+function closeTopup(){
+  document.getElementById('topupModal').classList.remove('visible');
+}
+
+async function doTopup(cents){
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(!token){ closeTopup(); openModal('login'); return; }
+  const errEl = document.getElementById('topupError');
+  errEl.textContent = 'Redirecting to payment…';
+  try {
+    const res = await fetch(API + '/api/topup', {
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body: JSON.stringify({amount_cents: cents})
+    });
+    const data = await res.json();
+    if(!res.ok || !data.url){ errEl.textContent = data.error || 'Payment error. Please try again.'; return; }
+    window.location.href = data.url;
+  } catch(e){
+    errEl.textContent = 'Could not connect. Please try again.';
+  }
+}
+
+document.getElementById('topupModal').addEventListener('click', function(e){ if(e.target===this) closeTopup(); });
+
+// ── FACT CHECK ─────────────────────────────────────────────
 document.getElementById('claimInput').addEventListener('input', function(){
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 180) + 'px';
 });
-
-// Enter to submit (shift+enter = newline)
 document.getElementById('claimInput').addEventListener('keydown', function(e){
   if(e.key === 'Enter' && !e.shiftKey){ e.preventDefault(); runCheck(); }
 });
 
-function setStep(n, state){
+function setStep(n){
   for(let i=1;i<=4;i++){
     const el = document.getElementById('ls'+i);
     el.classList.remove('active','done');
@@ -1104,9 +1322,9 @@ async function runCheck(){
   const claim = document.getElementById('claimInput').value.trim();
   if(!claim) return;
 
-  // Gate: show modal if already used free check
-  if(localStorage.getItem(FREE_KEY)){
-    document.getElementById('gateModal').classList.add('visible');
+  // Gate anonymous users after free check
+  if(!_authUser && localStorage.getItem(FREE_KEY)){
+    openModal('signup');
     return;
   }
 
@@ -1118,27 +1336,30 @@ async function runCheck(){
   resultPanel.classList.remove('visible');
   loading.classList.add('visible');
 
-  // Animate steps
-  setStep(1,'active');
-  const t1 = setTimeout(()=>setStep(2,'active'), 900);
-  const t2 = setTimeout(()=>setStep(3,'active'), 1900);
-  const t3 = setTimeout(()=>setStep(4,'active'), 3200);
+  setStep(1);
+  const t1 = setTimeout(()=>setStep(2), 900);
+  const t2 = setTimeout(()=>setStep(3), 1900);
+  const t3 = setTimeout(()=>setStep(4), 3200);
+
+  const headers = {'Content-Type':'application/json'};
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(token) headers['Authorization'] = 'Bearer ' + token;
 
   try {
     const res = await fetch(API + '/api/factcheck', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({claim})
+      method:'POST', headers, body: JSON.stringify({claim})
     });
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-    setStep(5,'done'); // mark all done
 
     const data = await res.json();
 
-    if(data.error){
-      showError(data.error);
+    if(res.status === 402){
+      loading.classList.remove('visible');
+      btn.disabled = false;
+      openTopup();
       return;
     }
+    if(data.error){ showError(data.error); btn.disabled = false; return; }
 
     const analysis = (data.results && data.results[0] && data.results[0].analysis) || {};
     const rating = analysis.rating || 'UNVERIFIABLE';
@@ -1146,11 +1367,9 @@ async function runCheck(){
     const verdict = analysis.verdict || analysis.rating_reason || '';
     const sources = (analysis.sources || []).slice(0, 5);
 
-    // Render result
     const chip = document.getElementById('verdictChip');
-    const chipClass = rating.includes('PARTIALLY') ? 'PARTIALLY' : rating;
-    chip.className = 'verdict-chip ' + chipClass;
-    chip.textContent = rating.replace('_',' ');
+    chip.className = 'verdict-chip ' + (rating.includes('PARTIALLY') ? 'PARTIALLY' : rating);
+    chip.textContent = rating.replace(/_/g,' ');
 
     document.getElementById('confidenceTag').textContent = confidence ? confidence + ' confidence' : '';
     document.getElementById('resultVerdict').textContent = verdict;
@@ -1158,7 +1377,6 @@ async function runCheck(){
     const srcEl = document.getElementById('resultSources');
     srcEl.innerHTML = '';
     sources.forEach(s => {
-      // Extract domain name from URL or use as-is
       let label = s;
       try{ label = new URL(s).hostname.replace('www.',''); } catch(e){}
       const pill = document.createElement('span');
@@ -1167,15 +1385,20 @@ async function runCheck(){
       srcEl.appendChild(pill);
     });
 
-    // Set gate note
-    document.getElementById('resultCtaNote').textContent = 'Free check used.';
+    // Update credits + CTA note
+    if(_authUser && data.credits_remaining !== null && data.credits_remaining !== undefined){
+      _authUser.credits = data.credits_remaining;
+      renderNavAuth(_authUser);
+      updateSearchHint(_authUser.credits);
+      document.getElementById('resultCtaNote').textContent = data.credits_remaining + ' credit' + (data.credits_remaining!==1?'s':'') + ' remaining.';
+    } else {
+      localStorage.setItem(FREE_KEY, '1');
+      updateSearchHint(0);
+      document.getElementById('resultCtaNote').textContent = 'Free check used.';
+    }
 
     loading.classList.remove('visible');
     resultPanel.classList.add('visible');
-
-    // Mark free check used
-    localStorage.setItem(FREE_KEY, '1');
-    document.getElementById('searchHint').textContent = 'Free check used · Sign up for more';
 
   } catch(err){
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
@@ -1186,41 +1409,19 @@ async function runCheck(){
 }
 
 function showError(msg){
-  const loading = document.getElementById('searchLoading');
-  const resultPanel = document.getElementById('resultPanel');
-  loading.classList.remove('visible');
-
+  document.getElementById('searchLoading').classList.remove('visible');
   document.getElementById('verdictChip').className = 'verdict-chip UNVERIFIABLE';
   document.getElementById('verdictChip').textContent = 'ERROR';
   document.getElementById('confidenceTag').textContent = '';
   document.getElementById('resultVerdict').textContent = msg;
   document.getElementById('resultSources').innerHTML = '';
   document.getElementById('resultCtaNote').textContent = '';
-  resultPanel.classList.add('visible');
+  document.getElementById('resultPanel').classList.add('visible');
 }
 
-function closeModal(){
-  document.getElementById('gateModal').classList.remove('visible');
-}
-
-function modalSignup(){
-  const email = document.getElementById('modalEmail').value.trim();
-  if(!email || !email.includes('@')){
-    document.getElementById('modalEmail').focus();
-    return;
-  }
-  // TODO: wire to /api/register — for now just send to contact section
-  closeModal();
-  document.getElementById('contact').scrollIntoView({behavior:'smooth'});
-}
-
-// Close modal on overlay click
-document.getElementById('gateModal').addEventListener('click', function(e){
-  if(e.target === this) closeModal();
-});
-
-// Reflect prior usage on page load
-if(localStorage.getItem(FREE_KEY)){
+// ── INIT ───────────────────────────────────────────────────
+initAuth();
+if(!localStorage.getItem(TOKEN_KEY) && localStorage.getItem(FREE_KEY)){
   document.getElementById('searchHint').textContent = 'Free check used · Sign up for more';
 }
 

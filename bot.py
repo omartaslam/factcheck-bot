@@ -5763,9 +5763,11 @@ def api_me():
     if not uid:
         return jsonify({"error": "Unauthorised"}), 401
     with _db() as c:
-        row = c.execute("SELECT email, tier, created_at FROM users WHERE id=?", (uid,)).fetchone()
+        row = c.execute("SELECT email, tier, balance_cents, created_at FROM users WHERE id=?", (uid,)).fetchone()
         count = c.execute("SELECT COUNT(*) as n FROM history WHERE user_id=?", (uid,)).fetchone()["n"]
-    return jsonify({"email": row["email"], "tier": row["tier"], "checks_total": count})
+    credits = (row["balance_cents"] or 0) // COST_PER_CHECK_CENTS
+    return jsonify({"email": row["email"], "tier": row["tier"], "checks_total": count,
+                    "balance_cents": row["balance_cents"] or 0, "credits": credits})
 
 @app.route("/api/factcheck", methods=["POST"])
 def api_factcheck():
@@ -5774,6 +5776,12 @@ def api_factcheck():
     # Rate-limit anonymous users
     if not uid and not _check_rate(ip):
         return jsonify({"error": f"Daily limit of {ANON_DAILY_LIMIT} fact-checks reached. Sign up for unlimited access."}), 429
+    # Billing gate for authenticated web users
+    if uid:
+        with _db() as c:
+            user = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
+        if not user or (user["balance_cents"] or 0) < COST_PER_CHECK_CENTS:
+            return jsonify({"error": "Insufficient credits. Please top up to continue.", "code": "insufficient_credits"}), 402
     data = request.get_json() or {}
     query = (data.get("claim") or data.get("query") or "").strip()[:2000]
     if not query:
@@ -5786,12 +5794,17 @@ def api_factcheck():
             query = page_text
     try:
         results = _factcheck_pipeline(query, source_type)
-        # Save to history if logged in
+        credits_remaining = None
         if uid:
             with _db() as c:
+                c.execute("UPDATE users SET balance_cents = MAX(0, balance_cents - ?) WHERE id=?", (COST_PER_CHECK_CENTS, uid))
+                c.execute("INSERT INTO transactions (user_type, user_id, txn_type, amount_cents, description, created_at) VALUES ('web',?,?,?,?,?)",
+                          (str(uid), 'debit', COST_PER_CHECK_CENTS, 'Web fact-check', int(t.time())))
                 c.execute("INSERT INTO history (user_id, query, results_json, created_at) VALUES (?,?,?,?)",
                           (uid, query[:500], json.dumps(results), int(t.time())))
-        return jsonify({"results": results})
+                updated = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
+                credits_remaining = (updated["balance_cents"] or 0) // COST_PER_CHECK_CENTS
+        return jsonify({"results": results, "credits_remaining": credits_remaining})
     except Exception as e:
         log.error("API factcheck error: %s", e)
         return jsonify({"error": "Fact-check failed. Please try again."}), 500
