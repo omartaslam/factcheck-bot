@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 21 — CLOSED)
+**Last updated:** 2026-03-24 (session 22)
 
 ---
 
@@ -331,6 +331,12 @@ Type HELP anytime for a full guide.
 - **Live Web Search → Tavily in sources cited**: regex replaces `Live Web Search (YYYY)` and bare `Live Web Search` with `Tavily` in the SOURCES CITED section only; all other occurrences unchanged.
 - **Real-time feedback emails** (commit `e1bb882`): `_send_feedback_email()` helper added; wired into 👍/👎 reaction handler and reply-as-feedback handler. All three feedback types (positive, negative, comment) send a SendGrid email with full verdict details, input, user name and number.
 - **Pending**: fredcheck.co.uk footer link unresolved (domain not set up — remove or replace). Stripe business name change is manual.
+
+### Session 22 — 2026-03-24
+
+- **Reaction thank-you always fires** (commit `7f9a3a8`): thank-you message (`✅ Thanks for the feedback...`) now sends for any scored 👍/👎 reaction regardless of whether the reacted message is a logged verdict. Previously only fired when `log_row` was found — reactions on AI-detection/no-claims messages got no response.
+- **URL shown in feedback email** (commit `51adc85`): email body now has a dedicated `URL:` line showing `source_url`, separate from `INPUT:` (raw text). Previously URL was only shown as fallback if raw_input was empty — so URL was invisible when both were present.
+- **Note**: feedback email still only fires for reactions on logged verdicts (needs `wa_message_id` in `request_log`). Reactions on AI-detection or no-claims messages get thank-you but no email — would require logging non-verdict responses to fix.
 
 ### Session 20 — 2026-03-24
 
