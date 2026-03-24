@@ -4855,12 +4855,13 @@ def process(from_num, message, profile_name=None):
                     # Regular post URLs (/posts/pfbid...) are text/image posts; yt-dlp often
                     # downloads an unrelated CDN-cached video for these, poisoning claim extraction.
                     # Only attempt video download for URLs with explicit video path signals.
-                    _fb_video_url_signals = ["/video/", "/reel/", "/share/v/", "/share/r/", "fb.watch", "/videos/"]
-                    _fb_url_suggests_video = any(s in url.lower() for s in _fb_video_url_signals)
-                    if not _fb_url_suggests_video:
-                        log.info(f"FB/IG non-video post URL — skipping video download, going to og:scrape")
-                        raise ValueError("not a video URL")
                     try:
+                        # Skip video download for regular post URLs — yt-dlp often returns
+                        # an unrelated CDN asset for /posts/pfbid... URLs.
+                        _fb_video_url_signals = ["/video/", "/reel/", "/share/v/", "/share/r/", "fb.watch", "/videos/"]
+                        if not any(s in url.lower() for s in _fb_video_url_signals):
+                            log.info("FB/IG non-video post URL — skipping video download")
+                            raise ValueError("not a video URL")
                         _fb_dur = _get_video_duration(url)
                         if _fb_dur > MAX_VIDEO_MINUTES * 60:
                             log.info(f"FB/IG video too long ({_fb_dur}s), skipping video download")
