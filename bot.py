@@ -4363,6 +4363,58 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
                              "image_bytes": image_bytes, "cost": cost, "timestamp": t.time()})
         send_fn(confirm_msg(source_type, query, cost))
 
+def _send_feedback_email(feedback_type, emoji_or_text, log_id, from_num, profile_name):
+    """Send real-time feedback notification to hello@fredcheck.com."""
+    import urllib.request as _ur, json as _json, datetime as _dt
+    sg_key = os.environ.get("SENDGRID_API_KEY")
+    if not sg_key:
+        return
+    try:
+        with _db() as c:
+            row = c.execute(
+                "SELECT platform, uid, source_type, raw_input, extracted_claim, rating, confidence, response_text, source_url, created_at FROM request_log WHERE id=?",
+                (log_id,)).fetchone()
+            pu = c.execute(
+                "SELECT profile_name FROM platform_users WHERE platform='whatsapp' AND platform_id=?",
+                (from_num,)).fetchone()
+        if not row:
+            return
+        profile = profile_name or (pu["profile_name"] if pu and pu["profile_name"] else "Unknown")
+        ts = _dt.datetime.utcfromtimestamp(row["created_at"]).strftime("%Y-%m-%d %H:%M UTC")
+        subject = f"{'👍' if feedback_type=='positive' else '👎' if feedback_type=='negative' else '💬'} Fred feedback — {profile} ({from_num})"
+        body = "\n".join([
+            f"FEEDBACK TYPE:  {feedback_type.upper()}",
+            f"FEEDBACK:       {emoji_or_text}",
+            "",
+            f"USER:           {profile}",
+            f"WA NUMBER:      {from_num}",
+            f"CHECK TIME:     {ts}",
+            "",
+            f"SOURCE TYPE:    {row['source_type']}",
+            f"INPUT:          {(row['raw_input'] or row['source_url'] or '')[:400]}",
+            f"CLAIM:          {(row['extracted_claim'] or '')[:300]}",
+            "",
+            f"VERDICT:        {row['rating']} / {row['confidence']}",
+            "",
+            "FULL RESPONSE:",
+            "-" * 60,
+            (row["response_text"] or "")[:3000],
+        ])
+        payload = _json.dumps({
+            "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+            "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+            "subject": subject,
+            "content": [{"type": "text/plain", "value": body}]
+        }).encode()
+        req = _ur.Request("https://api.sendgrid.com/v3/mail/send", data=payload,
+                          headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
+                          method="POST")
+        _ur.urlopen(req, timeout=10)
+        log.info("Feedback email sent for log_id %s (%s)", log_id, feedback_type)
+    except Exception as e:
+        log.warning("Feedback email failed: %s", e)
+
+
 def _send_daily_summary(date_str=None):
     """
     Send a daily usage summary to hello@fredcheck.com.
@@ -4545,7 +4597,13 @@ def process(from_num, message, profile_name=None):
                 with _db() as c:
                     c.execute("UPDATE request_log SET feedback=?, feedback_emoji=? WHERE wa_message_id=?",
                               (score, emoji, reacted_msg_id))
+                    log_row = c.execute("SELECT id FROM request_log WHERE wa_message_id=?", (reacted_msg_id,)).fetchone()
                 log.info("Feedback %s (%d) recorded for msg %s", emoji, score, reacted_msg_id[:20])
+                if log_row:
+                    fb_type = "positive" if score == 1 else ("negative" if score == -1 else "neutral")
+                    threading.Thread(target=_send_feedback_email,
+                                     args=(fb_type, emoji, log_row["id"], from_num, profile_name),
+                                     daemon=True).start()
             except Exception as e:
                 log.warning("Feedback store failed: %s", e)
         return
@@ -4560,6 +4618,9 @@ def process(from_num, message, profile_name=None):
                     feedback_body = message.get("text", {}).get("body", "").strip()
                     with _db() as c:
                         c.execute("UPDATE request_log SET feedback_text=? WHERE id=?", (feedback_body[:1000], row["id"]))
+                    threading.Thread(target=_send_feedback_email,
+                                     args=("comment", feedback_body, row["id"], from_num, profile_name),
+                                     daemon=True).start()
                     send(from_num, "✅ _Thanks for the feedback — it helps us improve Fred._")
                     log.info("Feedback text recorded for request_log id %s", row["id"])
                     return
