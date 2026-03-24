@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 21 — auto-save 5)
+**Last updated:** 2026-03-24 (session 21 — CLOSED)
 
 ---
 
@@ -324,10 +324,13 @@ Type HELP anytime for a full guide.
 - **Free plan claim prompt split for mobile** (commit `06bc472`): 3-line layout — action / italic restriction hint / cancel.
 - **Website — all 4 must-haves** (commit `5abc650`): working sign-up, login (tabbed modal), auth-aware fact-check (Bearer token, balance deduction, live credit count), web topup modal ($5/$10/$25 → Stripe). Backend: `/api/me` returns credits, `/api/factcheck` has billing gate for web users.
 - **Admin set-balance for web users** (commit `114a00e`): `POST /admin/set-balance {"email":"...","cents":N}` now supports web users by email alongside existing platform users.
-- **Mobile nav + responsiveness + beta banner** (commit `3478489`): smaller nav buttons on mobile (<480px), email hidden when logged in on mobile, `html/body` full-width fix, hero h1 clamp(), badge overflow fixed, "⚠ Beta Version — Under Development" banner below nav, source strip updated (BBC→Channel 4 News, BBC Swahili→BBC).
+- **Mobile nav + responsiveness** (commit `3478489`): smaller nav buttons on mobile (<480px), email hidden when logged in on mobile, `html/body` full-width fix, hero h1 clamp(), badge overflow fixed, source strip updated (BBC→Channel 4 News, BBC Swahili→BBC). Beta banner added then removed at user request.
 - **Stripe "Auto Check Canarias"**: must be fixed manually in Stripe Dashboard → Settings → Business settings → Public details → Business name → "Fred • Fact Check".
 - **Website sanity check + ticker fix** (commits `f0c75ce`, `581303a`): ticker auto-sizes to widest phrase via JS; Terms of Service and Claude AI footer links fixed; HELP message Y/N removed (commit `9de1a2a`).
-- **Pending**: Tavily extract fallback for blocked URLs (Medium etc.) — agreed but not yet implemented. fredcheck.co.uk footer link unresolved (domain not set up).
+- **Tavily extract fallback** for blocked URLs (Medium etc.): three-tier fetch — `fetch()` → `_og_metadata()` → `tavily_extract()`. Covers both WA and platform handlers.
+- **Live Web Search → Tavily in sources cited**: regex replaces `Live Web Search (YYYY)` and bare `Live Web Search` with `Tavily` in the SOURCES CITED section only; all other occurrences unchanged.
+- **Real-time feedback emails** (commit `e1bb882`): `_send_feedback_email()` helper added; wired into 👍/👎 reaction handler and reply-as-feedback handler. All three feedback types (positive, negative, comment) send a SendGrid email with full verdict details, input, user name and number.
+- **Pending**: fredcheck.co.uk footer link unresolved (domain not set up — remove or replace). Stripe business name change is manual.
 
 ### Session 20 — 2026-03-24
 
