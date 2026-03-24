@@ -4868,6 +4868,20 @@ def process(from_num, message, profile_name=None):
                             if vid_date_try:
                                 post_date = vid_date_try
                             vid_parts = []
+                            # ── STEP A: Fetch post caption FIRST (authoritative text the user sees)
+                            # Do this before processing video/image bytes — if CDN serves wrong
+                            # asset, the caption still anchors claim extraction correctly.
+                            try:
+                                _post_og = _fb_ig_post_scrape(url)
+                                _caption = _post_og.get("description", "").strip()
+                                if _caption and len(_caption) > 20:
+                                    vid_parts.append(f"Post caption: {_caption[:1200]}")
+                                    log.info(f"FB/IG post caption (priority): {_caption[:80]}")
+                                if _post_og.get("post_date") and not post_date:
+                                    post_date = _post_og["post_date"]
+                            except Exception as _ce:
+                                log.warning(f"FB/IG post caption pre-fetch: {_ce}")
+                            # ── STEP B: Add video/image title if not editorial question
                             if vid_meta_try and not _is_useless_title(vid_meta_try):
                                 import re as _re_eq2
                                 _is_eq2 = bool(_re_eq2.match(
@@ -4875,6 +4889,7 @@ def process(from_num, message, profile_name=None):
                                     vid_meta_try.strip(), _re_eq2.IGNORECASE))
                                 if not _is_eq2:
                                     vid_parts.append(f"Video title: {vid_meta_try}")
+                            # ── STEP C: Extract frames and analyse
                             _vid_frames = []
                             try:
                                 _vid_frames, _ = extract_video_frames(vid_bytes_try, num_frames=5)
@@ -4884,6 +4899,7 @@ def process(from_num, message, profile_name=None):
                                         vid_parts.append(f"Visual analysis:\n{visual}")
                             except Exception as vfe:
                                 log.error(f"FB/IG video frame analysis: {vfe}")
+                            # ── STEP D: Transcribe audio
                             _vid_transcript = ""
                             try:
                                 _vid_transcript = transcribe(vid_bytes_try, "video/mp4")
@@ -4891,40 +4907,38 @@ def process(from_num, message, profile_name=None):
                                     vid_parts.append(f"Audio: {_vid_transcript}")
                             except Exception as vte:
                                 log.warning(f"FB/IG video transcription: {vte}")
-                            # No audio transcript — Facebook CDN often wraps static images as
-                            # short MP4s. OCR the first frame to capture any text overlay.
+                            # ── STEP E: No audio — likely FB CDN image-as-MP4. OCR the frame.
+                            _is_image_as_mp4 = False
                             if not _vid_transcript and _vid_frames:
                                 try:
                                     _frame_ocr = ocr_image(_vid_frames[0])
-                                    if _frame_ocr and len(_frame_ocr) > 20:
+                                    if _frame_ocr and len(_frame_ocr) > 5:
                                         vid_parts.append(f"Image text:\n{_frame_ocr}")
+                                        _is_image_as_mp4 = True
                                         log.info(f"FB/IG: no audio — OCR'd first frame: {_frame_ocr[:80]}")
                                 except Exception as _foe:
                                     log.warning(f"FB/IG frame OCR: {_foe}")
-                            has_av = any(p.startswith(("Visual analysis:", "Audio:", "Image text:")) for p in vid_parts)
-                            if has_av:
-                                # Only now confirm to the user — actual video content confirmed
-                                send(from_num, f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — analysed frames and audio")
+                            # ── STEP F: If we have any content (caption, visual, audio, OCR), proceed
+                            has_content = bool(vid_parts)
+                            if has_content:
+                                if _vid_transcript:
+                                    _content_msg = f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — analysed frames and audio"
+                                    source_type = "video"
+                                elif _is_image_as_mp4:
+                                    _content_msg = f"🖼 Image found ({len(vid_bytes_try)//1024}KB) — analysed content"
+                                    source_type = "image"
+                                else:
+                                    _content_msg = f"🎬 Video found ({len(vid_bytes_try)//1024}KB) — analysed frames"
+                                    source_type = "video"
+                                send(from_num, _content_msg)
                                 page_text = "\n\n".join(vid_parts)
-                                source_type = "video"
-                                video_bytes = vid_bytes_try
+                                video_bytes = vid_bytes_try if _vid_transcript else None
+                                if _is_image_as_mp4:
+                                    image_bytes = _vid_frames[0] if _vid_frames else None
                                 _fb_video_done = True
-                                log.info(f"FB/IG video download succeeded: {len(page_text)} chars")
-                                # Always fetch post caption — may contain claims not visible
-                                # in the video/image itself (context, spin, attribution)
-                                try:
-                                    _post_og = _fb_ig_post_scrape(url)
-                                    _caption = _post_og.get("description", "").strip()
-                                    if _caption and len(_caption) > 20:
-                                        vid_parts.append(f"Post caption: {_caption[:1200]}")
-                                        page_text = "\n\n".join(vid_parts)
-                                        log.info(f"FB/IG post caption added after video: {_caption[:80]}")
-                                    if _post_og.get("post_date") and not post_date:
-                                        post_date = _post_og["post_date"]
-                                except Exception as _ce:
-                                    log.warning(f"FB/IG post caption fetch after video: {_ce}")
+                                log.info(f"FB/IG content extracted: {len(page_text)} chars, image_as_mp4={_is_image_as_mp4}")
                             else:
-                                log.info(f"FB/IG: MP4 bytes but no extractable frames/audio — treating as image post")
+                                log.info(f"FB/IG: MP4 bytes but no extractable content — treating as image post")
                         elif vid_bytes_try:
                             # API returned bytes but they're an image, not a video — OCR directly
                             log.info(f"FB/IG download returned image bytes ({len(vid_bytes_try)//1024}KB) — routing to image OCR")
