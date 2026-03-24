@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 21 — auto-save 4)
+**Last updated:** 2026-03-24 (session 21 — auto-save 5)
 
 ---
 
@@ -326,6 +326,8 @@ Type HELP anytime for a full guide.
 - **Admin set-balance for web users** (commit `114a00e`): `POST /admin/set-balance {"email":"...","cents":N}` now supports web users by email alongside existing platform users.
 - **Mobile nav + responsiveness + beta banner** (commit `3478489`): smaller nav buttons on mobile (<480px), email hidden when logged in on mobile, `html/body` full-width fix, hero h1 clamp(), badge overflow fixed, "⚠ Beta Version — Under Development" banner below nav, source strip updated (BBC→Channel 4 News, BBC Swahili→BBC).
 - **Stripe "Auto Check Canarias"**: must be fixed manually in Stripe Dashboard → Settings → Business settings → Public details → Business name → "Fred • Fact Check".
+- **Website sanity check + ticker fix** (commits `f0c75ce`, `581303a`): ticker auto-sizes to widest phrase via JS; Terms of Service and Claude AI footer links fixed; HELP message Y/N removed (commit `9de1a2a`).
+- **Pending**: Tavily extract fallback for blocked URLs (Medium etc.) — agreed but not yet implemented. fredcheck.co.uk footer link unresolved (domain not set up).
 
 ### Session 20 — 2026-03-24
 
