@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 20 — auto-save 1)
+**Last updated:** 2026-03-24 (session 20 — auto-save 2)
 
 ---
 
@@ -315,7 +315,11 @@ Type HELP anytime for a full guide.
 
 ### Session 20 — 2026-03-24
 
-- **FB/IG "Bot error: not a video URL" fixed** (commit `af26528`): orphaned `try:` at line 4865 removed. ValueError raised for non-video post URLs (`/posts/pfbid...`) now propagates to the existing `except Exception as vde` handler, which logs it and falls through to og:scrape. No user-facing error.
+- **FB/IG "Bot error: not a video URL" fixed** (commit `af26528`): orphaned `try:` removed. ValueError for non-video post URLs now caught by existing handler → falls through silently to og:scrape. Also resolves Bug 7 (jabske image post diagnosed as video, OCR failing on CDN frame) as side-effect — regular FB posts now skip yt-dlp entirely.
+
+- **Ground-up rewrite of `assess_content_claims` + `synth_prompt`** (commit `5618fbb`):
+  - `assess_content_claims`: Hierarchical structure (WHAT IS / WHAT IS NOT a claim); source-type rule built as a conditional before the prompt so question-conversion and editorial-question rules can no longer conflict; single unambiguous metadata rule (was stated twice in different forms).
+  - `synth_prompt`: 8 numbered rules in priority order. RULE 1 = TRUE vs MOSTLY TRUE (was previously rule 18 of 20). RULE 4 confidence is geography-neutral — based on number/independence of sources, not geography (removes old "only Western sources = LOW/MEDIUM" which was itself Western-centric). RULE 7 unified "claim purity" replaces 4 separate rules. RULE 3 NEEDS CONTEXT explicitly names Israel/Palestine/Russia. Field instructions section consolidated at end.
 
 ---
 
