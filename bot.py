@@ -4004,7 +4004,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         if billing_type == "free":
             _checks_remaining = max(0, FREE_DAILY_LIMIT - _daily_free_used(_u) - 1)
         else:
-            _checks_remaining = max(0, ((_u.get("balance_cents") or 0) - cost) // COST_PER_CHECK_CENTS)
+            _checks_remaining = int(max(0, ((_u.get("balance_cents") or 0) - cost) // COST_PER_CHECK_CENTS))
         report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST, checks_remaining=_checks_remaining)
         log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
@@ -4069,7 +4069,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         if billing_type == "free":
             _checks_remaining = max(0, FREE_CHECKS_LIMIT - (_u.get("free_checks_used") or 0) - 1)
         else:
-            _checks_remaining = max(0, ((_u.get("balance_cents") or 0) - cost_est) // COST_PER_CHECK_CENTS)
+            _checks_remaining = int(max(0, ((_u.get("balance_cents") or 0) - cost_est) // COST_PER_CHECK_CENTS))
         report = fmt_report(claim, a, st, cost_est, all_used, ad=ad, post_date=post_date, checks_remaining=_checks_remaining)
         _log_request(platform, uid, st, query, claim, a, report, cost_est)
         log.info("VERDICT SENT to %s/%s:\n%s", platform, uid, report)
