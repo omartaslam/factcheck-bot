@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 20 — closed)
+**Last updated:** 2026-03-24 (session 21 — in progress)
 
 ---
 
@@ -315,6 +315,10 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 21 — 2026-03-24
+
+- **Credits display** (commit `1f67ecf`): credits shown alongside $ at all user-facing balance touchpoints. Payment received: `$1.00 _(4 credits)_`; BALANCE/post-check/payment prompt: `$1.00 (4 credits remaining)`; verdict status line: `4 credits remaining` (credits only, no $); TOPUP prompt: `$1.00 (4 credits)`. Low balance warnings unchanged.
 
 ### Session 20 — 2026-03-24
 
