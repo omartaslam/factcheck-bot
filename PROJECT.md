@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 20 — auto-save 2)
+**Last updated:** 2026-03-24 (session 20 — auto-save 3)
 
 ---
 
@@ -316,6 +316,10 @@ Type HELP anytime for a full guide.
 ### Session 20 — 2026-03-24
 
 - **FB/IG "Bot error: not a video URL" fixed** (commit `af26528`): orphaned `try:` removed. ValueError for non-video post URLs now caught by existing handler → falls through silently to og:scrape. Also resolves Bug 7 (jabske image post diagnosed as video, OCR failing on CDN frame) as side-effect — regular FB posts now skip yt-dlp entirely.
+
+- **red_flags / confidence / media_bias tightened** (commits `0581e5f`, `7f8e93c`): never flag post provenance as accuracy concern; official acknowledgements count as named sources for HIGH confidence; "no full-text article retrievable" never downgrades confidence; media_bias max 1 sentence about actual source framing.
+
+- **Tavily article poisoning fix** (commit `429e0c6`): skip Tavily article lookup when OCR already found >400 chars. FB share links with short captions were triggering Tavily which returned unrelated articles, poisoning claim extraction into returning "no verifiable claims".
 
 - **Ground-up rewrite of `assess_content_claims` + `synth_prompt`** (commit `5618fbb`):
   - `assess_content_claims`: Hierarchical structure (WHAT IS / WHAT IS NOT a claim); source-type rule built as a conditional before the prompt so question-conversion and editorial-question rules can no longer conflict; single unambiguous metadata rule (was stated twice in different forms).
