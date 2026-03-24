@@ -465,7 +465,20 @@ def ocr_image(b):
                     return result
                 log.info("OCR Claude: no usable text extracted")
         except Exception as e:
-            log.warning("OCR Claude failed (%s), trying OpenAI...", e)
+            log.warning("OCR Claude failed (%s), retrying once...", e)
+            try:
+                r = requests.post("https://api.anthropic.com/v1/messages",
+                    headers={"x-api-key": ANTHROPIC_KEY,"anthropic-version":"2023-06-01","content-type":"application/json"},
+                    json={"model":"claude-haiku-4-5-20251001","max_tokens":1500,"messages":[{"role":"user","content":[
+                        {"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":b64}},
+                        {"type":"text","text":OCR_PROMPT}
+                    ]}]}, timeout=30)
+                r.raise_for_status()
+                result = r.json()["content"][0]["text"].strip()
+                if result and not _is_ocr_refusal(result):
+                    return result
+            except Exception as e2:
+                log.warning("OCR Claude retry also failed (%s), trying OpenAI...", e2)
     # Fallback: OpenAI gpt-4o-mini vision
     if OPENAI_API_KEY:
         try:
@@ -1248,10 +1261,6 @@ def _is_content_unavailable(fb_og):
         return True
     if any(f in final for f in _UNAVAIL_URL_FRAGMENTS):
         log.info(f"Content unavailable signal — redirect to: {final[:80]}")
-        return True
-    # No description AND no image = nothing was served (private/deleted)
-    if not fb_og.get("description") and not fb_og.get("image_url"):
-        log.info("Content unavailable signal — no description and no image returned")
         return True
     return False
 
@@ -2947,7 +2956,7 @@ def assess_content_claims(text, source_type, post_date=None):
             if source_type != "text":
                 import re as _re2
                 _editorial_q = _re2.compile(
-                    r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b.{5,}\?$',
+                    r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b',
                     _re2.IGNORECASE
                 )
                 claims = [c for c in claims if not _editorial_q.match(c)]
@@ -2960,8 +2969,15 @@ def assess_content_claims(text, source_type, post_date=None):
             return {"claims": claims, "checkable": checkable, "reason": reason, "suggestions": suggestions}
     except Exception as e:
         log.warning(f"assess_content_claims failed: {e}")
-    # Fallback: treat as one claim — clean metadata before returning
-    return {"claims": [_clean_claim(text[:500])], "checkable": True, "reason": "", "suggestions": []}
+    # Fallback: treat as one claim — clean metadata and apply editorial question filter
+    import re as _re_fb
+    _fb_claim = _clean_claim(text[:500])
+    if source_type != "text" and _re_fb.match(
+            r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b',
+            _fb_claim.strip(), _re_fb.IGNORECASE):
+        return {"claims": [], "checkable": False,
+                "reason": "could not identify specific factual claims in this content", "suggestions": []}
+    return {"claims": [_fb_claim], "checkable": bool(_fb_claim), "reason": "", "suggestions": []}
 
 
 _CLAIM_META_MARKERS = ("Video:", "Video title:", "Audio:", "Post caption:", "Source:", "VISUAL ANALYSIS:",
@@ -3445,6 +3461,13 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "circulates it, or what narrative it is used to support. Do NOT downgrade or switch to NEEDS CONTEXT because a "
         "claim is associated with conspiracy theory communities, fringe movements, or contested political narratives. "
         "Assess the factual accuracy of the claim as stated — nothing else.\n"
+        "- RATING RULE ON NEEDS CONTEXT: NEEDS CONTEXT is ONLY for claims that are factually accurate but dangerously "
+        "incomplete without additional framing — e.g. a genuine out-of-context video, a real statistic stripped of its "
+        "denominator, a real quote missing the irony. NEEDS CONTEXT must NOT be used as a hedge for politically sensitive "
+        "topics. If a military tactic, state action, or event is documented by two or more independent named sources, "
+        "rate it TRUE/MOSTLY TRUE/MOSTLY FALSE/FALSE based on the evidence — do not retreat to NEEDS CONTEXT because "
+        "the subject is Israel, Palestine, Russia, or any other politically charged actor. Political sensitivity is not "
+        "a reason to withhold a verdict. The evidence determines the rating.\n"
         "- RATING RULE ON NUMERICAL APPROXIMATIONS: Minor imprecision in numbers, dates, or timeframes MUST NOT cause any "
         "downgrade at all — not even from TRUE to MOSTLY TRUE. Ask: does the numerical difference change the substance or "
         "meaning of the claim? If no, rate TRUE. Example: 'six weeks' when the actual figure is 7 weeks does not change "
@@ -4570,7 +4593,10 @@ def process(from_num, message, profile_name=None):
                 send(from_num, "♾ *Subscriber* — unlimited access.")
             elif bt == "free":
                 remaining = max(0, FREE_DAILY_LIMIT - _daily_free_used(u))
-                trial_day = min(FREE_TRIAL_DAYS, int((t.time() - (u.get("created_at") or t.time())) / 86400) + 1)
+                import datetime as _dt_td
+                _created_date = _dt_td.datetime.utcfromtimestamp(u.get("created_at") or t.time()).date()
+                _today_date = _dt_td.datetime.utcnow().date()
+                trial_day = min(FREE_TRIAL_DAYS, (_today_date - _created_date).days + 1)
                 free_word = "check" if remaining == 1 else "checks"
                 send(from_num, f"✓ *{remaining} free {free_word} remaining today* (day {trial_day} of {FREE_TRIAL_DAYS} trial).\n\nReply *TOPUP* anytime to add paid credits.")
             elif bt == "paid":
@@ -4671,7 +4697,7 @@ def process(from_num, message, profile_name=None):
                             # When we have a transcript/visual below, skip question titles entirely.
                             import re as _re_eq
                             _is_eq_title = bool(_re_eq.match(
-                                r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how|who|where|when)\b.{5,}\?$',
+                                r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b',
                                 metadata.strip(), _re_eq.IGNORECASE))
                             if not _is_eq_title:
                                 parts.append(f"Video title: {metadata}")
@@ -4787,7 +4813,7 @@ def process(from_num, message, profile_name=None):
                                     send(from_num, "✓ Audio extracted and transcribed")
                                     import re as _re_eq3
                                     _is_eq3 = bool(_re_eq3.match(
-                                        r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how|who|where|when)\b.{5,}\?$',
+                                        r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b',
                                         (metadata or "").strip(), _re_eq3.IGNORECASE))
                                     _meta_prefix = "" if _is_eq3 else f"Video title: {metadata}\n\n"
                                     query = f"{_meta_prefix}Audio transcript:\n{transcript_fb}"
@@ -4845,7 +4871,7 @@ def process(from_num, message, profile_name=None):
                             if vid_meta_try and not _is_useless_title(vid_meta_try):
                                 import re as _re_eq2
                                 _is_eq2 = bool(_re_eq2.match(
-                                    r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how|who|where|when)\b.{5,}\?$',
+                                    r'^(?:is|are|was|were|does|do|did|will|would|can|could|should|why|what|how)\b',
                                     vid_meta_try.strip(), _re_eq2.IGNORECASE))
                                 if not _is_eq2:
                                     vid_parts.append(f"Video title: {vid_meta_try}")
