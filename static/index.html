@@ -549,7 +549,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 
 
 /* ── ROTATING BADGE ── */
-.hero-badge{position:relative;min-height:28px;display:inline-flex;align-items:center;justify-content:center;min-width:200px;max-width:90vw;overflow:hidden}
+.hero-badge{position:relative;min-height:28px;display:inline-flex;align-items:center;justify-content:center;min-width:200px}
 .badge-phrase{
   position:absolute;left:50%;transform:translateX(-50%);
   white-space:nowrap;transition:opacity 0.7s ease;
@@ -1115,7 +1115,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
           <li><a href="#contact">Contact</a></li>
           <li><a href="mailto:hello@fredcheck.com">hello@fredcheck.com</a></li>
           <li><a href="/privacy">Privacy Policy</a></li>
-          <li><a href="#">Terms of Service</a></li>
+          <li><a href="/privacy">Terms of Service</a></li>
         </ul>
       </div>
       <div class="footer-col">
@@ -1130,7 +1130,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     </div>
     <div class="footer-bottom">
       <p>&copy; 2026 Fred. All rights reserved.</p>
-      <p>Built for journalists. Powered by <a href="#">Claude AI</a>.</p>
+      <p>Built for journalists. Powered by <a href="https://anthropic.com" target="_blank" rel="noopener">Claude AI</a>.</p>
     </div>
   </div>
 </footer>
@@ -1475,6 +1475,12 @@ if(!localStorage.getItem(TOKEN_KEY) && localStorage.getItem(FREE_KEY)){
 // ── ROTATING BADGE ─────────────────────────────────────────
 (function(){
   const phraseEls = Array.from(document.querySelectorAll('.badge-phrase'));
+  const badge = document.getElementById('heroBadge');
+  // Measure widest phrase and size container to fit — preserves pill shape
+  phraseEls.forEach(p => { p.style.visibility='hidden'; p.classList.remove('hidden'); });
+  const maxW = Math.max(...phraseEls.map(p => p.offsetWidth));
+  phraseEls.forEach(p => { p.classList.add('hidden'); p.style.visibility=''; });
+  badge.style.minWidth = Math.min(maxW + 28, window.innerWidth - 32) + 'px';
   // Shuffle order on each page load
   const order = phraseEls.map((_, i) => i).sort(() => Math.random() - 0.5);
   let cur = 0;
