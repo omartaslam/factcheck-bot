@@ -3655,7 +3655,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         src_count = f" _(searched {len(used_sources)})_" if used_sources else ""
         def _fmt_source(s):
             import re as _re
-            return _re.sub(r'\bLive Web Search\s*\(\d{4}\)', 'Tavily', s)
+            return _re.sub(r'\bLive Web Search\s*(?:\(\d{4}\))?', 'Tavily', s)
         lines += [f"*SOURCES CITED*{src_count}"] + [f"• {_fmt_source(s)}" for s in a["sources"][:6]] + [""]
     elif used_sources:
         lines += ["*SOURCES SEARCHED*"] + [f"• {s}" for s in used_sources[:6]] + [""]
