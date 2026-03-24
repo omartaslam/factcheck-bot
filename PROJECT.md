@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-23 (session 19 — auto-save 6)
+**Last updated:** 2026-03-24 (session 20 — auto-save 1)
 
 ---
 
@@ -312,6 +312,12 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 20 — 2026-03-24
+
+- **FB/IG "Bot error: not a video URL" fixed** (commit `af26528`): orphaned `try:` at line 4865 removed. ValueError raised for non-video post URLs (`/posts/pfbid...`) now propagates to the existing `except Exception as vde` handler, which logs it and falls through to og:scrape. No user-facing error.
+
+---
 
 ### Session 19 — 2026-03-23
 
