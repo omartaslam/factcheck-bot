@@ -4213,7 +4213,9 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             nums = [int(x) for x in re.split(r'[,\s]+', body_upper.strip()) if x.isdigit()]
             selected_claims = [all_claims[n-1] for n in nums if 1 <= n <= len(all_claims)]
             if not selected_claims:
-                selected_claims = all_claims
+                _pending_set(platform, uid, data)
+                send_fn(f"Please reply with a number between 1 and {len(all_claims)}.")
+                return
         bt = _pbilling_type(platform, uid)
         # Free users: restrict to single claim
         if bt == "free" and selected_claims and len(selected_claims) > 1:
@@ -4599,7 +4601,9 @@ def process(from_num, message, profile_name=None):
                 nums = [int(x) for x in re.split(r'[,\s]+', body_upper.strip()) if x.isdigit()]
                 selected_claims = [all_claims[n-1] for n in nums if 1 <= n <= len(all_claims)]
                 if not selected_claims:
-                    selected_claims = all_claims
+                    _pending_set("whatsapp", from_num, data)
+                    send(from_num, f"Please reply with a number between 1 and {len(all_claims)}.")
+                    return
             # ── Billing gate ───────────────────────────────────────────────
             bt = _wa_billing_type(from_num)
             # Free users: restrict to single claim
