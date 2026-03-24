@@ -4907,9 +4907,13 @@ def process(from_num, message, profile_name=None):
                                     vid_parts.append(f"Audio: {_vid_transcript}")
                             except Exception as vte:
                                 log.warning(f"FB/IG video transcription: {vte}")
-                            # ── STEP E: No audio — likely FB CDN image-as-MP4. OCR the frame.
+                            # ── STEP E: No audio — likely FB CDN image-as-MP4.
+                            # Remove visual analysis (unreliable — CDN may serve wrong asset)
+                            # and OCR the actual frame text instead.
                             _is_image_as_mp4 = False
                             if not _vid_transcript and _vid_frames:
+                                # Strip visual analysis — it described the CDN asset, not the post
+                                vid_parts = [p for p in vid_parts if not p.startswith("Visual analysis:")]
                                 try:
                                     _frame_ocr = ocr_image(_vid_frames[0])
                                     if _frame_ocr and len(_frame_ocr) > 5:
