@@ -549,12 +549,11 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 
 
 /* ── ROTATING BADGE ── */
-.hero-badge{position:relative;min-height:28px;display:inline-flex;align-items:center;justify-content:center;width:auto;max-width:calc(100vw - 4rem)}
+.hero-badge{position:relative;min-height:28px;display:inline-flex;align-items:center;justify-content:center;min-width:200px;max-width:90vw;overflow:hidden}
 .badge-phrase{
   position:absolute;left:50%;transform:translateX(-50%);
   white-space:nowrap;transition:opacity 0.7s ease;
   font-size:0.75rem;font-weight:700;letter-spacing:0.4px;color:#7a6000;
-  max-width:calc(100vw - 4rem);overflow:hidden;text-overflow:ellipsis;
 }
 .badge-phrase.hidden{opacity:0}
 .badge-phrase.visible{opacity:1}
@@ -628,8 +627,6 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
   </div>
 </nav>
-
-<div class="beta-banner">⚠ Beta Version — Under Development</div>
 
 <!-- HERO -->
 <div class="hero">
