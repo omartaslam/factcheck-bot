@@ -4604,6 +4604,7 @@ def process(from_num, message, profile_name=None):
                     threading.Thread(target=_send_feedback_email,
                                      args=(fb_type, emoji, log_row["id"], from_num, profile_name),
                                      daemon=True).start()
+                    send(from_num, "✅ _Thanks for the feedback — it helps us improve Fred._")
             except Exception as e:
                 log.warning("Feedback store failed: %s", e)
         return
