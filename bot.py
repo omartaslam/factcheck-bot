@@ -6586,9 +6586,20 @@ def admin_set_balance():
     data = request.get_json() or {}
     platform = data.get("platform", "whatsapp")
     uid = str(data.get("uid", ""))
+    email = (data.get("email") or "").strip().lower()
     cents = int(data.get("cents", 0))
     free_checks_used = data.get("free_checks_used")
     reset_trial = data.get("reset_trial", False)  # resets created_at to now (restarts 7-day trial)
+    # Web user by email
+    if platform == "web" or email:
+        if not email:
+            return jsonify({"error": "email required for web users"}), 400
+        with _db() as c:
+            row = c.execute("SELECT id FROM users WHERE email=?", (email,)).fetchone()
+            if not row:
+                return jsonify({"error": f"No web user found with email {email}"}), 404
+            c.execute("UPDATE users SET balance_cents=? WHERE email=?", (cents, email))
+        return jsonify({"ok": True, "email": email, "balance_cents": cents, "credits": cents // COST_PER_CHECK_CENTS})
     if not uid:
         return jsonify({"error": "uid required"}), 400
     import time as _t
