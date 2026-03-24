@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 21 — in progress)
+**Last updated:** 2026-03-24 (session 21 — auto-save 2)
 
 ---
 
@@ -319,6 +319,9 @@ Type HELP anytime for a full guide.
 ### Session 21 — 2026-03-24
 
 - **Credits display** (commit `1f67ecf`): credits shown alongside $ at all user-facing balance touchpoints. Payment received: `$1.00 _(4 credits)_`; BALANCE/post-check/payment prompt: `$1.00 (4 credits remaining)`; verdict status line: `4 credits remaining` (credits only, no $); TOPUP prompt: `$1.00 (4 credits)`. Low balance warnings unchanged.
+- **checks_remaining as integer** (commit `a09e5b3`): `3.0` → `3` in verdict footer.
+- **Invalid claim number prompts retry** (commit `b5eb1f9`): out-of-range selection (e.g. "4" with 3 claims) restores pending and replies "Please reply with a number between 1 and N". Both WA and platform handlers fixed.
+- **Free plan claim prompt split for mobile** (commit `06bc472`): 3-line layout — action / italic restriction hint / cancel.
 
 ### Session 20 — 2026-03-24
 
