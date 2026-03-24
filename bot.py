@@ -5093,7 +5093,11 @@ def process(from_num, message, profile_name=None):
                         # augment the query with that to target the right article.
                         post_text_part = next((p for p in parts if p.startswith("Post text:")), "")
                         post_text_len = len(post_text_part.replace("Post text: ", "", 1))
-                        if post_text_len < 300 and "Article text:" not in "\n".join(parts) and TAVILY_API_KEY:
+                        _ocr_part_len = len(next((p for p in parts if p.startswith("Image text/content:")), ""))
+                        # Skip Tavily article lookup when OCR already found substantial image text —
+                        # the image IS the content, and searching for a linked article risks
+                        # pulling in unrelated content that poisons claim extraction.
+                        if post_text_len < 300 and _ocr_part_len < 400 and "Article text:" not in "\n".join(parts) and TAVILY_API_KEY:
                             try:
                                 search_query = post_text_part.replace("Post text: ", "", 1)[:200]
                                 # Augment with OCR headline when post text is truncated.
