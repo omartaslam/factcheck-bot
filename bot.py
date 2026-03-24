@@ -4851,10 +4851,15 @@ def process(from_num, message, profile_name=None):
                     img_candidates = []  # ordered list of image URLs to try for OCR
                     _fb_video_done = False  # set True if video download gives us content
 
-                    # ── STEP 0: Try video download first ─────────────────────────
-                    # FB/IG share links (/share/xxx/) often contain video even though
-                    # they don't look like video URLs. Try downloading before falling
-                    # back to og:image scrape.
+                    # ── STEP 0: Try video download — only for URLs that signal video content
+                    # Regular post URLs (/posts/pfbid...) are text/image posts; yt-dlp often
+                    # downloads an unrelated CDN-cached video for these, poisoning claim extraction.
+                    # Only attempt video download for URLs with explicit video path signals.
+                    _fb_video_url_signals = ["/video/", "/reel/", "/share/v/", "/share/r/", "fb.watch", "/videos/"]
+                    _fb_url_suggests_video = any(s in url.lower() for s in _fb_video_url_signals)
+                    if not _fb_url_suggests_video:
+                        log.info(f"FB/IG non-video post URL — skipping video download, going to og:scrape")
+                        raise ValueError("not a video URL")
                     try:
                         _fb_dur = _get_video_duration(url)
                         if _fb_dur > MAX_VIDEO_MINUTES * 60:
