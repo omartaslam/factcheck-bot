@@ -4391,7 +4391,8 @@ def _send_feedback_email(feedback_type, emoji_or_text, log_id, from_num, profile
             f"CHECK TIME:     {ts}",
             "",
             f"SOURCE TYPE:    {row['source_type']}",
-            f"INPUT:          {(row['raw_input'] or row['source_url'] or '')[:400]}",
+            f"URL:            {(row['source_url'] or '(none)')}",
+            f"INPUT:          {(row['raw_input'] or '')[:400]}",
             f"CLAIM:          {(row['extracted_claim'] or '')[:300]}",
             "",
             f"VERDICT:        {row['rating']} / {row['confidence']}",
@@ -4599,12 +4600,13 @@ def process(from_num, message, profile_name=None):
                               (score, emoji, reacted_msg_id))
                     log_row = c.execute("SELECT id FROM request_log WHERE wa_message_id=?", (reacted_msg_id,)).fetchone()
                 log.info("Feedback %s (%d) recorded for msg %s", emoji, score, reacted_msg_id[:20])
+                if score != 0:
+                    send(from_num, "✅ _Thanks for the feedback — it helps us improve Fred._")
                 if log_row:
                     fb_type = "positive" if score == 1 else ("negative" if score == -1 else "neutral")
                     threading.Thread(target=_send_feedback_email,
                                      args=(fb_type, emoji, log_row["id"], from_num, profile_name),
                                      daemon=True).start()
-                    send(from_num, "✅ _Thanks for the feedback — it helps us improve Fred._")
             except Exception as e:
                 log.warning("Feedback store failed: %s", e)
         return
