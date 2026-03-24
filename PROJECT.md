@@ -294,8 +294,11 @@ Type HELP anytime for a full guide.
 5. **Cookie automation** — FB + IG cookies expire ~2026-04-03. Blocked on GitHub PAT `workflow` scope
 6. **Meta app review** — submit once business verification approved
 
+### To be designed / discussed
+7. **"What the evidence does show" feature** — when a claim is FALSE but the subject area has documented real wrongdoing by related parties, surface what the evidence does show. Example: "Israel/Diana claim is FALSE — but Epstein files do document Prince Andrew's relationship with Epstein." Possible via new `related_facts` field or extended `context`. Needs design session — risk of scope creep from fact-checker to investigative journalist. Test post: instagram.com/reel/DVDIDl9CGyK/
+
 ### Ready to implement
-7. **`STRIPE_WEBHOOK_SECRET`** — set in Railway for security. Copy `whsec_...` from Stripe Dashboard → Webhooks → `fascinating-breeze`. Currently skipped in code if not set (harmless but insecure).
+8. **`STRIPE_WEBHOOK_SECRET`** — set in Railway for security. Copy `whsec_...` from Stripe Dashboard → Webhooks → `fascinating-breeze`. Currently skipped in code if not set (harmless but insecure).
 8. **QA automation suite** — ⏸ SHELVED. Infrastructure complete: `scripts/qa_runner.py` + `scripts/qa_fixtures.json`, 28 fixtures across all categories, POST `/admin/run-qa` endpoint live. Shelved 2026-03-21 because Claude's capacity limitations make the suite too slow and fragile to be a useful daily tool (~70 min runtime, context pressure, no mid-run visibility). Known quality issues: FALSE returned instead of UNVERIFIABLE for ambiguous claims; "vaccines kill more than COVID" returns FALSE not MISLEADING. Do not delete — park until either (a) Claude is faster/cheaper or (b) a lightweight 5–8 fixture subset is carved out for quick iteration.
 8. **Service health monitoring** — email alert when RapidAPI/Hive/SendGrid/FB-IG cookies go down
 9. **Split verdict into multiple WA messages**
