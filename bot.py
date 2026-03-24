@@ -3690,8 +3690,6 @@ HELP_MSG = (
     "• Voice notes / audio\n"
     "• Text claims or quotes\n\n"
     "*Commands:*\n"
-    "• *Y* — confirm a fact check\n"
-    "• *N* — cancel\n"
     "• *BALANCE* — check your remaining credits\n"
     "• *TOPUP* — add credits to your account\n"
     "• *HELP* — show this message\n\n"
