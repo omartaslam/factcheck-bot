@@ -4229,7 +4229,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             send_fn(f"✓ Free check — {remaining} free check{'s' if remaining != 1 else ''} remaining")
         elif bt == "paid":
             u = _puser(platform, uid)
-            send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f}")
+            send_fn(f"✓ Balance: ${u['balance_cents']/100:.2f} ({u['balance_cents']//COST_PER_CHECK_CENTS} credits remaining)")
         elif bt == "subscriber":
             send_fn("✓ Subscriber — unlimited access")
         send_fn("🔍 Starting fact check...")
@@ -4577,7 +4577,7 @@ def process(from_num, message, profile_name=None):
                 free_word = "check" if remaining == 1 else "checks"
                 send(from_num, f"✓ *{remaining} free {free_word} remaining today* (day {trial_day} of {FREE_TRIAL_DAYS} trial).\n\nReply *TOPUP* anytime to add paid credits.")
             elif bt == "paid":
-                send(from_num, f"✓ *Balance:* ${u['balance_cents']/100:.2f}\n\nReply *TOPUP* anytime to add credits.")
+                send(from_num, f"✓ *Balance:* ${u['balance_cents']/100:.2f} ({u['balance_cents']//COST_PER_CHECK_CENTS} credits remaining)\n\nReply *TOPUP* anytime to add credits.")
             return
         is_cancel = body_upper in ("NO", "N")
         is_check_all = body_upper in ("YES", "Y", "ALL", "A")
@@ -4620,7 +4620,7 @@ def process(from_num, message, profile_name=None):
                 status_line = f"✓ Free check — {suffix}"
             elif bt == "paid":
                 u = _wa_user(from_num)
-                status_line = f"✓ Balance: ${u['balance_cents']/100:.2f}"
+                status_line = f"✓ Balance: {u['balance_cents']//COST_PER_CHECK_CENTS} credits remaining"
             elif bt == "subscriber":
                 status_line = "✓ Subscriber — unlimited access"
             else:
@@ -5485,7 +5485,7 @@ def _send_payment_prompt(wa_id, balance_cents, billing_type=None):
         _psend_payment_prompt("whatsapp", wa_id, balance_cents, lambda text: send(wa_id, text))
         return
     if billing_type == "paid":
-        body_text = f"Your balance is ${(balance_cents or 0)/100:.2f}.\n\nTop up to add more checks."
+        body_text = f"Your balance is ${(balance_cents or 0)/100:.2f} ({(balance_cents or 0)//COST_PER_CHECK_CENTS} credits).\n\nTop up to add more checks."
     elif billing_type == "daily_capped":
         free_word = "check" if FREE_DAILY_LIMIT == 1 else "checks"
         body_text = f"You've used your {FREE_DAILY_LIMIT} free {free_word} for today.\n\nYour checks reset tomorrow — or top up now to continue."
@@ -5609,7 +5609,7 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
     lines = [
         "💳 *Fred Check — Top Up Required*", "",
         f"You've used your {FREE_CHECKS_LIMIT} free {free_word}.",
-        f"Current balance: *${balance_cents/100:.2f}*", "",
+        f"Current balance: *${balance_cents/100:.2f}* ({balance_cents//COST_PER_CHECK_CENTS} credits remaining)", "",
         "*Choose a top-up amount:*", "",
     ]
     def _n(cents): return max(1, round(cents / COST_PER_CHECK_CENTS))
@@ -5927,7 +5927,8 @@ def stripe_webhook():
                         "telegram": lambda t, u=uid: send_telegram(u, t),
                         "twitter": lambda t, u=uid: send_twitter_dm(u, t),
                     }.get(platform, lambda t: None)
-                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} added to your balance.\n\nYou can now continue fact checking. Post any claim to get started.")
+                    credits = round(amount / COST_PER_CHECK_CENTS)
+                    platform_send(f"✅ *Payment received!* ${amount/100:.2f} _({credits} credits)_ added to your balance.\n\nYou can now continue fact checking. Post any claim to get started.")
                 elif mode == "subscription":
                     with _db() as c:
                         c.execute("UPDATE platform_users SET tier='subscriber', stripe_customer_id=? WHERE platform=? AND platform_id=?", (customer_id, platform, uid))
