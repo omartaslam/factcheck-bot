@@ -3023,9 +3023,10 @@ def claims_confirm_msg(claims, source_type, cost, is_free=False):
     if len(claims) == 1:
         reply_prompt = "Reply *Y* to fact check\nReply *N* to cancel"
     elif is_free:
-        nums = ", ".join(f"*{i+1}*" for i in range(len(claims)))
+        nums = " or ".join(f"*{i+1}*" for i in range(len(claims))) if len(claims) <= 3 else ", ".join(f"*{i+1}*" for i in range(len(claims)))
         reply_prompt = (
-            f"Reply {nums} to pick one claim _(free plan — one claim per check)_\n"
+            f"Reply {nums}\n"
+            f"_(free plan — one claim per check)_\n"
             f"Reply *N* to cancel"
         )
     else:
