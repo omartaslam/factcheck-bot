@@ -424,6 +424,24 @@ def fetch(url, timeout=12):
         r.raise_for_status(); return html_text(r.text)
     except Exception as e: log.warning("fetch %s: %s", url, e); return ""
 
+def tavily_extract(url):
+    """Use Tavily's extract endpoint to retrieve content from URLs that block regular scraping."""
+    if not TAVILY_API_KEY:
+        return ""
+    try:
+        r = requests.post("https://api.tavily.com/extract",
+                          json={"api_key": TAVILY_API_KEY, "urls": [url]},
+                          timeout=20)
+        r.raise_for_status()
+        results = r.json().get("results", [])
+        if results and results[0].get("raw_content"):
+            content = results[0]["raw_content"].strip()
+            log.info("tavily_extract: got %d chars from %s", len(content), url)
+            return content[:8000]
+    except Exception as e:
+        log.warning("tavily_extract %s: %s", url, e)
+    return ""
+
 def download_media(mid):
     try:
         log.info(f"Downloading media ID: {mid}")
@@ -3635,7 +3653,10 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     # Fall back to scraped source names only if Claude returned no citations.
     if a.get("sources"):
         src_count = f" _(searched {len(used_sources)})_" if used_sources else ""
-        lines += [f"*SOURCES CITED*{src_count}"] + [f"• {s}" for s in a["sources"][:6]] + [""]
+        def _fmt_source(s):
+            import re as _re
+            return _re.sub(r'\bLive Web Search\s*\(\d{4}\)', 'Tavily', s)
+        lines += [f"*SOURCES CITED*{src_count}"] + [f"• {_fmt_source(s)}" for s in a["sources"][:6]] + [""]
     elif used_sources:
         lines += ["*SOURCES SEARCHED*"] + [f"• {s}" for s in used_sources[:6]] + [""]
     osint_lines = fmt_osint(osint or {})
@@ -4253,7 +4274,7 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
         if urls:
             url = urls[0]
             send_fn("🔍 Analysing post/article...")
-            page_text = fetch(url) or _og_metadata(url)
+            page_text = fetch(url) or _og_metadata(url) or tavily_extract(url)
             if not page_text:
                 reason = _url_fetch_reason(url)
                 send_fn(f"🔒 I couldn't access this article — it appears to be {reason}.\n\nTry copying the specific claim as text and sending it instead.")
@@ -5178,6 +5199,8 @@ def process(from_num, message, profile_name=None):
                     except Exception as oe:
                         log.debug(f"Article og:image OCR failed: {oe}")
 
+                if not page_text:
+                    page_text = tavily_extract(url)
                 if not page_text:
                     reason = _url_fetch_reason(url)
                     send(from_num,
