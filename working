@@ -1,38 +1,12 @@
-All changes shipped:                                                                                         
-                                                                                                               
-  ┌─────────────────┬──────────────────────────────────────────────────────────────────────────────────────┐ 
-  │                 │                                                                                      │
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-  │ Image input     │ Paste screenshot from clipboard anywhere on page, or click the 🖼 icon to attach a    │
-  │                 │ file. Shows thumbnail + "Image" badge. Goes straight to OCR → fact-check.            │
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
-  │ "Who benefits?" │ Removed from web result panel                                                        │
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
-  │ Truth bar       │ Now animates only when it scrolls into view (IntersectionObserver)                   │ 
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
-  │ Loading steps   │ Step 1: "Identifying claims" · Step 2: now includes French & Urdu                    │   
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-  │ Placeholder     │ "Paste or type a claim, URL, quote or social media post…"                            │   
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤ 
-  │ "See how it     │ Scroll link in hero, next to the WhatsApp note                                       │
-  │ works →"        │                                                                                      │   
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
-  │ Body text       │ text-align: justify in result panel — editorial/newspaper feel                       │   
-  │ alignment       │                                                                                      │   
-  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
-  │ Visual          │ Slightly reduced font sizes, tighter padding in search footer                        │   
-  │ tightening      │                                                                                      │   
-  └─────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
-                                                                                                               
-  ---                                                                                                        
-                                                                                           
-
 
 	
 	
 	
 	
+	Truth Beyond Borders 🌎 
+	Western, Arabic, Spanish & French sources. 
 	
+	Message me with any link, image, video or claim and get a balanced verdict in seconds.
 	
 	
 	
@@ -41,17 +15,22 @@ All changes shipped:
 	
 	
 	Recent checks.. 
-	
+		- logic around trumps crypo profits, inconsistent results
 	
 	
 	BIG tasks:
 	1. Multi currency
-	2. web claim process 
-	3. Instructions: forward, paste, type
-	4. Make beta italic
-	5. Feedback reminder for free users 
+	2. web claim process DONE
+	
+	 
+	1. Instructions: forward, paste, type - in italics, show me the welcome screen pls and i will explain
+	2. Make beta italic
+	3. Feedback reminder for free users 
+	4. half true still never really see - worth discussing?
+	5. reply to posts - thumbs up/down and neutral face only?
+	
+	
 	6. sample output on web display section
-	7. logic around trumps crypo profits, inconsistent results
 	8. unverifiabke fall back
-	9. half true
+	9. 
 	10.

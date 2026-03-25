@@ -1,0 +1,17 @@
+# Netscape HTTP Cookie File
+# https://curl.haxx.se/rfc/cookie_spec.html
+# This is a generated file! Do not edit.
+
+.facebook.com	TRUE	/	TRUE	1805626347	datr	5VOQaSIuxWsn0akpfcy32beA
+.facebook.com	TRUE	/	TRUE	1805626436	sb	_1OQaZWac-ooSx0nV1BZilGR
+.facebook.com	TRUE	/	TRUE	1771671201	locale	en_GB
+.facebook.com	TRUE	/	TRUE	1805557264	c_user	100042308418116
+.facebook.com	TRUE	/	TRUE	1805557264	xs	36%3ASh3qsn_SNV1_xQ%3A2%3A1771066429%3A-1%3A-1%3A%3AAczGBqpZBjrFxFnXeC-CGagdrSoaafDiRXGXK9nm7TuG
+.facebook.com	TRUE	/	TRUE	1781797612	fr	1xz34KSXvQ1Rmb30s.AWdJQ__B-vuM-j933dBggBvzXOOaPXDwZyVa4QGpqy22mj8RFw8.BpspOm..AAA.0.0.BpvWvr.AWc5Z8yLM1rKyaPLvTxKyRP5z0s
+.facebook.com	TRUE	/	TRUE	1774626420	wd	1366x615
+.facebook.com	TRUE	/	TRUE	1807964739	ps_l	1
+.facebook.com	TRUE	/	TRUE	1807964739	ps_n	1
+.facebook.com	TRUE	/	TRUE	1774614759	dpr	0.6666666666666666
+.facebook.com	TRUE	/	TRUE	1773938753	x-src	%2Fapps%2F%7Cdevsite_header
+.facebook.com	TRUE	/	TRUE	0	presence	C%7B%22t3%22%3A%5B%5D%2C%22utc3%22%3A1774021621039%2C%22v%22%3A1%7D
+.facebook.com	TRUE	/	FALSE	1774021651	alsfid	{"id":"fb2e9d937","timestamp":1774021591486}
