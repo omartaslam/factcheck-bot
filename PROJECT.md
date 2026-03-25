@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 23 — IN PROGRESS)
+**Last updated:** 2026-03-25 (session 24 — IN PROGRESS)
 
 ---
 
@@ -316,7 +316,21 @@ Type HELP anytime for a full guide.
 
 ## 12. Recently Completed Work
 
-### Session 23 — 2026-03-25 (IN PROGRESS)
+### Session 24 — 2026-03-25 (IN PROGRESS)
+
+**Build baseline:** commit `0ecc595`
+
+- **Red flags hidden on web** (`d466777`): professional audience; flag framing stays in WA consumer flow
+- **text-align:justify removed** (`d466777`): result body text left-aligned
+- **"How it works" rewritten** (`d466777`): journalistic framing — "Send the claim as it arrived" / "Every region answers at once" / "A verdict you can stand behind"
+- **img-badge → "AI read"** (`d466777`): tooltip explains Fred will extract + fact-check image
+- **Result panel centering fixed** (`561a538`): text-align:left on rp-body, rp-sources-section, rp-confidence-row (were inheriting from .hero)
+- **Truth bar scoreMap extended** (`561a538`): MISLEADING:3, NEEDS_CONTEXT:5 added
+- **Truth bar IntersectionObserver → setTimeout** (`34f7655`): observer threshold 0.6 was silently failing on mobile; 80ms setTimeout fires reliably; UNVERIFIABLE now shows grey bar at 50% with "—" score
+- **Loading steps fixed** (`0ecc595`): text-align:left, align-items:flex-start, dot margin-top
+- **"See how it works →" hidden on mobile** (`0ecc595`)
+
+### Session 23 — 2026-03-25 (CLOSED)
 
 **Build baseline:** commit `8577e78` (session 22) — most stable Fred to-date.
 
