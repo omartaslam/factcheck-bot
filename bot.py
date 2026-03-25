@@ -4432,7 +4432,7 @@ def _send_feedback_email(feedback_type, emoji_or_text, log_id, from_num, profile
             (row["response_text"] or "")[:3000],
         ])
         payload = _json.dumps({
-            "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+            "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com"}]}],
             "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
             "subject": subject,
             "content": [{"type": "text/plain", "value": body}]
@@ -4542,7 +4542,7 @@ def _send_daily_summary(date_str=None):
 
     try:
         payload = _json.dumps({
-            "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+            "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com"}]}],
             "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
             "subject": f"📊 Fred daily summary — {date_str} ({total_checks} checks, {len(by_user)} users)",
             "content": [{"type": "text/plain", "value": body}]
@@ -4584,7 +4584,7 @@ def _notify_new_user(wa_id, profile_name):
             f"Fred Check"
         )
         payload = _json.dumps({
-            "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+            "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com"}]}],
             "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
             "subject": f"🆕 New beta user: {profile_name or wa_id}",
             "content": [{"type": "text/plain", "value": body}]
