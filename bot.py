@@ -6877,6 +6877,37 @@ def admin_stats():
         "total_revenue_usd": f"${total_revenue/100:.2f}",
     })
 
+@app.route("/admin/usage", methods=["GET"])
+def admin_usage():
+    """Per-user check counts for a date range. Params: from=YYYY-MM-DD, to=YYYY-MM-DD (inclusive)."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    from datetime import datetime, timezone
+    from_str = request.args.get("from")
+    to_str = request.args.get("to")
+    try:
+        ts_from = int(datetime.strptime(from_str, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) if from_str else 0
+        ts_to   = int(datetime.strptime(to_str,   "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp()) + 86399 if to_str else int(t.time())
+    except ValueError:
+        return jsonify({"error": "Invalid date format, use YYYY-MM-DD"}), 400
+    with _db() as c:
+        rows = c.execute("""
+            SELECT uid, COUNT(*) as checks, MIN(created_at) as first, MAX(created_at) as last
+            FROM request_log
+            WHERE uid NOT LIKE 'qctest%' AND created_at BETWEEN ? AND ?
+            GROUP BY uid ORDER BY checks DESC
+        """, (ts_from, ts_to)).fetchall()
+    result = []
+    for r in rows:
+        result.append({
+            "uid": r["uid"],
+            "checks": r["checks"],
+            "first": datetime.fromtimestamp(r["first"], tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+            "last":  datetime.fromtimestamp(r["last"],  tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+        })
+    return jsonify({"period": {"from": from_str or "all", "to": to_str or "now"}, "users": result})
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     log.info("Fred Check v3.2 starting (dev mode)...")
