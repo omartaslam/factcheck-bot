@@ -1730,21 +1730,12 @@ document.addEventListener('paste', function(e){
   }
 });
 
-// ── INTERSECTION OBSERVER — truth bar ───────────────────────
-let _tbObserver = null;
+// ── TRUTH BAR ANIMATION ──────────────────────────────────────
 function _observeTruthBar(){
-  if(_tbObserver) _tbObserver.disconnect();
-  _tbObserver = new IntersectionObserver(function(entries){
-    entries.forEach(function(entry){
-      if(entry.isIntersecting){
-        const fill = document.getElementById('rpTruthFill');
-        if(fill && fill.dataset.target) fill.style.width = fill.dataset.target + '%';
-        _tbObserver.disconnect();
-      }
-    });
-  }, {threshold: 0.6});
-  const tb = document.getElementById('rpTruthBar');
-  if(tb) _tbObserver.observe(tb);
+  const fill = document.getElementById('rpTruthFill');
+  if(fill && fill.dataset.target){
+    setTimeout(()=>{ fill.style.width = fill.dataset.target + '%'; }, 80);
+  }
 }
 
 // ── CLAIM PICKER + TWO-STEP FACT-CHECK ─────────────────────
@@ -1931,13 +1922,13 @@ function renderResult(data, submittedClaim){
   const ct = document.getElementById('rpClaimText');
   ct.textContent = '\u201c' + (claim.length>300 ? claim.slice(0,300)+'\u2026' : claim) + '\u201d';
 
-  // Truth bar — animated via IntersectionObserver when scrolled into view
+  // Truth bar
   const scoreMap = {'TRUE':10,'MOSTLY_TRUE':8,'HALF_TRUE':5,'NEEDS_CONTEXT':5,'MISLEADING':3,'MOSTLY_FALSE':3,'FALSE':0};
   const tb = document.getElementById('rpTruthBar');
+  const fill = document.getElementById('rpTruthFill');
   if(rating in scoreMap){
     const s = scoreMap[rating];
     const fillColor = s>=8?'#22c55e':s>=5?'#eab308':s>=3?'#f97316':'#ef4444';
-    const fill = document.getElementById('rpTruthFill');
     fill.style.width = '0%';
     fill.style.background = fillColor;
     fill.dataset.target = String(s*10);
@@ -1945,7 +1936,13 @@ function renderResult(data, submittedClaim){
     tb.style.display = 'flex';
     _observeTruthBar();
   } else {
-    tb.style.display = 'none';
+    // UNVERIFIABLE — show bar with neutral grey, no score
+    fill.style.width = '0%';
+    fill.style.background = '#d1d5db';
+    fill.dataset.target = '50';
+    document.getElementById('rpTruthScore').textContent = '—';
+    tb.style.display = 'flex';
+    _observeTruthBar();
   }
 
   // Rating reason (non-TRUE/FALSE only)
