@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred — Mockup A (Linear/Dark)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#080808;color:#fff;overflow-x:hidden}
+nav{display:flex;align-items:center;justify-content:space-between;padding:1.25rem 4rem;border-bottom:1px solid rgba(255,255,255,0.07)}
+.logo{display:flex;align-items:center;gap:10px}
+.logo img{width:32px;height:32px;border-radius:8px}
+.logo-text{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#fff}
+.nav-links{display:flex;gap:2rem}
+.nav-links a{color:rgba(255,255,255,0.5);font-size:0.9rem;text-decoration:none;font-weight:500;transition:color 0.2s}
+.nav-links a:hover{color:#fff}
+.nav-right{display:flex;gap:1rem;align-items:center}
+.btn-ghost{padding:8px 20px;border:1px solid rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.7);font-size:0.875rem;font-weight:600;cursor:pointer;background:transparent;font-family:inherit}
+.btn-gold{padding:8px 20px;border-radius:8px;background:#D4AF37;color:#000;font-size:0.875rem;font-weight:700;cursor:pointer;border:none;font-family:inherit}
+
+/* HERO */
+.hero{padding:7rem 4rem 5rem;max-width:1400px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+.hero-eyebrow{font-size:0.78rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#D4AF37;margin-bottom:2rem}
+.hero h1{font-size:5.5rem;font-weight:900;line-height:1;letter-spacing:-3px;margin-bottom:2rem;color:#fff}
+.hero h1 em{font-style:normal;color:#D4AF37}
+.hero-sub{font-size:1.15rem;color:rgba(255,255,255,0.55);line-height:1.7;max-width:480px;margin-bottom:2.5rem}
+.hero-actions{display:flex;gap:1rem;flex-wrap:wrap}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:#D4AF37;color:#000;font-weight:700;font-size:1rem;border-radius:10px;text-decoration:none;border:none;cursor:pointer;font-family:inherit}
+.btn-secondary{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;background:transparent;color:rgba(255,255,255,0.8);font-weight:600;font-size:1rem;border-radius:10px;border:1px solid rgba(255,255,255,0.15);text-decoration:none;cursor:pointer;font-family:inherit}
+
+/* VERDICT MOCKUP */
+.verdict-mockup{background:#111;border:1px solid rgba(255,255,255,0.08);border-radius:20px;padding:2rem;position:relative}
+.vm-header{display:flex;align-items:center;gap:8px;margin-bottom:1.5rem}
+.vm-dot{width:12px;height:12px;border-radius:50%}
+.vm-claim{font-size:0.82rem;color:rgba(255,255,255,0.35);margin-bottom:1.25rem;font-style:italic;padding-bottom:1rem;border-bottom:1px solid rgba(255,255,255,0.07)}
+.vm-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.3);color:#4ade80;font-weight:800;font-size:0.9rem;padding:8px 18px;border-radius:20px;margin-bottom:1rem}
+.vm-label{font-size:0.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:rgba(255,255,255,0.3);margin-bottom:0.4rem;margin-top:1rem}
+.vm-text{font-size:0.88rem;color:rgba(255,255,255,0.65);line-height:1.65}
+.vm-persp{display:grid;gap:0.5rem;margin-top:0.5rem}
+.vm-p{padding:0.6rem 0.85rem;border-radius:8px;font-size:0.82rem;color:rgba(255,255,255,0.7);line-height:1.5}
+.vm-p.west{background:rgba(59,130,246,0.1);border-left:2px solid rgba(59,130,246,0.5)}
+.vm-p.reg{background:rgba(34,197,94,0.08);border-left:2px solid rgba(34,197,94,0.4)}
+.vm-p.lat{background:rgba(168,85,247,0.08);border-left:2px solid rgba(168,85,247,0.4)}
+.vm-sources{display:flex;flex-wrap:wrap;gap:6px;margin-top:0.75rem}
+.vm-chip{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:5px;padding:3px 10px;font-size:0.72rem;color:rgba(255,255,255,0.4)}
+
+/* TRUST */
+.trust{border-top:1px solid rgba(255,255,255,0.07);border-bottom:1px solid rgba(255,255,255,0.07);padding:1.25rem 4rem}
+.trust-inner{display:flex;gap:3rem;align-items:center;justify-content:center}
+.trust-item{font-size:0.82rem;color:rgba(255,255,255,0.35);display:flex;align-items:center;gap:8px;white-space:nowrap}
+.trust-item strong{color:rgba(255,255,255,0.85);font-size:1rem;font-weight:800}
+
+/* FEATURES */
+.features{padding:6rem 4rem;max-width:1400px;margin:0 auto}
+.feat-tag{font-size:0.72rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#D4AF37;margin-bottom:1.5rem}
+.feat-title{font-size:3rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:1rem;line-height:1.1}
+.feat-sub{font-size:1rem;color:rgba(255,255,255,0.45);max-width:500px;margin-bottom:4rem;line-height:1.7}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.07);border-radius:16px;overflow:hidden}
+.feat-card{background:#0d0d0d;padding:2.5rem;transition:background 0.2s}
+.feat-card:hover{background:#111}
+.feat-icon{width:44px;height:44px;background:rgba(212,175,55,0.1);border:1px solid rgba(212,175,55,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem}
+.feat-card h3{font-size:1.05rem;font-weight:700;margin-bottom:0.6rem;color:#fff}
+.feat-card p{font-size:0.875rem;color:rgba(255,255,255,0.4);line-height:1.65}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <img src="https://web-production-1f0a4.up.railway.app/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED</span>
+  </div>
+  <div class="nav-links">
+    <a href="#">Try Fred</a>
+    <a href="#">Features</a>
+    <a href="#">For Newsrooms</a>
+    <a href="#">Pricing</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn-ghost">Sign In</button>
+    <button class="btn-gold">Get Started</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div>
+    <div class="hero-eyebrow">Fact-Checking Intelligence</div>
+    <h1>Truth has<br>no <em>borders.</em></h1>
+    <p class="hero-sub">The professional fact-checking tool for journalists, newsrooms and investigators. Multi-perspective verdicts from 65+ sources across Western, Arabic and Latin American media — in under 60 seconds.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Try Fred Free
+      </a>
+      <a href="#" class="btn-secondary">For Newsrooms →</a>
+    </div>
+  </div>
+  <div class="verdict-mockup">
+    <div class="vm-header">
+      <div class="vm-dot" style="background:#ff5f57"></div>
+      <div class="vm-dot" style="background:#ffbd2e"></div>
+      <div class="vm-dot" style="background:#28c840"></div>
+    </div>
+    <div class="vm-claim">"Israel leased the World Trade Center six weeks before 9/11"</div>
+    <div class="vm-badge">✓ TRUE &nbsp;·&nbsp; HIGH CONFIDENCE</div>
+    <div class="vm-label">Verdict Summary</div>
+    <div class="vm-text">Verified. Larry Silverstein signed a 99-year lease on the WTC in July 2001, approximately 6–7 weeks before 9/11. Confirmed by multiple sources across all regions.</div>
+    <div class="vm-label">Perspectives</div>
+    <div class="vm-persp">
+      <div class="vm-p west"><strong>Western:</strong> NYT, Reuters confirm July 2001 lease agreement</div>
+      <div class="vm-p reg"><strong>Regional:</strong> Al Jazeera, MEE corroborate — no contradictions</div>
+      <div class="vm-p lat"><strong>LatAm:</strong> Chequeado, EL PAÍS — consistent with record</div>
+    </div>
+    <div class="vm-label">Sources</div>
+    <div class="vm-sources">
+      <span class="vm-chip">New York Times</span>
+      <span class="vm-chip">Reuters</span>
+      <span class="vm-chip">Al Jazeera</span>
+      <span class="vm-chip">Snopes</span>
+      <span class="vm-chip">Haaretz</span>
+      <span class="vm-chip">+8 more</span>
+    </div>
+  </div>
+</div>
+
+<div class="trust">
+  <div class="trust-inner">
+    <div class="trust-item"><strong>65+</strong> Sources</div>
+    <div style="width:1px;height:20px;background:rgba(255,255,255,0.1)"></div>
+    <div class="trust-item"><strong>EN · AR · ES</strong> Languages</div>
+    <div style="width:1px;height:20px;background:rgba(255,255,255,0.1)"></div>
+    <div class="trust-item"><strong>&lt;60s</strong> Per Verdict</div>
+    <div style="width:1px;height:20px;background:rgba(255,255,255,0.1)"></div>
+    <div class="trust-item"><strong>3×</strong> Perspectives</div>
+    <div style="width:1px;height:20px;background:rgba(255,255,255,0.1)"></div>
+    <div class="trust-item">Built for <strong>Journalists &amp; Newsrooms</strong></div>
+  </div>
+</div>
+
+<div class="features">
+  <div class="feat-tag">Why Fred</div>
+  <h2 class="feat-title">No default narrative.<br>Just facts.</h2>
+  <p class="feat-sub">Most fact-checkers treat Western media as the neutral baseline. Fred doesn't. Every source is held to the same standard.</p>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+      <h3>65+ Global Sources</h3>
+      <p>Western, Arabic, Spanish, French, Swahili and South Asian media — searched simultaneously, not as an afterthought.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
+      <h3>No Narrative Bias</h3>
+      <p>BBC, Reuters and CNN are held to the same standard as Al Jazeera and Telesur. No source gets automatic authority.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M5 7l7-5 7 5"/><path d="M3 10l4 8a5 5 0 008 0l4-8"/></svg></div>
+      <h3>International Law Standard</h3>
+      <p>ICJ rulings, Geneva Conventions, UN resolutions — applied consistently to all parties, not selectively.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+      <h3>Built for Journalists</h3>
+      <p>Structured verdicts with cited sources you can stand behind. Shared team history, API access, PDF export.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <h3>Real-Time Social Signals</h3>
+      <p>Monitors Twitter, Reddit and social platforms — know when a claim is going viral before it spreads further.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
+      <h3>Newsroom &amp; API Plans</h3>
+      <p>Team seats, shared audit trail, bulk checking and white-label options for media organisations and NGOs.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

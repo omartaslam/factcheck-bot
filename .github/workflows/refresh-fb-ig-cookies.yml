@@ -1,0 +1,81 @@
+name: Refresh FB/IG Cookies
+
+on:
+  schedule:
+    # Every Monday at 03:00 UTC — well within the ~14-day cookie lifespan
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+    inputs:
+      skip_fb:
+        description: "Skip Facebook refresh"
+        type: boolean
+        default: false
+      skip_ig:
+        description: "Skip Instagram refresh"
+        type: boolean
+        default: false
+
+jobs:
+  refresh:
+    name: Refresh cookies and push to Railway
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install playwright requests
+          playwright install chromium --with-deps
+
+      - name: Refresh cookies
+        id: refresh
+        env:
+          FB_EMAIL:            ${{ secrets.FB_EMAIL }}
+          FB_PASSWORD:         ${{ secrets.FB_PASSWORD }}
+          IG_USERNAME:         ${{ secrets.IG_USERNAME }}
+          IG_PASSWORD:         ${{ secrets.IG_PASSWORD }}
+          RAILWAY_TOKEN:       ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_PROJECT_ID:  ${{ secrets.RAILWAY_PROJECT_ID }}
+          RAILWAY_ENV_ID:      ${{ secrets.RAILWAY_ENV_ID }}
+          RAILWAY_SERVICE_ID:  ${{ secrets.RAILWAY_SERVICE_ID }}
+          SKIP_FB:             ${{ inputs.skip_fb == true && '1' || '0' }}
+          SKIP_IG:             ${{ inputs.skip_ig == true && '1' || '0' }}
+        run: python scripts/refresh_cookies.py
+
+      # Upload login failure screenshots if the step failed
+      - name: Upload failure screenshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: login-failure-screenshots
+          path: |
+            fb_login_failed.png
+            ig_login_failed.png
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Send failure email via SendGrid
+        if: failure()
+        env:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+        run: |
+          curl -s --request POST \
+            --url https://api.sendgrid.com/v3/mail/send \
+            --header "Authorization: Bearer $SENDGRID_API_KEY" \
+            --header "Content-Type: application/json" \
+            --data '{
+              "personalizations": [{"to": [{"email": "hello@fredcheck.com"}]}],
+              "from": {"email": "noreply@fredcheck.com", "name": "Fred Check"},
+              "subject": "⚠️ FB/IG Cookie Refresh Failed",
+              "content": [{
+                "type": "text/plain",
+                "value": "The weekly FB/IG cookie refresh GitHub Action failed.\n\nThis means Facebook and Instagram content extraction will stop working when the current cookies expire.\n\nAction required:\n1. Check the failed workflow run for error details and screenshots:\n   https://github.com/omartaslam/factcheck-bot/actions/workflows/refresh-fb-ig-cookies.yml\n2. Common causes:\n   - Facebook/Instagram changed their login page\n   - Account hit a security checkpoint (try logging in manually first)\n   - 2FA was enabled on the account\n   - Credentials changed\n3. If automated refresh is broken, rotate cookies manually.\n\nFred Check"
+              }]
+            }'

@@ -1,0 +1,41 @@
+•
+
+
+$ curl -X POST https://web-production-1f0a4.up.railway.app/admin/set-balance     -H "Content-Type: application/json"     -H "X-Admin-Token: qc-test-fred-2026"     -d '{"platform":"whatsapp","uid":"34643994740","free_checks_used":0,"reset_trial":true}'
+
+
+curl -s -X POST https://web-production-1f0a4.up.railway.app/admin/set-balance \
+    -H "X-Admin-Token: qc-test-fred-2026" \
+    -H "Content-Type: application/json" \
+    -d '{"platform":"whatsapp","uid":"YOUR_NUMBER","free_checks_used":0}'
+
+  Replace YOUR_NUMBER with your WhatsApp number in international format without + — e.g. 447863795638.
+
+
+
+The free tier only gives 3/day — you can't set it to 999 directly. Easiest for testing is to give yourself a
+  paid balance instead:
+
+  curl -s -X POST https://web-production-1f0a4.up.railway.app/admin/set-balance \
+    -H "X-Admin-Token: qc-test-fred-2026" \
+    -H "Content-Type: application/json" \
+    -d '{"platform":"whatsapp","uid":"YOUR_NUMBER","cents":24975}'
+
+  That's 24,975 cents = 999 checks at 25¢ each. Fred will show your balance as paid and deduct normally from
+  there.
+
+
+claude --resume 49d5b881-c0f1-41c9-9c94-b6cd36e8974b
+
+
+
+Current stable build: 62266d1 — "docs: session 20 closed" start session 21 of 24.03.26
+                                                                                                               
+  To roll back to this at any time:                                                                            
+  git reset --hard 62266d1
+  git push --force origin main                                                                                 
+                                                                  
+  Worth tagging it properly if this is a known-good baseline:                                                  
+  git tag v20-stable 62266d1                                                                                   
+  git push origin v20-stable               
+

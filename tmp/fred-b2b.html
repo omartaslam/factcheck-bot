@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred — Fact-Checking for Journalists &amp; Newsrooms</title>
+<meta name="description" content="Multi-perspective fact-checking built for journalists and media organisations. 65+ sources across 6 world regions. No Western default. Verdicts in under 60 seconds.">
+<meta property="og:title" content="Fred — Fact-Checking for Journalists &amp; Newsrooms">
+<meta property="og:description" content="Balanced, multi-perspective fact-checking for journalists and media organisations. 65+ sources, 6 regions, no default narrative.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a;overflow-x:hidden}
+
+/* ── TOKENS ── */
+:root{
+  --gold:#D4AF37;
+  --gold-dim:rgba(212,175,55,0.12);
+  --gold-border:rgba(212,175,55,0.25);
+  --black:#0a0a0a;
+  --off:#f7f7f7;
+  --border:#ebebeb;
+  --muted:#888;
+  --radius:12px;
+}
+
+/* ── NAV ── */
+nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 4rem;height:64px;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;background:rgba(255,255,255,0.96);
+  backdrop-filter:blur(8px);z-index:100;
+}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo img{width:36px;height:36px;border-radius:8px;object-fit:cover}
+.logo-text{font-size:1rem;font-weight:900;letter-spacing:3px;color:var(--black)}
+.nav-links{display:flex;gap:2rem}
+.nav-links a{color:#555;font-size:0.855rem;text-decoration:none;font-weight:500;transition:color 0.15s}
+.nav-links a:hover{color:var(--black)}
+.nav-right{display:flex;gap:0.6rem;align-items:center}
+.btn-ghost{padding:7px 16px;border:1px solid var(--border);border-radius:8px;color:#444;font-size:0.82rem;font-weight:600;cursor:pointer;background:#fff;font-family:inherit;transition:border-color 0.15s}
+.btn-ghost:hover{border-color:#bbb}
+.btn-demo{padding:8px 18px;border-radius:8px;background:var(--gold);color:var(--black);font-size:0.82rem;font-weight:800;cursor:pointer;border:none;font-family:inherit;letter-spacing:0.2px;transition:opacity 0.15s}
+.btn-demo:hover{opacity:0.88}
+
+/* ── HERO ── */
+.hero{
+  max-width:820px;margin:0 auto;
+  text-align:center;padding:5rem 2rem 3.5rem;
+}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:var(--gold-dim);border:1px solid var(--gold-border);
+  color:#7a6000;font-size:0.75rem;font-weight:700;
+  padding:5px 14px;border-radius:20px;margin-bottom:1.75rem;letter-spacing:0.4px;
+}
+.hero h1{
+  font-size:4rem;font-weight:900;letter-spacing:-2.5px;line-height:1.04;
+  margin-bottom:1.25rem;color:var(--black);
+}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hero-sub{
+  font-size:1.05rem;color:#666;line-height:1.7;
+  max-width:560px;margin:0 auto 2.25rem;
+}
+.hero-actions{display:flex;justify-content:center;gap:0.85rem;flex-wrap:wrap;margin-bottom:1.25rem}
+.btn-primary{
+  padding:13px 28px;border-radius:10px;background:var(--black);color:#fff;
+  font-size:0.92rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;
+  transition:opacity 0.15s;letter-spacing:0.1px;
+}
+.btn-primary:hover{opacity:0.82}
+.btn-secondary{
+  padding:13px 28px;border-radius:10px;border:1.5px solid var(--border);
+  background:#fff;color:#444;font-size:0.92rem;font-weight:600;
+  cursor:pointer;font-family:inherit;transition:border-color 0.15s;
+}
+.btn-secondary:hover{border-color:#bbb}
+.hero-note{font-size:0.78rem;color:#bbb}
+.hero-note a{color:#25D366;font-weight:600;text-decoration:none}
+
+/* ── LOGO STRIP ── */
+.logo-strip{
+  border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  padding:1.75rem 4rem;text-align:center;background:var(--off);
+}
+.strip-label{font-size:0.68rem;font-weight:700;color:#ccc;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1.1rem}
+.strip-row{display:flex;justify-content:center;flex-wrap:wrap;gap:0.5rem;align-items:center}
+.strip-pill{
+  background:#fff;border:1px solid var(--border);
+  padding:5px 13px;border-radius:6px;
+  font-size:0.75rem;font-weight:700;color:#999;letter-spacing:0.3px;
+}
+
+/* ── USP DARK ── */
+.usp-section{background:var(--black);padding:5.5rem 4rem}
+.usp-inner{max-width:840px;margin:0 auto;text-align:center}
+.usp-kicker{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem}
+.usp-inner blockquote{
+  font-size:1.9rem;font-weight:700;color:#fff;line-height:1.5;letter-spacing:-0.5px;
+}
+.usp-inner blockquote em{font-style:normal;color:var(--gold)}
+.usp-inner p.usp-sub{
+  margin-top:1.75rem;font-size:0.875rem;color:rgba(255,255,255,0.38);
+  letter-spacing:0.5px;text-transform:uppercase;font-weight:600;
+}
+@media(max-width:768px){
+  .usp-section{padding:3.5rem 1.5rem}
+  .usp-inner blockquote{font-size:1.35rem}
+}
+
+/* ── STATS ── */
+.stats-section{padding:5rem 4rem;background:#fff}
+.stats-inner{max-width:1040px;margin:0 auto}
+.section-header{text-align:center;margin-bottom:3.5rem}
+.section-tag{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:0.9rem}
+.section-header h2{font-size:2.4rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:0.65rem;color:var(--black)}
+.section-header p{font-size:0.97rem;color:var(--muted);max-width:480px;margin:0 auto;line-height:1.7}
+
+.stats-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  border:1px solid var(--border);border-radius:14px;overflow:hidden;
+}
+.stat-box{
+  background:#fff;padding:2.25rem 1.75rem;
+  border-right:1px solid var(--border);position:relative;
+}
+.stat-box:last-child{border-right:none}
+.stat-box::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:3px;
+  background:linear-gradient(90deg,var(--gold),transparent);
+}
+.stat-num{font-size:3.25rem;font-weight:900;letter-spacing:-2px;color:var(--black);line-height:1;margin-bottom:0.5rem}
+.stat-num span{color:var(--gold)}
+.stat-title{font-size:0.875rem;font-weight:700;color:var(--black);margin-bottom:0.3rem}
+.stat-desc{font-size:0.78rem;color:#aaa;line-height:1.5}
+@media(max-width:900px){.stats-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:768px){.stats-section{padding:3.5rem 1.25rem}}
+
+/* ── HOW IT WORKS ── */
+.how-section{background:var(--off);padding:5rem 4rem;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.how-inner{max-width:1040px;margin:0 auto}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;position:relative;margin-top:1rem}
+.steps::before{
+  content:'';position:absolute;top:27px;
+  left:calc(16.66% + 1rem);right:calc(16.66% + 1rem);height:1px;
+  background:linear-gradient(90deg,var(--border),var(--gold),var(--border));z-index:0;
+}
+.step{text-align:center;position:relative;z-index:1}
+.step-num{
+  width:54px;height:54px;border-radius:50%;background:#fff;border:1.5px solid var(--border);
+  display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;
+}
+.step h3{font-size:0.97rem;font-weight:800;margin-bottom:0.5rem;color:var(--black)}
+.step p{font-size:0.84rem;color:var(--muted);line-height:1.7;max-width:230px;margin:0 auto}
+@media(max-width:768px){
+  .how-section{padding:3.5rem 1.25rem}
+  .steps{grid-template-columns:1fr;gap:1.75rem}
+  .steps::before{display:none}
+}
+
+/* ── FEATURES ── */
+.features-section{padding:5.5rem 4rem;max-width:1100px;margin:0 auto}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:0}
+.feat-card{
+  border:1px solid var(--border);border-radius:14px;padding:1.75rem;
+  background:#fff;position:relative;overflow:hidden;transition:all 0.2s;
+}
+.feat-card::after{
+  content:'';position:absolute;top:0;left:0;width:3px;height:100%;
+  background:var(--border);transition:background 0.2s;
+}
+.feat-card:hover{border-color:#ddd;box-shadow:0 8px 32px rgba(0,0,0,0.06);transform:translateY(-2px)}
+.feat-card:hover::after{background:var(--gold)}
+.feat-icon{
+  width:44px;height:44px;background:var(--gold-dim);border:1px solid var(--gold-border);
+  border-radius:10px;display:flex;align-items:center;justify-content:center;margin-bottom:1.2rem;
+}
+.feat-card h3{font-size:0.97rem;font-weight:800;margin-bottom:0.45rem;color:var(--black);letter-spacing:-0.2px}
+.feat-card p{font-size:0.84rem;color:#777;line-height:1.75}
+@media(max-width:1024px){.feat-grid{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){
+  .features-section{padding:3.5rem 1.25rem}
+  .feat-grid{grid-template-columns:1fr}
+}
+
+/* ── FOR NEWSROOMS (split layout) ── */
+.newsroom-section{background:var(--off);border-top:1px solid var(--border);border-bottom:1px solid var(--border);padding:6rem 4rem}
+.newsroom-inner{max-width:1040px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.newsroom-copy .section-tag{text-align:left;margin-bottom:1rem}
+.newsroom-copy h2{font-size:2.5rem;font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:1rem;color:var(--black)}
+.newsroom-copy p{font-size:0.97rem;color:#666;line-height:1.75;margin-bottom:2rem}
+.check-list{list-style:none;display:flex;flex-direction:column;gap:0.85rem;margin-bottom:2rem}
+.check-list li{display:flex;align-items:flex-start;gap:10px;font-size:0.9rem;color:#444;font-weight:500;line-height:1.55}
+.check-list li::before{
+  content:'';display:block;flex-shrink:0;
+  width:18px;height:18px;margin-top:1px;
+  background:var(--gold-dim);border:1.5px solid var(--gold);border-radius:50%;
+  background-image:url("data:image/svg+xml,%3Csvg width='10' height='8' viewBox='0 0 10 8' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 4l2.5 2.5L9 1' stroke='%23D4AF37' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;
+}
+.newsroom-panel{
+  background:var(--black);border-radius:16px;padding:2.5rem;
+  border:1px solid #222;
+}
+.panel-title{font-size:0.7rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem}
+.panel-item{
+  background:#111;border-radius:10px;padding:1.25rem;margin-bottom:0.85rem;
+  border:1px solid #222;
+}
+.panel-item:last-child{margin-bottom:0}
+.panel-item-head{display:flex;align-items:center;gap:8px;margin-bottom:0.4rem}
+.panel-item-head svg{color:var(--gold)}
+.panel-item-head span{font-size:0.875rem;font-weight:700;color:#fff}
+.panel-item p{font-size:0.8rem;color:rgba(255,255,255,0.45);line-height:1.6}
+@media(max-width:900px){
+  .newsroom-section{padding:4rem 1.5rem}
+  .newsroom-inner{grid-template-columns:1fr;gap:3rem}
+}
+
+/* ── API SECTION ── */
+.api-section{padding:6rem 4rem;max-width:1040px;margin:0 auto}
+.api-inner{display:grid;grid-template-columns:1fr 1fr;gap:5rem;align-items:center}
+.api-copy .section-tag{text-align:left;margin-bottom:1rem}
+.api-copy h2{font-size:2.5rem;font-weight:900;letter-spacing:-1.5px;line-height:1.1;margin-bottom:1rem;color:var(--black)}
+.api-copy p{font-size:0.97rem;color:#666;line-height:1.75;margin-bottom:1.5rem}
+.api-code{
+  background:var(--black);border-radius:14px;padding:1.75rem 2rem;
+  font-family:'SF Mono','Fira Code','Consolas',monospace;font-size:0.78rem;
+  line-height:1.8;color:#ccc;border:1px solid #222;overflow-x:auto;
+}
+.api-code .c-key{color:var(--gold)}
+.api-code .c-str{color:#98d4a3}
+.api-code .c-punct{color:#555}
+.api-code .c-val{color:#7ec8e3}
+.api-code .c-comment{color:#444}
+@media(max-width:900px){
+  .api-section{padding:4rem 1.5rem}
+  .api-inner{grid-template-columns:1fr;gap:3rem}
+}
+
+/* ── PRICING ── */
+.pricing-section{background:var(--off);border-top:1px solid var(--border);padding:6rem 4rem}
+.pricing-inner{max-width:1040px;margin:0 auto}
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.25rem;margin-top:1rem}
+.price-card{
+  background:#fff;border:1px solid var(--border);border-radius:16px;
+  padding:2.25rem;position:relative;display:flex;flex-direction:column;
+}
+.price-card.featured{
+  border-color:var(--gold);border-width:1.5px;
+  box-shadow:0 12px 40px rgba(212,175,55,0.12);
+}
+.price-badge{
+  display:inline-block;background:var(--gold);color:var(--black);
+  font-size:0.7rem;font-weight:800;padding:3px 10px;border-radius:20px;
+  letter-spacing:0.4px;margin-bottom:1.25rem;
+}
+.plan-name{font-size:0.7rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:var(--muted);margin-bottom:0.6rem}
+.plan-price{font-size:2.75rem;font-weight:900;letter-spacing:-2px;color:var(--black);line-height:1;margin-bottom:0.25rem}
+.plan-price span{font-size:1rem;font-weight:500;color:var(--muted);letter-spacing:0}
+.plan-desc{font-size:0.84rem;color:var(--muted);line-height:1.6;margin-bottom:2rem;min-height:3.5em}
+.plan-divider{border:none;border-top:1px solid var(--border);margin-bottom:1.5rem}
+.plan-features{list-style:none;display:flex;flex-direction:column;gap:0.75rem;margin-bottom:2rem;flex:1}
+.plan-features li{display:flex;align-items:flex-start;gap:9px;font-size:0.85rem;color:#444;line-height:1.5}
+.plan-features li::before{
+  content:'';display:block;flex-shrink:0;
+  width:16px;height:16px;margin-top:1px;
+  background-image:url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='7.25' stroke='%23D4AF37' stroke-width='1.25'/%3E%3Cpath d='M5 8.5l2 2 4-4' stroke='%23D4AF37' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;background-size:contain;
+}
+.plan-features li.dimmed{color:#bbb}
+.plan-features li.dimmed::before{
+  background-image:url("data:image/svg+xml,%3Csvg width='16' height='16' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='8' cy='8' r='7.25' stroke='%23ddd' stroke-width='1.25'/%3E%3Cpath d='M5.5 10.5l5-5M10.5 10.5l-5-5' stroke='%23ddd' stroke-width='1.25' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+.plan-cta{
+  display:block;width:100%;padding:12px;border-radius:10px;
+  font-size:0.88rem;font-weight:700;font-family:inherit;cursor:pointer;
+  text-align:center;transition:all 0.15s;border:1.5px solid var(--border);
+  background:#fff;color:var(--black);text-decoration:none;
+}
+.plan-cta:hover{border-color:#bbb}
+.plan-cta.dark{background:var(--black);color:#fff;border-color:var(--black)}
+.plan-cta.dark:hover{opacity:0.84}
+.plan-cta.gold{background:var(--gold);color:var(--black);border-color:var(--gold)}
+.plan-cta.gold:hover{opacity:0.88}
+@media(max-width:900px){
+  .pricing-section{padding:4rem 1.5rem}
+  .pricing-grid{grid-template-columns:1fr}
+}
+
+/* ── DEMO CTA ── */
+.demo-section{background:var(--black);padding:7rem 4rem;text-align:center}
+.demo-inner{max-width:640px;margin:0 auto}
+.demo-inner h2{font-size:2.75rem;font-weight:900;letter-spacing:-2px;color:#fff;line-height:1.1;margin-bottom:1rem}
+.demo-inner h2 em{font-style:normal;color:var(--gold)}
+.demo-inner p{font-size:1rem;color:rgba(255,255,255,0.45);line-height:1.7;margin-bottom:2.5rem}
+.demo-actions{display:flex;justify-content:center;gap:1rem;flex-wrap:wrap}
+.btn-demo-large{
+  padding:14px 32px;border-radius:10px;background:var(--gold);
+  color:var(--black);font-size:0.95rem;font-weight:800;
+  cursor:pointer;border:none;font-family:inherit;letter-spacing:0.1px;
+  transition:opacity 0.15s;text-decoration:none;display:inline-block;
+}
+.btn-demo-large:hover{opacity:0.88}
+.btn-outline-white{
+  padding:14px 32px;border-radius:10px;border:1.5px solid rgba(255,255,255,0.18);
+  color:rgba(255,255,255,0.75);font-size:0.95rem;font-weight:600;
+  cursor:pointer;background:transparent;font-family:inherit;
+  transition:border-color 0.15s;text-decoration:none;display:inline-block;
+}
+.btn-outline-white:hover{border-color:rgba(255,255,255,0.4)}
+@media(max-width:768px){
+  .demo-section{padding:5rem 1.5rem}
+  .demo-inner h2{font-size:2rem}
+}
+
+/* ── FOOTER ── */
+footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
+.footer-inner{max-width:1040px;margin:0 auto}
+.footer-top{display:grid;grid-template-columns:1.5fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem}
+.footer-brand .logo-text{font-size:0.95rem;font-weight:900;letter-spacing:3px;color:#fff;display:block;margin-bottom:0.75rem}
+.footer-brand p{font-size:0.82rem;color:#555;line-height:1.7;max-width:220px}
+.footer-col h4{font-size:0.72rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#444;margin-bottom:1rem}
+.footer-col ul{list-style:none;display:flex;flex-direction:column;gap:0.6rem}
+.footer-col ul li a{font-size:0.84rem;color:#555;text-decoration:none;transition:color 0.15s}
+.footer-col ul li a:hover{color:#888}
+.footer-bottom{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid #111;padding-top:1.5rem;
+}
+.footer-bottom p{font-size:0.78rem;color:#333}
+.footer-bottom a{color:#444;text-decoration:none}
+.footer-bottom a:hover{color:#666}
+@media(max-width:768px){
+  footer{padding:3rem 1.5rem 2rem}
+  .footer-top{grid-template-columns:1fr 1fr;gap:2rem}
+  .footer-bottom{flex-direction:column;gap:1rem;text-align:center}
+}
+@media(max-width:480px){.footer-top{grid-template-columns:1fr}}
+
+/* ── RESPONSIVE NAV ── */
+@media(max-width:1024px){nav{padding:0 2rem}}
+@media(max-width:768px){
+  .nav-links{display:none}
+  nav{padding:0 1.25rem}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="logo">
+    <img src="https://web-production-1f0a4.up.railway.app/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED</span>
+  </a>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#newsrooms">For Newsrooms</a>
+    <a href="#api">API</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn-ghost">Sign in</button>
+    <button class="btn-demo" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book a demo →</button>
+  </div>
+</nav>
+
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+    Fact-checking built for journalism
+  </div>
+  <h1>Truth without<br>a <em>default narrative.</em></h1>
+  <p class="hero-sub">Fred searches Western, Arabic, Spanish, French, Swahili and South Asian sources simultaneously — and holds every one to the same standard. For journalists and newsrooms that cover the whole world.</p>
+  <div class="hero-actions">
+    <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book a demo →</button>
+    <button class="btn-secondary" onclick="document.getElementById('pricing').scrollIntoView({behavior:'smooth'})">See pricing</button>
+  </div>
+  <p class="hero-note">Also available on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
+</div>
+
+
+<!-- SOURCE STRIP -->
+<div class="logo-strip">
+  <div class="strip-label">Searches across</div>
+  <div class="strip-row">
+    <span class="strip-pill">BBC</span>
+    <span class="strip-pill">Reuters</span>
+    <span class="strip-pill">Al Jazeera</span>
+    <span class="strip-pill">Haaretz</span>
+    <span class="strip-pill">Chequeado</span>
+    <span class="strip-pill">Snopes</span>
+    <span class="strip-pill">HRW</span>
+    <span class="strip-pill">Amnesty</span>
+    <span class="strip-pill">FullFact</span>
+    <span class="strip-pill">AFP Fact Check</span>
+    <span class="strip-pill">Bellingcat</span>
+    <span class="strip-pill">Dawn</span>
+    <span class="strip-pill">Geo News</span>
+    <span class="strip-pill">Maldita</span>
+    <span class="strip-pill">RFI</span>
+    <span class="strip-pill">France 24</span>
+    <span class="strip-pill">BBC Swahili</span>
+    <span class="strip-pill">+ 48 more</span>
+  </div>
+</div>
+
+
+<!-- USP DARK -->
+<div class="usp-section">
+  <div class="usp-inner">
+    <div class="usp-kicker">The Fred Standard</div>
+    <blockquote>Most fact-checkers have a <em>default narrative.</em> Fred doesn't. BBC and Reuters are held to the same standard as Al Jazeera and Telesur. No outlet gets automatic authority — because truth doesn't come with a <em>passport.</em></blockquote>
+    <p class="usp-sub">65+ sources · 6 regions · 0 default narratives</p>
+  </div>
+</div>
+
+
+<!-- STATS -->
+<div class="stats-section" id="features">
+  <div class="stats-inner">
+    <div class="section-header">
+      <div class="section-tag">Why Fred</div>
+      <h2>Built for depth.<br>Designed for deadlines.</h2>
+      <p>Up to 8 parallel searches across 6 world regions, synthesised into a single structured verdict — fast enough for breaking news.</p>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-num">65<span>+</span></div>
+        <div class="stat-title">Global sources</div>
+        <div class="stat-desc">Western, Arabic, Spanish, French, Swahili &amp; South Asian — searched simultaneously</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">6</div>
+        <div class="stat-title">World regions</div>
+        <div class="stat-desc">No single narrative dominates. Every region gets equal evidential weight</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">&lt;<span>60</span>s</div>
+        <div class="stat-title">Per verdict</div>
+        <div class="stat-desc">Fast enough for publication deadlines and live breaking-news coverage</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num"><span>0</span></div>
+        <div class="stat-title">Default narratives</div>
+        <div class="stat-desc">No political home. No advertisers. No editorial line to protect</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- HOW IT WORKS -->
+<div class="how-section">
+  <div class="how-inner">
+    <div class="section-header">
+      <div class="section-tag">How it works</div>
+      <h2>Three steps.<br>One verdict.</h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </div>
+        <h3>Submit any claim</h3>
+        <p>Paste a URL, quote, social post, image, audio or video. Web portal or WhatsApp — Fred accepts anything.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </div>
+        <h3>Fred searches 6 regions</h3>
+        <p>8 parallel searches across every major world region — Western, Arabic, Spanish, French, Swahili and South Asian sources at once.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <h3>Receive your verdict</h3>
+        <p>A structured verdict with sources cited, regional perspectives noted, confidence level and exportable audit trail.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- FEATURES -->
+<div class="features-section">
+  <div class="section-header">
+    <div class="section-tag">Capabilities</div>
+    <h2>The tool journalists<br>actually need</h2>
+    <p class="section-header p">Most fact-checkers treat Western media as the neutral baseline. Fred doesn't.</p>
+  </div>
+  <div class="feat-grid" style="margin-top:3.5rem">
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+      </div>
+      <h3>65+ Sources. 6 Regions.</h3>
+      <p>Western, Arabic, Spanish, French, Swahili and South Asian media — all searched simultaneously. Not sequentially. Not as an afterthought.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </div>
+      <h3>No Default Narrative</h3>
+      <p>International law applied consistently to all parties. ICJ rulings, Geneva Conventions and UN resolutions — not selectively, not depending on who's involved.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <h3>Breaking News Ready</h3>
+      <p>Verdicts in under 60 seconds. Fast enough for publication deadlines and live coverage — Tavily's live web aggregation bridges knowledge gaps in real time.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 9h6M9 12h6M9 15h4"/></svg>
+      </div>
+      <h3>Rich, Structured Verdicts</h3>
+      <p>Every verdict includes: verdict label, confidence level, key evidence, source citations, regional perspectives, omissions noted and a full audit trail. PDF export ready.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <h3>Team &amp; Newsroom Ready</h3>
+      <p>Shared check history, team seats and role management. Deploy Fred across your editorial team without needing dedicated fact-checking staff.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+      </div>
+      <h3>API Access</h3>
+      <p>Integrate Fred directly into your CMS, editorial workflow or publishing platform. REST API with full documentation, webhooks and SDKs available on request.</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- FOR NEWSROOMS -->
+<div class="newsroom-section" id="newsrooms">
+  <div class="newsroom-inner">
+    <div class="newsroom-copy">
+      <div class="section-tag">For newsrooms</div>
+      <h2>One tool for your<br>entire editorial team</h2>
+      <p>Fred is built for the speed and rigour of a working newsroom. One seat or fifty — every journalist on your team gets the same multi-perspective verification tool, without the overhead of a dedicated fact-checking unit.</p>
+      <ul class="check-list">
+        <li>Shared check history across your team</li>
+        <li>Role-based access — editors, reporters, researchers</li>
+        <li>Audit trail for every verdict, exportable as PDF</li>
+        <li>Bulk claim submission for investigations</li>
+        <li>WhatsApp channel for field journalists</li>
+        <li>API integration with your CMS or editorial tools</li>
+        <li>Monthly usage reports and analytics</li>
+        <li>Priority support with named account manager</li>
+      </ul>
+      <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Book a newsroom demo →</button>
+    </div>
+    <div class="newsroom-panel">
+      <div class="panel-title">Newsroom Dashboard</div>
+      <div class="panel-item">
+        <div class="panel-item-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+          <span>Verdict: TRUE — HIGH confidence</span>
+        </div>
+        <p>47 sources checked · Western, Arabic, Spanish · 38s · Exported PDF</p>
+      </div>
+      <div class="panel-item">
+        <div class="panel-item-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Verdict: MISLEADING — HIGH confidence</span>
+        </div>
+        <p>62 sources checked · 6 regions · Context omitted · 51s</p>
+      </div>
+      <div class="panel-item">
+        <div class="panel-item-head">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+          <span>Team · 12 checks today</span>
+        </div>
+        <p>4 journalists active · 3 pending review · 0 flagged</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- API -->
+<div class="api-section" id="api">
+  <div class="api-inner">
+    <div class="api-copy">
+      <div class="section-tag">API access</div>
+      <h2>Integrate Fred into<br>your workflow</h2>
+      <p>Plug multi-perspective fact-checking directly into your CMS, editorial platform or internal tools. REST API with JSON responses, webhook support and full source attribution.</p>
+      <ul class="check-list" style="margin-bottom:2rem">
+        <li>REST API with full OpenAPI documentation</li>
+        <li>Webhook support for async processing</li>
+        <li>Structured JSON — verdicts, sources, confidence</li>
+        <li>Volume pricing and SLA guarantees on Enterprise</li>
+        <li>White-label options available</li>
+      </ul>
+      <button class="btn-primary" onclick="document.getElementById('contact').scrollIntoView({behavior:'smooth'})">Request API access →</button>
+    </div>
+    <div class="api-code">
+<span class="c-comment">// POST /api/v1/check</span>
+{
+  <span class="c-key">"claim"</span><span class="c-punct">:</span> <span class="c-str">"ICJ issued a ceasefire order against Israel"</span><span class="c-punct">,</span>
+  <span class="c-key">"language"</span><span class="c-punct">:</span> <span class="c-str">"en"</span><span class="c-punct">,</span>
+  <span class="c-key">"regions"</span><span class="c-punct">:</span> <span class="c-val">["western","arabic","latam"]</span>
+}
+
+<span class="c-comment">// Response</span>
+{
+  <span class="c-key">"verdict"</span><span class="c-punct">:</span> <span class="c-str">"MISLEADING"</span><span class="c-punct">,</span>
+  <span class="c-key">"confidence"</span><span class="c-punct">:</span> <span class="c-str">"HIGH"</span><span class="c-punct">,</span>
+  <span class="c-key">"summary"</span><span class="c-punct">:</span> <span class="c-str">"The ICJ issued provisional measures, not a ceasefire order..."</span><span class="c-punct">,</span>
+  <span class="c-key">"sources"</span><span class="c-punct">:</span> <span class="c-val">[...]</span><span class="c-punct">,</span>
+  <span class="c-key">"regions_searched"</span><span class="c-punct">:</span> <span class="c-val">6</span><span class="c-punct">,</span>
+  <span class="c-key">"sources_searched"</span><span class="c-punct">:</span> <span class="c-val">61</span><span class="c-punct">,</span>
+  <span class="c-key">"duration_ms"</span><span class="c-punct">:</span> <span class="c-val">47200</span>
+}
+    </div>
+  </div>
+</div>
+
+
+<!-- PRICING -->
+<div class="pricing-section" id="pricing">
+  <div class="pricing-inner">
+    <div class="section-header">
+      <div class="section-tag">Pricing</div>
+      <h2>Transparent pricing.<br>No surprises.</h2>
+      <p>From solo journalists to global newsrooms. Every plan includes Fred's full multi-perspective search engine — no feature gates on source coverage.</p>
+    </div>
+    <div class="pricing-grid" style="margin-top:3.5rem">
+
+      <!-- Individual -->
+      <div class="price-card">
+        <div class="plan-name">Individual</div>
+        <div class="plan-price">£29<span>/mo</span></div>
+        <p class="plan-desc">For freelance journalists and independent reporters who need a reliable, balanced fact-checking tool.</p>
+        <hr class="plan-divider">
+        <ul class="plan-features">
+          <li>200 fact-checks per month</li>
+          <li>Full 65+ source coverage</li>
+          <li>All 6 regional search passes</li>
+          <li>Text, image, audio &amp; URL</li>
+          <li>WhatsApp access included</li>
+          <li>PDF export per verdict</li>
+          <li>30-day check history</li>
+          <li class="dimmed">Team seats</li>
+          <li class="dimmed">API access</li>
+          <li class="dimmed">Audit trail export</li>
+        </ul>
+        <a href="#contact" class="plan-cta dark">Get started →</a>
+      </div>
+
+      <!-- Newsroom — featured -->
+      <div class="price-card featured">
+        <div class="price-badge">Most popular</div>
+        <div class="plan-name">Newsroom</div>
+        <div class="plan-price">£149<span>/mo</span></div>
+        <p class="plan-desc">For editorial teams and media organisations. Shared workspace, team management and full audit trail.</p>
+        <hr class="plan-divider">
+        <ul class="plan-features">
+          <li>1,500 fact-checks per month</li>
+          <li>Full 65+ source coverage</li>
+          <li>All 6 regional search passes</li>
+          <li>Text, image, audio, video &amp; URL</li>
+          <li>Up to 10 team seats</li>
+          <li>Shared check history</li>
+          <li>Role-based access control</li>
+          <li>Bulk claim submission</li>
+          <li>Full audit trail &amp; PDF export</li>
+          <li class="dimmed">API access</li>
+        </ul>
+        <a href="#contact" class="plan-cta gold">Book a demo →</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="price-card">
+        <div class="plan-name">Enterprise &amp; API</div>
+        <div class="plan-price" style="font-size:2rem;letter-spacing:-1px">Custom</div>
+        <p class="plan-desc">For large media organisations, wire services and teams that need API integration, white-label or volume pricing.</p>
+        <hr class="plan-divider">
+        <ul class="plan-features">
+          <li>Unlimited fact-checks</li>
+          <li>Full 65+ source coverage</li>
+          <li>All 6 regional search passes</li>
+          <li>Unlimited team seats</li>
+          <li>Full REST API access</li>
+          <li>Webhook &amp; CMS integration</li>
+          <li>White-label options</li>
+          <li>Custom source lists</li>
+          <li>SLA with uptime guarantee</li>
+          <li>Dedicated account manager</li>
+        </ul>
+        <a href="#contact" class="plan-cta">Contact us →</a>
+      </div>
+
+    </div>
+    <p style="text-align:center;margin-top:2rem;font-size:0.82rem;color:#bbb">All plans include a 14-day free trial. Pay monthly or annually (2 months free). Annual invoicing available for newsrooms.</p>
+  </div>
+</div>
+
+
+<!-- DEMO / CONTACT CTA -->
+<div class="demo-section" id="contact">
+  <div class="demo-inner">
+    <h2>See Fred in<br><em>your</em> newsroom.</h2>
+    <p>Book a 30-minute demo and we'll show you exactly how Fred works with your team's workflow — from WhatsApp to CMS integration.</p>
+    <div class="demo-actions">
+      <a href="mailto:hello@fredcheck.com?subject=Demo%20request" class="btn-demo-large">Book a demo →</a>
+      <a href="mailto:hello@fredcheck.com" class="btn-outline-white">Email us</a>
+    </div>
+    <p style="margin-top:2rem;font-size:0.78rem;color:rgba(255,255,255,0.2)">Or message Fred on WhatsApp: <a href="https://wa.me/447863795638" style="color:rgba(255,255,255,0.35);text-decoration:none">wa.me/447863795638</a></p>
+  </div>
+</div>
+
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <span class="logo-text">FRED</span>
+        <p>Multi-perspective fact-checking for journalists and newsrooms. Truth beyond borders.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <ul>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#newsrooms">For Newsrooms</a></li>
+          <li><a href="#api">API</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#contact">Contact</a></li>
+          <li><a href="mailto:hello@fredcheck.com">hello@fredcheck.com</a></li>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Elsewhere</h4>
+        <ul>
+          <li><a href="https://wa.me/447863795638">WhatsApp →</a></li>
+          <li><a href="https://fredcheck.com">fredcheck.com</a></li>
+          <li><a href="https://fredcheck.co.uk">fredcheck.co.uk</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 Fred. All rights reserved.</p>
+      <p>Built for journalists. Powered by <a href="#">Claude AI</a>.</p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

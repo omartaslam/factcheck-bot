@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fred — Mockup B v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a;overflow-x:hidden}
+
+/* NAV */
+nav{display:flex;align-items:center;justify-content:space-between;padding:0.9rem 4rem;border-bottom:1px solid #f0f0f0}
+.logo{display:flex;align-items:center;gap:12px}
+.logo img{width:54px;height:54px;border-radius:12px;object-fit:cover}
+.logo-text{font-size:1.1rem;font-weight:800;letter-spacing:2px;color:#0a0a0a}
+.nav-links{display:flex;gap:2rem}
+.nav-links a{color:#666;font-size:0.875rem;text-decoration:none;font-weight:500;transition:color 0.2s}
+.nav-links a:hover{color:#0a0a0a}
+.nav-right{display:flex;gap:0.75rem;align-items:center}
+.btn-ghost{padding:7px 18px;border:1px solid #e5e5e5;border-radius:8px;color:#444;font-size:0.85rem;font-weight:600;cursor:pointer;background:#fff;font-family:inherit}
+.btn-dark{padding:8px 20px;border-radius:8px;background:#0a0a0a;color:#fff;font-size:0.85rem;font-weight:700;cursor:pointer;border:none;font-family:inherit}
+
+/* HERO — everything above fold */
+.hero{text-align:center;padding:3rem 2rem 2rem;max-width:780px;margin:0 auto}
+.hero-badge{display:inline-flex;align-items:center;gap:8px;background:#f5f5f5;border:1px solid #e5e5e5;color:#444;font-size:0.78rem;font-weight:600;padding:5px 14px;border-radius:20px;margin-bottom:1.5rem;letter-spacing:0.3px}
+.hero h1{font-size:3.75rem;font-weight:900;letter-spacing:-2.5px;line-height:1.05;margin-bottom:1.1rem;color:#0a0a0a}
+.hero h1 span{color:#D4AF37}
+.hero-sub{font-size:1rem;color:#777;line-height:1.65;max-width:520px;margin:0 auto 1.75rem}
+
+/* SEARCH BOX — lenz.io style: compact, single line feel */
+.search-wrap{max-width:640px;margin:0 auto;border:1.5px solid #e0e0e0;border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.05);transition:border-color 0.2s}
+.search-wrap:focus-within{border-color:#0a0a0a}
+.search-input{width:100%;border:none;outline:none;font-size:0.95rem;font-family:inherit;color:#0a0a0a;resize:none;padding:1rem 1.25rem 0.5rem;line-height:1.5;height:72px;background:transparent}
+.search-input::placeholder{color:#bbb}
+.search-footer{display:flex;justify-content:space-between;align-items:center;padding:0.6rem 1rem 0.75rem}
+.search-note{font-size:0.75rem;color:#ccc}
+.btn-check{padding:7px 16px;background:transparent;color:#888;font-weight:500;font-size:0.82rem;border-radius:7px;border:1px solid #e0e0e0;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:6px;transition:all 0.2s}
+.btn-check:hover{border-color:#0a0a0a;color:#0a0a0a}
+.hero-wa{font-size:0.82rem;color:#bbb;margin-top:1.1rem}
+.hero-wa a{color:#25D366;font-weight:600;text-decoration:none}
+
+/* SOURCE STRIP */
+.source-strip{border-top:1px solid #f0f0f0;padding:1.5rem 4rem;text-align:center}
+.strip-label{font-size:0.7rem;font-weight:700;color:#ccc;letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1rem}
+.source-row{display:flex;justify-content:center;gap:0.6rem;align-items:center;flex-wrap:wrap}
+.source-pill{background:#f7f7f7;border:1px solid #eee;padding:6px 14px;border-radius:7px;font-size:0.78rem;font-weight:700;color:#999;letter-spacing:0.3px}
+
+/* USP STATEMENT */
+.usp-section{background:#0a0a0a;padding:4.5rem 4rem}
+.usp-inner{max-width:820px;margin:0 auto;text-align:center}
+.usp-inner blockquote{font-size:1.75rem;font-weight:700;color:#fff;line-height:1.5;letter-spacing:-0.5px}
+.usp-inner blockquote em{font-style:normal;color:#D4AF37}
+.usp-inner p{margin-top:1.5rem;font-size:0.875rem;color:rgba(255,255,255,0.35);letter-spacing:0.5px;text-transform:uppercase;font-weight:600}
+@media(max-width:768px){
+  .usp-section{padding:3rem 1.5rem}
+  .usp-inner blockquote{font-size:1.3rem}
+}
+
+/* STATS SECTION */
+.stats-section{background:#fafafa;border-top:1px solid #f0f0f0;border-bottom:1px solid #f0f0f0;padding:4rem}
+.stats-inner{max-width:1000px;margin:0 auto}
+.stats-header{text-align:center;margin-bottom:3rem}
+.stats-header h2{font-size:2.25rem;font-weight:900;letter-spacing:-1.25px;margin-bottom:0.6rem}
+.stats-header p{font-size:0.97rem;color:#888;max-width:480px;margin:0 auto;line-height:1.65}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid #e8e8e8;border-radius:14px;overflow:hidden;margin-bottom:3.5rem}
+.stat-box{background:#fff;padding:2rem 1.75rem;border-right:1px solid #f0f0f0;position:relative}
+.stat-box:last-child{border-right:none}
+.stat-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#D4AF37,transparent)}
+.stat-num{font-size:3.25rem;font-weight:900;letter-spacing:-2px;color:#0a0a0a;line-height:1;margin-bottom:0.6rem}
+.stat-num span{color:#D4AF37}
+.stat-title{font-size:0.875rem;font-weight:700;color:#0a0a0a;margin-bottom:0.25rem}
+.stat-label{font-size:0.78rem;color:#aaa;line-height:1.4}
+
+/* HOW IT WORKS */
+.how-label{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#D4AF37;text-align:center;margin-bottom:2rem}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem;position:relative}
+.steps::before{content:'';position:absolute;top:28px;left:calc(16.66% + 1rem);right:calc(16.66% + 1rem);height:1px;background:linear-gradient(90deg,#e5e5e5,#D4AF37,#e5e5e5);z-index:0}
+.step{text-align:center;position:relative;z-index:1}
+.step-num{width:56px;height:56px;border-radius:50%;background:#fff;border:1.5px solid #e5e5e5;display:flex;align-items:center;justify-content:center;margin:0 auto 1.25rem;font-size:1.1rem;font-weight:800;color:#0a0a0a}
+.step h3{font-size:1rem;font-weight:700;margin-bottom:0.5rem;color:#0a0a0a}
+.step p{font-size:0.85rem;color:#888;line-height:1.65;max-width:220px;margin:0 auto}
+
+@media(max-width:768px){
+  .stats-grid{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr;gap:1.5rem}
+  .steps::before{display:none}
+  .stats-section{padding:3rem 1.25rem}
+}
+
+/* FEATURES */
+.features{padding:5rem 4rem;max-width:1100px;margin:0 auto}
+.feat-header{text-align:center;margin-bottom:3.5rem}
+.feat-tag{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:#D4AF37;margin-bottom:1rem}
+.feat-title{font-size:2.5rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:0.75rem;color:#0a0a0a}
+.feat-sub{font-size:0.97rem;color:#888;max-width:460px;margin:0 auto;line-height:1.7}
+.feat-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem}
+.feat-card{border:1px solid #f0f0f0;border-radius:14px;padding:1.75rem;transition:all 0.2s;background:#fff;position:relative;overflow:hidden}
+.feat-card::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;background:#f0f0f0;transition:background 0.2s}
+.feat-card:hover{border-color:#e0e0e0;box-shadow:0 8px 32px rgba(0,0,0,0.06);transform:translateY(-2px)}
+.feat-card:hover::after{background:#D4AF37}
+.feat-icon{width:46px;height:46px;background:rgba(212,175,55,0.08);border:1px solid rgba(212,175,55,0.2);border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:1.25rem}
+.feat-card h3{font-size:1rem;font-weight:800;margin-bottom:0.5rem;color:#0a0a0a;letter-spacing:-0.3px}
+.feat-card p{font-size:0.85rem;color:#777;line-height:1.7}
+
+/* RESPONSIVE */
+@media(max-width:1024px){
+  nav{padding:0.9rem 2rem}
+  .verdict-inner{grid-template-columns:1fr;gap:2.5rem}
+  .features{padding:4rem 2rem}
+  .feat-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:768px){
+  nav{padding:0.75rem 1.25rem}
+  .nav-links{display:none}
+  .hero{padding:2rem 1.25rem 1.5rem}
+  .hero h1{font-size:2.75rem;letter-spacing:-1.5px}
+  .hero-sub{font-size:0.92rem}
+  .search-wrap{margin:0 0.5rem}
+  .source-strip{padding:1.5rem 1.25rem}
+  .verdict-section{padding:3.5rem 1.25rem}
+  .features{padding:3.5rem 1.25rem}
+  .feat-grid{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .hero h1{font-size:2.2rem;letter-spacing:-1px}
+  .feat-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">
+    <img src="https://web-production-1f0a4.up.railway.app/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED</span>
+  </div>
+  <div class="nav-links">
+    <a href="#">Features</a>
+    <a href="#">For Newsrooms</a>
+    <a href="#">Pricing</a>
+    <a href="#">Contact</a>
+  </div>
+  <div class="nav-right">
+    <button class="btn-ghost">Sign In</button>
+    <button class="btn-dark">Start free →</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="2" x2="12" y2="22"/>
+      <path d="M2 12h20"/>
+      <path d="M12 2a15 15 0 010 20"/>
+      <path d="M12 2a15 15 0 000 20"/>
+    </svg>
+    Truth Beyond Borders
+  </div>
+  <h1>Fact-check<br>anything. <span>Fast.</span></h1>
+  <p class="hero-sub">Multi-perspective verdicts from 65+ sources across Western, Arabic and Latin American media — verified by Claude AI in under 60 seconds.</p>
+
+  <div class="search-wrap">
+    <textarea class="search-input" placeholder="Paste a claim, URL, quote or WhatsApp forward…"></textarea>
+    <div class="search-footer">
+      <span class="search-note">1 free check · No account needed</span>
+      <button class="btn-check">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        Check it
+      </button>
+    </div>
+  </div>
+  <p class="hero-wa">Also on WhatsApp — <a href="#">message Fred →</a></p>
+</div>
+
+<div class="source-strip">
+  <div class="strip-label">Searches across</div>
+  <div class="source-row">
+    <span class="source-pill">BBC</span>
+    <span class="source-pill">Al Jazeera</span>
+    <span class="source-pill">Reuters</span>
+    <span class="source-pill">Chequeado</span>
+    <span class="source-pill">Haaretz</span>
+    <span class="source-pill">Snopes</span>
+    <span class="source-pill">HRW</span>
+    <span class="source-pill">Amnesty</span>
+    <span class="source-pill">+ 57 more</span>
+  </div>
+</div>
+
+<div class="usp-section">
+  <div class="usp-inner">
+    <blockquote>Most fact-checkers have a <em>default narrative.</em> Fred doesn't. We search Western, Arabic, Spanish, French, Swahili and South Asian sources simultaneously — and hold <em>every one of them</em> to the same standard.</blockquote>
+    <p>The Fred Standard</p>
+  </div>
+</div>
+
+<div class="stats-section">
+  <div class="stats-inner">
+    <div class="stats-header">
+      <h2>Built for depth.<br>Designed for speed.</h2>
+      <p>Fred runs up to 8 parallel searches across 6 world regions simultaneously — then synthesises everything into a single, structured verdict.</p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-box">
+        <div class="stat-num">65<span>+</span></div>
+        <div class="stat-title">Global sources</div>
+        <div class="stat-label">Western, Arabic, Spanish, French, Swahili &amp; South Asian — searched simultaneously</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">6</div>
+        <div class="stat-title">World regions</div>
+        <div class="stat-label">No single narrative dominates. Every region gets equal weight</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num">&lt;<span>60</span>s</div>
+        <div class="stat-title">Per verdict</div>
+        <div class="stat-label">Fast enough for breaking news and publication deadlines</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-num"><span>0</span></div>
+        <div class="stat-title">Default narratives</div>
+        <div class="stat-label">No political home. No advertisers. No editorial line to protect</div>
+      </div>
+    </div>
+
+    <div class="how-label">How it works</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        </div>
+        <h3>Send Fred a claim</h3>
+        <p>Paste a URL, quote, social post, image, audio or video. Web or WhatsApp — Fred accepts anything.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
+        </div>
+        <h3>Fred searches 6 regions</h3>
+        <p>8 parallel searches across Western, Arabic, Spanish, French, Swahili and South Asian sources — simultaneously.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
+        </div>
+        <h3>Receive your verdict</h3>
+        <p>A structured verdict with sources cited, regional perspectives noted, and confidence level — in under 60 seconds.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="features">
+  <div class="feat-header">
+    <div class="feat-tag">Why Fred</div>
+    <h2 class="feat-title">The tool journalists<br>actually need</h2>
+    <p class="feat-sub">Most fact-checkers treat Western media as the neutral baseline. Fred doesn't.</p>
+  </div>
+  <div class="feat-grid">
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg></div>
+      <h3>65+ Sources. 6 Regions.</h3>
+      <p>Western, Arabic, Spanish, French, Swahili and South Asian media — all searched at once. Not sequentially. Not as an afterthought.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg></div>
+      <h3>No Default Narrative</h3>
+      <p>BBC and Reuters are held to the same standard as Al Jazeera and Telesur. No source gets automatic authority because of where it's from.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
+      <h3>Built for Newsrooms</h3>
+      <p>Team seats, shared check history, audit trail and PDF export. Deploy Fred across your editorial team — no dedicated fact checking staff needed.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M5 7l7-5 7 5"/><path d="M3 10l4 8a5 5 0 008 0l4-8"/></svg></div>
+      <h3>International Law as Standard</h3>
+      <p>ICJ rulings, Geneva Conventions and UN resolutions applied consistently — to all parties. Not selectively depending on who's involved.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div>
+      <h3>Breaking News Ready</h3>
+      <p>Verdicts in under 60 seconds. Fast enough for publication deadlines and live coverage — when every minute counts.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+      <h3>For Investigators &amp; Activists</h3>
+      <p>Counter disinformation with evidence-backed verdicts. Fred surfaces non-Western sources and applies international law consistently — ammunition to push back against state narratives.</p>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

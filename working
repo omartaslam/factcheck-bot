@@ -1,0 +1,57 @@
+All changes shipped:                                                                                         
+                                                                                                               
+  ┌─────────────────┬──────────────────────────────────────────────────────────────────────────────────────┐ 
+  │                 │                                                                                      │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+  │ Image input     │ Paste screenshot from clipboard anywhere on page, or click the 🖼 icon to attach a    │
+  │                 │ file. Shows thumbnail + "Image" badge. Goes straight to OCR → fact-check.            │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
+  │ "Who benefits?" │ Removed from web result panel                                                        │
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
+  │ Truth bar       │ Now animates only when it scrolls into view (IntersectionObserver)                   │ 
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
+  │ Loading steps   │ Step 1: "Identifying claims" · Step 2: now includes French & Urdu                    │   
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+  │ Placeholder     │ "Paste or type a claim, URL, quote or social media post…"                            │   
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤ 
+  │ "See how it     │ Scroll link in hero, next to the WhatsApp note                                       │
+  │ works →"        │                                                                                      │   
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤
+  │ Body text       │ text-align: justify in result panel — editorial/newspaper feel                       │   
+  │ alignment       │                                                                                      │   
+  ├─────────────────┼──────────────────────────────────────────────────────────────────────────────────────┤   
+  │ Visual          │ Slightly reduced font sizes, tighter padding in search footer                        │   
+  │ tightening      │                                                                                      │   
+  └─────────────────┴──────────────────────────────────────────────────────────────────────────────────────┘
+                                                                                                               
+  ---                                                                                                        
+                                                                                           
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	Recent checks.. 
+	
+	
+	
+	BIG tasks:
+	1. Multi currency
+	2. web claim process 
+	3. Instructions: forward, paste, type
+	4. Make beta italic
+	5. Feedback reminder for free users 
+	6. sample output on web display section
+	7. logic around trumps crypo profits, inconsistent results
+	8. unverifiabke fall back
+	9. half true
+	10.
