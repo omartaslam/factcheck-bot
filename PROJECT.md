@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 24 — CLOSED)
+**Last updated:** 2026-03-25 (session 26 — IN PROGRESS)
 
 ---
 
@@ -317,7 +317,22 @@ Type HELP anytime for a full guide.
 
 ## 12. Recently Completed Work
 
-### Session 24 — 2026-03-25 (CLOSED)
+### Session 26 — 2026-03-25 (IN PROGRESS)
+
+**Build baseline:** commit `6730928`
+
+**Fixes:**
+- Removed NOTE field from Fred.vcf (`6730928`) — was showing long description block between category and email in vcard
+- WA Business Profile `about` field cleared — session 24 had set it to "Fact-check any claim in 60 seconds. No Western bias." via API, now replaced with "Fact Check"
+- WA Business Profile `description` field also cleared
+
+**⚠️ OUTSTANDING: WA Business Profile description LOST**
+- Session 24 `/admin/update-wa-profile` call overwrote a carefully crafted description without saving it first
+- User remembers: started with "Truth without borders 🌍", no email/URL at end, ~512 chars
+- No git record exists — was set manually in WA Manager
+- User searching for it — once found, set via API: `curl -X POST .../admin/update-wa-profile -d '{"description": "..."}'`
+
+### Session 25 — 2026-03-25 (CLOSED)
 
 **Build baseline:** commit `d275baf`
 
