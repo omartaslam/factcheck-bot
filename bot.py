@@ -6766,13 +6766,14 @@ def admin_delete_user():
     uid = str((request.get_json() or {}).get("uid", ""))
     if not uid:
         return jsonify({"error": "uid required"}), 400
-    conn = _db()
     try:
+        conn = _db()
         conn.execute("DELETE FROM platform_users WHERE platform='whatsapp' AND platform_id=?", (uid,))
         conn.execute("DELETE FROM request_log WHERE uid=?", (uid,))
         conn.commit()
-    finally:
         conn.close()
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     return jsonify({"ok": True, "deleted": uid})
 
 @app.route("/admin/stats", methods=["GET"])
