@@ -6758,6 +6758,20 @@ def admin_set_balance():
         c.execute(f"UPDATE platform_users SET {', '.join(fields)} WHERE platform=? AND platform_id=?", vals)
     return jsonify({"ok": True, "uid": uid, "balance_cents": cents, "reset_trial": reset_trial})
 
+@app.route("/admin/delete-user", methods=["POST"])
+def admin_delete_user():
+    """Delete a WA user entirely — for new-user simulation. Admin use only."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    uid = str((request.get_json() or {}).get("uid", ""))
+    if not uid:
+        return jsonify({"error": "uid required"}), 400
+    with _db() as c:
+        c.execute("DELETE FROM platform_users WHERE platform='whatsapp' AND platform_id=?", (uid,))
+        c.execute("DELETE FROM request_log WHERE uid=?", (uid,))
+        c.execute("DELETE FROM history WHERE user_id=(SELECT id FROM web_users WHERE email=?)", (uid,))
+    return jsonify({"ok": True, "deleted": uid})
+
 @app.route("/admin/stats", methods=["GET"])
 def admin_stats():
     """Usage stats snapshot for cost monitoring."""
