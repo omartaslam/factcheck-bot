@@ -2109,16 +2109,22 @@ async function loadHistory(){
       const rk = rawRating.toUpperCase().replace(/\s+/g,'_');
       const date = new Date(item.created_at*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
       const q = item.query||'';
+      // Prefer extracted claim text over raw input (avoids showing raw URLs)
+      const claimText = (results[0]&&results[0].claim)||'';
+      let displayQ = claimText || q;
+      if(!claimText){
+        try{ const u=new URL(q); displayQ=u.hostname.replace(/^www\./,''); }catch(e){}
+      }
       const el = document.createElement('div');
       el.className = 'history-item';
-      el.title = q;
+      el.title = displayQ;
       el.onclick = ()=>{
         document.getElementById('claimInput').value = q;
         window.scrollTo({top:0,behavior:'smooth'});
       };
       el.innerHTML =
         '<div class="history-dot '+rk+'"></div>'+
-        '<span class="history-query">'+(q.length>90?q.slice(0,90)+'\u2026':q)+'</span>'+
+        '<span class="history-query">'+(displayQ.length>90?displayQ.slice(0,90)+'\u2026':displayQ)+'</span>'+
         '<span class="history-chip '+rk+'">'+rawRating.toUpperCase().replace(/_/g,' ')+'</span>'+
         '<span class="history-date">'+date+'</span>';
       list.appendChild(el);
