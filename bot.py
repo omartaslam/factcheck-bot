@@ -4047,7 +4047,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         verdict_msg_id = send(from_num, report)
         _log_request("whatsapp", from_num, st, query, claim, a, report, cost, wa_message_id=verdict_msg_id, source_url=source_url or None)
         if billing_type == "free" and verdict_msg_id:
-            fb_prompt_id = send(from_num, "_How did Fred do? ↩️ Reply to this message with 👍 👎 or a comment._")
+            fb_prompt_id = send(from_num, "_How did Fred do? Reply to this message with 👍 👎 or a comment._")
             if fb_prompt_id:
                 try:
                     with _db() as c:
