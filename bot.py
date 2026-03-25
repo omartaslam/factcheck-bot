@@ -3697,8 +3697,6 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     else:
         footer = ["──────────────", version]
     footer.append(f"_{random.choice(_TAGLINES)}_")
-    if is_free:
-        footer.append("_Useful? React 👍 👎 to this verdict, or reply with a comment._")
     footer.append(WEBSITE_URL)
     lines += footer
     if ad:
@@ -4055,6 +4053,14 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*")
         verdict_msg_id = send(from_num, report)
         _log_request("whatsapp", from_num, st, query, claim, a, report, cost, wa_message_id=verdict_msg_id, source_url=source_url or None)
+        if billing_type == "free" and verdict_msg_id:
+            fb_prompt_id = send(from_num, "_How did Fred do? React 👍 👎 or reply with a comment._")
+            if fb_prompt_id:
+                try:
+                    with _db() as c:
+                        c.execute("UPDATE request_log SET feedback_prompt_msg_id=? WHERE wa_message_id=?", (fb_prompt_id, verdict_msg_id))
+                except Exception as _e:
+                    log.warning("feedback_prompt_msg_id store failed: %s", _e)
 
     # ── React to original message with most significant verdict emoji ──────
     if msg_id and all_ratings:
@@ -4620,9 +4626,9 @@ def process(from_num, message, profile_name=None):
             score = 1 if emoji in _POSITIVE else (-1 if emoji in _NEGATIVE else 0)
             try:
                 with _db() as c:
-                    c.execute("UPDATE request_log SET feedback=?, feedback_emoji=? WHERE wa_message_id=?",
-                              (score, emoji, reacted_msg_id))
-                    log_row = c.execute("SELECT id FROM request_log WHERE wa_message_id=?", (reacted_msg_id,)).fetchone()
+                    c.execute("UPDATE request_log SET feedback=?, feedback_emoji=? WHERE wa_message_id=? OR feedback_prompt_msg_id=?",
+                              (score, emoji, reacted_msg_id, reacted_msg_id))
+                    log_row = c.execute("SELECT id FROM request_log WHERE wa_message_id=? OR feedback_prompt_msg_id=?", (reacted_msg_id, reacted_msg_id)).fetchone()
                 log.info("Feedback %s (%d) recorded for msg %s", emoji, score, reacted_msg_id[:20])
                 if score != 0:
                     send(from_num, "✅ _Thanks for the feedback — it helps us improve Fred._")
@@ -4640,7 +4646,7 @@ def process(from_num, message, profile_name=None):
         if context_id:
             try:
                 with _db() as c:
-                    row = c.execute("SELECT id FROM request_log WHERE wa_message_id=?", (context_id,)).fetchone()
+                    row = c.execute("SELECT id FROM request_log WHERE wa_message_id=? OR feedback_prompt_msg_id=?", (context_id, context_id)).fetchone()
                 if row:
                     feedback_body = message.get("text", {}).get("body", "").strip()
                     with _db() as c:
@@ -5586,6 +5592,8 @@ def init_db():
         try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_text TEXT")
         except Exception: pass
         try: c.execute("ALTER TABLE request_log ADD COLUMN source_url TEXT")
+        except Exception: pass
+        try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_prompt_msg_id TEXT")
         except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
