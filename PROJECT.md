@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 28 — IN PROGRESS)
+**Last updated:** 2026-03-25 (session 28 — COMPLETE)
 
 ---
 
@@ -317,7 +317,32 @@ Type HELP anytime for a full guide.
 
 ## 12. Recently Completed Work
 
-### Session 26 — 2026-03-25 (IN PROGRESS)
+### Session 28 — 2026-03-25 (COMPLETE)
+
+**Build baseline:** commit `b4cbb37`
+
+**Fixes:**
+- Standalone emoji-only messages now silently ignored — no longer trigger a fact-check (`351dabd`)
+- Text reply-as-feedback confirmed working — was never broken, user was sending standalone text not a WA reply
+- Debug logging (`log.info` reply-feedback lines) can now be removed — confirmed working via Railway logs
+
+**New:**
+- `/admin/usage` endpoint — per-user check counts, optional `from`/`to` date params (`b4cbb37`)
+
+---
+
+### Session 27 — 2026-03-25 (COMPLETE)
+
+**Build baseline:** commit `97f46f6`
+
+**Fixes:**
+- WA Business Profile updated: description "Truth Beyond Borders 🌎", about text updated, websites removed
+- Feedback prompt reworded — no ↩️ emoji, cleaner: "_How did Fred do? Reply to this message with 👍 👎 or a comment._"
+- Debug logging added to reply-feedback path (`7458a45`) — now confirmed and can be removed
+
+---
+
+### Session 26 — 2026-03-25 (COMPLETE)
 
 **Build baseline:** commit `6730928`
 
