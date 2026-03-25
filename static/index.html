@@ -457,8 +457,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .hero-how-link:hover{color:#888}
 
 /* ── RESULT PANEL POLISH ── */
-.rp-section-text{font-size:0.88rem;color:#1a1a1a;line-height:1.74;text-align:justify;hyphens:auto}
-.rp-conf-reason{font-size:0.79rem;color:#999;line-height:1.55;margin-top:0.1rem;text-align:justify}
+.rp-conf-reason{font-size:0.79rem;color:#999;line-height:1.55;margin-top:0.1rem}
 
 /* ── LOADING STATE ── */
 .search-loading{
@@ -885,7 +884,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
       <div class="img-preview" id="imagePreview">
         <img class="img-thumb" id="imgThumb" src="" alt="">
         <span class="img-name" id="imgName">Image</span>
-        <span class="img-badge">Image</span>
+        <span class="img-badge" title="Fred will extract text from this image and fact-check it">AI read</span>
         <button class="img-remove" onclick="clearImage()" title="Remove image">✕</button>
       </div>
       <div class="search-footer">
@@ -1162,29 +1161,29 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   <div class="how-inner">
     <div class="section-header">
       <div class="section-tag">How it works</div>
-      <h2>Three steps.<br>One verdict.</h2>
+      <h2>From tip to verdict<br>in under 60 seconds.</h2>
     </div>
     <div class="steps">
       <div class="step">
         <div class="step-num">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </div>
-        <h3>Submit any claim</h3>
-        <p>Paste a URL, quote, social post, image, audio or video. Web portal or WhatsApp — Fred accepts anything.</p>
+        <h3>Send the claim as it arrived</h3>
+        <p>A URL, screenshot, quote, voice note or video — paste or forward it. No reformatting. Fred reads it in any language.</p>
       </div>
       <div class="step">
         <div class="step-num">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>
         </div>
-        <h3>Fred searches 6 regions</h3>
-        <p>8 parallel searches across every major world region — Western, Arabic, Spanish, French and regional sources at once.</p>
+        <h3>Every region answers at once</h3>
+        <p>Fred searches Western, Arabic, Spanish and French media simultaneously — not sequentially. What each region is saying, not just what one is.</p>
       </div>
       <div class="step">
         <div class="step-num">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#D4AF37" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
         </div>
-        <h3>Receive your verdict</h3>
-        <p>A structured verdict with sources cited, regional perspectives noted, confidence level and exportable audit trail.</p>
+        <h3>A verdict you can stand behind</h3>
+        <p>Structured finding with sources named, regional perspectives noted, confidence rated and a full audit trail — ready for editors and legal.</p>
       </div>
     </div>
   </div>
@@ -2000,18 +1999,8 @@ function renderResult(data, submittedClaim){
     clSec.style.display = 'block';
   } else { clSec.style.display = 'none'; }
 
-  // Red flags
-  const rfSec = document.getElementById('rpRedFlagsSection');
-  const rfList = document.getElementById('rpRedFlags');
-  if(a.red_flags && a.red_flags.length){
-    rfList.innerHTML = '';
-    a.red_flags.slice(0,3).forEach(f=>{
-      const li = document.createElement('li');
-      li.textContent = f;
-      rfList.appendChild(li);
-    });
-    rfSec.style.display = 'block';
-  } else { rfSec.style.display = 'none'; }
+  // Red flags — hidden on web (professional audience; flag framing belongs in WA consumer flow)
+  document.getElementById('rpRedFlagsSection').style.display = 'none';
 
   // Who benefits — hidden on web (too editorialising for professional audience)
   document.getElementById('rpWhoBenefitsSection').style.display = 'none';
