@@ -318,17 +318,25 @@ Type HELP anytime for a full guide.
 
 ### Session 24 — 2026-03-25 (IN PROGRESS)
 
-**Build baseline:** commit `0ecc595`
+**Build baseline:** commit `d275baf`
 
-- **Red flags hidden on web** (`d466777`): professional audience; flag framing stays in WA consumer flow
-- **text-align:justify removed** (`d466777`): result body text left-aligned
-- **"How it works" rewritten** (`d466777`): journalistic framing — "Send the claim as it arrived" / "Every region answers at once" / "A verdict you can stand behind"
-- **img-badge → "AI read"** (`d466777`): tooltip explains Fred will extract + fact-check image
-- **Result panel centering fixed** (`561a538`): text-align:left on rp-body, rp-sources-section, rp-confidence-row (were inheriting from .hero)
-- **Truth bar scoreMap extended** (`561a538`): MISLEADING:3, NEEDS_CONTEXT:5 added
-- **Truth bar IntersectionObserver → setTimeout** (`34f7655`): observer threshold 0.6 was silently failing on mobile; 80ms setTimeout fires reliably; UNVERIFIABLE now shows grey bar at 50% with "—" score
-- **Loading steps fixed** (`0ecc595`): text-align:left, align-items:flex-start, dot margin-top
-- **"See how it works →" hidden on mobile** (`0ecc595`)
+**Web UI fixes:**
+- Red flags hidden on web (`d466777`)
+- text-align:justify removed from result body (`d466777`)
+- "How it works" rewritten with journalistic framing (`d466777`)
+- img-badge → "AI read" with tooltip (`d466777`)
+- Result panel centering fixed — text-align:left on rp-body, rp-sources-section, rp-confidence-row (`561a538`)
+- Truth bar scoreMap: MISLEADING:3, NEEDS_CONTEXT:5 added; UNVERIFIABLE hides bar (`561a538`, `0504858`)
+- Truth bar IntersectionObserver replaced with 80ms setTimeout — was silently failing on mobile (`34f7655`)
+- Loading steps: text-align:left, align-items:flex-start, dot margin-top (`0ecc595`)
+- "See how it works →" hidden on mobile (`0ecc595`)
+- History shows extracted claim text (results[0].claim) not raw URL/query (`d76e70c`)
+
+**Verdict quality fixes (synth_prompt):**
+- RULE 2: vague phrasing not grounds for UNVERIFIABLE — match evidence to substance (`d76e70c`)
+- RULE 8: legal/moral characterisations ('criminally obtained', 'fraudulently acquired' etc.) — mandatory two-step: strip label → rate factual core → put label in contested_language. Concrete example included. Never UNVERIFIABLE for unverifiable legal labels. (`d76e70c`, `d275baf`)
+- Confirmed working: web "Trump family pocketed half billion from market movements" → MOSTLY TRUE / MEDIUM / 8/10
+- WA "criminally obtained profits" — awaiting retest after `d275baf`
 
 ### Session 23 — 2026-03-25 (CLOSED)
 
