@@ -4655,7 +4655,7 @@ def process(from_num, message, profile_name=None):
                 log.warning("Reply-feedback store failed: %s", e)
     _body_upper = message.get("text", {}).get("body", "").strip().upper() if _is_text else ""
     _ICEBREAKER_UPPER = {"WHAT CAN FRED CHECK?", "HOW DOES FRED WORK?", "SEND ME SOMETHING TO FACT CHECK"}
-    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "TOPUP", "SHARE", "NO", "N", "YES", "Y", "ALL", "A") or _body_upper in _ICEBREAKER_UPPER or "FORWARD, PASTE OR TYPE" in _body_upper orbool(re.match(r'^[\d][,\s\d]*$', _body_upper))
+    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "TOPUP", "SHARE", "NO", "N", "YES", "Y", "ALL", "A") or _body_upper in _ICEBREAKER_UPPER or "FORWARD, PASTE OR TYPE" in _body_upper or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
     if not is_new and not _is_command:
         _bt_early = _wa_billing_type(from_num)
         if _bt_early in ("daily_capped", "trial_expired"):
