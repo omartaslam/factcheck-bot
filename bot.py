@@ -6767,7 +6767,7 @@ def admin_delete_user():
     if not uid:
         return jsonify({"error": "uid required"}), 400
     try:
-        conn = _db()
+        conn = sqlite3.connect(DB_PATH, timeout=5, check_same_thread=False)
         conn.execute("DELETE FROM platform_users WHERE platform='whatsapp' AND platform_id=?", (uid,))
         conn.execute("DELETE FROM request_log WHERE uid=?", (uid,))
         conn.commit()
