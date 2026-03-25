@@ -455,6 +455,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   text-decoration:none;transition:color 0.15s;margin-top:0.2rem;
 }
 .hero-how-link:hover{color:#888}
+@media(max-width:768px){.hero-how-link{display:none}}
 
 /* ── RESULT PANEL POLISH ── */
 .rp-conf-reason{font-size:0.79rem;color:#999;line-height:1.55;margin-top:0.1rem}
@@ -462,19 +463,19 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 /* ── LOADING STATE ── */
 .search-loading{
   display:none;padding:1.5rem 1.4rem;
-  border-top:1px solid #f0f0f0;
+  border-top:1px solid #f0f0f0;text-align:left;
 }
 .search-loading.visible{display:block}
 .loading-label{font-size:0.82rem;color:#aaa;font-weight:500;margin-bottom:0.85rem}
 .loading-steps{display:flex;flex-direction:column;gap:0.5rem}
 .loading-step{
-  display:flex;align-items:center;gap:9px;
+  display:flex;align-items:flex-start;gap:9px;
   font-size:0.79rem;color:#ccc;
 }
 .loading-step.active{color:#555}
 .loading-step.done{color:var(--gold)}
 .step-dot{
-  width:6px;height:6px;border-radius:50%;background:#e5e5e5;flex-shrink:0;
+  width:6px;height:6px;border-radius:50%;background:#e5e5e5;flex-shrink:0;margin-top:5px;
 }
 .loading-step.active .step-dot{
   background:var(--black);
