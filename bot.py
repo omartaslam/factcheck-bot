@@ -6766,10 +6766,13 @@ def admin_delete_user():
     uid = str((request.get_json() or {}).get("uid", ""))
     if not uid:
         return jsonify({"error": "uid required"}), 400
-    with _db() as c:
-        c.execute("DELETE FROM platform_users WHERE platform='whatsapp' AND platform_id=?", (uid,))
-        c.execute("DELETE FROM request_log WHERE uid=?", (uid,))
-        c.execute("DELETE FROM history WHERE user_id=(SELECT id FROM web_users WHERE email=?)", (uid,))
+    conn = _db()
+    try:
+        conn.execute("DELETE FROM platform_users WHERE platform='whatsapp' AND platform_id=?", (uid,))
+        conn.execute("DELETE FROM request_log WHERE uid=?", (uid,))
+        conn.commit()
+    finally:
+        conn.close()
     return jsonify({"ok": True, "deleted": uid})
 
 @app.route("/admin/stats", methods=["GET"])
