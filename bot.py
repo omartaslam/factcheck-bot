@@ -5869,15 +5869,31 @@ def api_factcheck():
         if not user or (user["balance_cents"] or 0) < COST_PER_CHECK_CENTS:
             return jsonify({"error": "Insufficient credits. Please top up to continue.", "code": "insufficient_credits"}), 402
     data = request.get_json() or {}
-    query = (data.get("claim") or data.get("query") or "").strip()[:2000]
-    if not query:
-        return jsonify({"error": "No claim provided"}), 400
-    source_type = "url" if query.startswith("http") else "text"
-    # For article URLs, scrape the page text first
-    if source_type == "url":
-        page_text = fetch(query) or _og_metadata(query)
-        if page_text:
-            query = page_text
+    source_type = "text"
+    # Image submission — decode base64, OCR, use result as query
+    image_b64 = (data.get("image_b64") or "").strip()
+    if image_b64:
+        try:
+            import base64 as _b64
+            img_bytes = _b64.b64decode(image_b64)
+            ocr_text = ocr_image(img_bytes)
+            if not ocr_text or len(ocr_text.strip()) < 5:
+                return jsonify({"error": "Could not extract text from image. Please try a clearer image or paste the text directly."}), 400
+            query = ocr_text.strip()
+            source_type = "image"
+        except Exception as e:
+            log.error("Image OCR failed in api_factcheck: %s", e)
+            return jsonify({"error": "Image processing failed. Please try again."}), 500
+    else:
+        query = (data.get("claim") or data.get("query") or "").strip()[:2000]
+        if not query:
+            return jsonify({"error": "No claim provided"}), 400
+        source_type = "url" if query.startswith("http") else "text"
+        # For article URLs, scrape the page text first
+        if source_type == "url":
+            page_text = fetch(query) or _og_metadata(query)
+            if page_text:
+                query = page_text
     try:
         results = _factcheck_pipeline(query, source_type)
         credits_remaining = None

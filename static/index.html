@@ -384,7 +384,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 }
 
 /* ── SEARCH BOX ── */
-.search-outer{max-width:660px;margin:0 auto 1rem}
+.search-outer{max-width:660px;margin:0 auto 0.75rem}
 .search-box{
   background:#fff;border:1.5px solid #e2e2e2;border-radius:16px;
   box-shadow:0 4px 24px rgba(0,0,0,0.07);
@@ -396,17 +396,24 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 }
 .search-textarea{
   display:block;width:100%;border:none;outline:none;resize:none;
-  font-family:'Inter',sans-serif;font-size:0.97rem;line-height:1.6;
+  font-family:'Inter',sans-serif;font-size:0.95rem;line-height:1.6;
   color:#0a0a0a;background:transparent;
-  padding:1.2rem 1.4rem 0.5rem;
-  min-height:64px;max-height:180px;overflow-y:auto;
+  padding:1.15rem 1.4rem 0.5rem;
+  min-height:60px;max-height:180px;overflow-y:auto;
 }
 .search-textarea::placeholder{color:#bbb}
 .search-footer{
   display:flex;justify-content:space-between;align-items:center;
-  padding:0.65rem 1rem 0.85rem 1.4rem;
+  padding:0.55rem 1rem 0.75rem 1.4rem;
 }
-.search-hint{font-size:0.73rem;color:#ccc;font-weight:500}
+.search-footer-left{display:flex;align-items:center;gap:0.6rem}
+.search-hint{font-size:0.72rem;color:#ccc;font-weight:500}
+.attach-btn{
+  flex-shrink:0;background:none;border:none;cursor:pointer;
+  padding:3px;color:#d0d0d0;display:inline-flex;align-items:center;
+  transition:color 0.15s;
+}
+.attach-btn:hover{color:#888}
 .search-btn{
   display:inline-flex;align-items:center;gap:7px;
   padding:8px 18px;border-radius:10px;
@@ -418,6 +425,40 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .search-btn:hover{opacity:0.78}
 .search-btn:disabled{opacity:0.4;cursor:not-allowed}
 .search-btn svg{flex-shrink:0}
+
+/* ── IMAGE PREVIEW ── */
+.img-preview{
+  display:none;flex-direction:row;align-items:center;gap:10px;
+  padding:0.6rem 1.4rem;border-bottom:1px solid #f0f0f0;background:#fafafa;
+}
+.img-thumb{
+  width:44px;height:44px;object-fit:cover;
+  border-radius:6px;border:1px solid #e8e8e8;flex-shrink:0;
+}
+.img-name{font-size:0.78rem;color:#888;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.img-badge{
+  font-size:0.65rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;
+  color:#7a6000;background:var(--gold-dim);border:1px solid var(--gold-border);
+  padding:2px 7px;border-radius:4px;flex-shrink:0;
+}
+.img-remove{
+  flex-shrink:0;background:none;border:none;
+  font-size:0.8rem;color:#ccc;cursor:pointer;
+  padding:3px 5px;font-family:inherit;transition:color 0.15s;
+}
+.img-remove:hover{color:#888}
+
+/* ── HOW LINK (hero) ── */
+.hero-how-link{
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:0.76rem;color:#ccc;font-weight:600;
+  text-decoration:none;transition:color 0.15s;margin-top:0.2rem;
+}
+.hero-how-link:hover{color:#888}
+
+/* ── RESULT PANEL POLISH ── */
+.rp-section-text{font-size:0.88rem;color:#1a1a1a;line-height:1.74;text-align:justify;hyphens:auto}
+.rp-conf-reason{font-size:0.79rem;color:#999;line-height:1.55;margin-top:0.1rem;text-align:justify}
 
 /* ── LOADING STATE ── */
 .search-loading{
@@ -837,11 +878,24 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
       <textarea
         id="claimInput"
         class="search-textarea"
-        placeholder="Paste a claim, URL, quote or social media post…"
+        placeholder="Paste or type a claim, URL, quote or social media post…"
         rows="2"
       ></textarea>
+      <!-- Image preview (shown when image attached) -->
+      <div class="img-preview" id="imagePreview">
+        <img class="img-thumb" id="imgThumb" src="" alt="">
+        <span class="img-name" id="imgName">Image</span>
+        <span class="img-badge">Image</span>
+        <button class="img-remove" onclick="clearImage()" title="Remove image">✕</button>
+      </div>
       <div class="search-footer">
-        <span class="search-hint" id="searchHint">1 free check · No account needed</span>
+        <div class="search-footer-left">
+          <span class="search-hint" id="searchHint">1 free check · No account needed</span>
+          <label class="attach-btn" for="imgFileInput" title="Attach image (or paste from clipboard)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </label>
+          <input type="file" id="imgFileInput" accept="image/*" style="display:none" onchange="handleImageSelect(event)">
+        </div>
         <button class="search-btn" id="checkBtn" onclick="runCheck()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           Check it
@@ -852,8 +906,8 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
       <div class="search-loading" id="searchLoading">
         <div class="loading-label">Searching 65+ sources across 6 world regions…</div>
         <div class="loading-steps">
-          <div class="loading-step" id="ls1"><div class="step-dot"></div>Reading &amp; neutralising claim</div>
-          <div class="loading-step" id="ls2"><div class="step-dot"></div>Searching Western, Arabic &amp; Spanish sources</div>
+          <div class="loading-step" id="ls1"><div class="step-dot"></div>Identifying claims</div>
+          <div class="loading-step" id="ls2"><div class="step-dot"></div>Searching Western, Arabic, French &amp; Urdu sources</div>
           <div class="loading-step" id="ls3"><div class="step-dot"></div>Cross-checking fact-check organisations</div>
           <div class="loading-step" id="ls4"><div class="step-dot"></div>Synthesising verdict</div>
         </div>
@@ -978,7 +1032,10 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     </div>
   </div>
 
-  <p class="hero-note">Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
+  <div style="display:flex;justify-content:center;gap:2rem;align-items:center;flex-wrap:wrap">
+    <p class="hero-note">Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
+    <a href="#how" class="hero-how-link">See how it works →</a>
+  </div>
 </div>
 
 <!-- HISTORY (logged-in users only) -->
@@ -1101,7 +1158,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 
 
 <!-- HOW IT WORKS -->
-<div class="how-section">
+<div class="how-section" id="how">
   <div class="how-inner">
     <div class="section-header">
       <div class="section-tag">How it works</div>
@@ -1632,12 +1689,70 @@ function setStep(n){
   }
 }
 
+// ── IMAGE HANDLING ──────────────────────────────────────────
+let _imageB64 = null;
+
+function handleImageSelect(e){
+  const file = e.target.files && e.target.files[0];
+  if(file) _loadImageFile(file);
+}
+
+function _loadImageFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const dataUrl = e.target.result;
+    _imageB64 = dataUrl.split(',')[1];
+    document.getElementById('imgThumb').src = dataUrl;
+    document.getElementById('imgName').textContent = file.name || 'Image';
+    document.getElementById('imagePreview').style.display = 'flex';
+    document.getElementById('claimInput').placeholder = 'Add a caption or note (optional)…';
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearImage(){
+  _imageB64 = null;
+  document.getElementById('imgThumb').src = '';
+  document.getElementById('imagePreview').style.display = 'none';
+  document.getElementById('imgFileInput').value = '';
+  document.getElementById('claimInput').placeholder = 'Paste or type a claim, URL, quote or social media post\u2026';
+}
+
+// Paste image anywhere on page
+document.addEventListener('paste', function(e){
+  const items = (e.clipboardData || e.originalEvent.clipboardData || {}).items || [];
+  for(let i=0;i<items.length;i++){
+    if(items[i].type && items[i].type.startsWith('image/')){
+      const blob = items[i].getAsFile();
+      if(blob){ _loadImageFile(blob); e.preventDefault(); break; }
+    }
+  }
+});
+
+// ── INTERSECTION OBSERVER — truth bar ───────────────────────
+let _tbObserver = null;
+function _observeTruthBar(){
+  if(_tbObserver) _tbObserver.disconnect();
+  _tbObserver = new IntersectionObserver(function(entries){
+    entries.forEach(function(entry){
+      if(entry.isIntersecting){
+        const fill = document.getElementById('rpTruthFill');
+        if(fill && fill.dataset.target) fill.style.width = fill.dataset.target + '%';
+        _tbObserver.disconnect();
+      }
+    });
+  }, {threshold: 0.6});
+  const tb = document.getElementById('rpTruthBar');
+  if(tb) _tbObserver.observe(tb);
+}
+
 // ── CLAIM PICKER + TWO-STEP FACT-CHECK ─────────────────────
 let _selectedClaim = null;
 
 async function runCheck(){
   const raw = document.getElementById('claimInput').value.trim();
-  if(!raw) return;
+  if(!raw && !_imageB64) return;
 
   if(!_authUser && localStorage.getItem(FREE_KEY)){
     openModal('signup');
@@ -1650,6 +1765,13 @@ async function runCheck(){
   const btn = document.getElementById('checkBtn');
   btn.disabled = true;
   _selectedClaim = null;
+
+  // Images skip claim extraction — go straight to OCR + factcheck
+  if(_imageB64){
+    btn.disabled = false;
+    await _runFactcheck();
+    return;
+  }
 
   // Step 1: fast claim extraction (haiku — ~2-3s, no credit)
   setStep(1);
@@ -1724,7 +1846,7 @@ function hidePicker(){
 
 async function _runFactcheck(){
   const claim = _selectedClaim || document.getElementById('claimInput').value.trim();
-  if(!claim) return;
+  if(!claim && !_imageB64) return;
 
   const btn = document.getElementById('checkBtn');
   const loading = document.getElementById('searchLoading');
@@ -1741,9 +1863,11 @@ async function _runFactcheck(){
   const token = localStorage.getItem(TOKEN_KEY);
   if(token) headers['Authorization'] = 'Bearer ' + token;
 
+  const body = _imageB64 ? {image_b64: _imageB64, claim: claim||''} : {claim};
+
   try {
     const res = await fetch(API + '/api/factcheck', {
-      method:'POST', headers, body: JSON.stringify({claim})
+      method:'POST', headers, body: JSON.stringify(body)
     });
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
 
@@ -1807,17 +1931,19 @@ function renderResult(data, submittedClaim){
   const ct = document.getElementById('rpClaimText');
   ct.textContent = '\u201c' + (claim.length>300 ? claim.slice(0,300)+'\u2026' : claim) + '\u201d';
 
-  // Truth bar
+  // Truth bar — animated via IntersectionObserver when scrolled into view
   const scoreMap = {'TRUE':10,'MOSTLY_TRUE':8,'HALF_TRUE':5,'MOSTLY_FALSE':3,'FALSE':0};
   const tb = document.getElementById('rpTruthBar');
   if(rating in scoreMap){
     const s = scoreMap[rating];
     const fillColor = s>=8?'#22c55e':s>=5?'#eab308':s>=3?'#f97316':'#ef4444';
     const fill = document.getElementById('rpTruthFill');
-    fill.style.width = '0%'; fill.style.background = fillColor;
-    setTimeout(()=>{ fill.style.width = (s*10)+'%'; }, 60);
+    fill.style.width = '0%';
+    fill.style.background = fillColor;
+    fill.dataset.target = String(s*10);
     document.getElementById('rpTruthScore').textContent = s+'/10';
     tb.style.display = 'flex';
+    _observeTruthBar();
   } else {
     tb.style.display = 'none';
   }
@@ -1887,12 +2013,8 @@ function renderResult(data, submittedClaim){
     rfSec.style.display = 'block';
   } else { rfSec.style.display = 'none'; }
 
-  // Who benefits
-  const wbSec = document.getElementById('rpWhoBenefitsSection');
-  if(a.who_benefits && a.who_benefits.trim()){
-    document.getElementById('rpWhoBenefits').textContent = a.who_benefits;
-    wbSec.style.display = 'block';
-  } else { wbSec.style.display = 'none'; }
+  // Who benefits — hidden on web (too editorialising for professional audience)
+  document.getElementById('rpWhoBenefitsSection').style.display = 'none';
 
   // Bias note
   const bSec = document.getElementById('rpBiasSection');
@@ -1939,6 +2061,7 @@ function newCheck(){
   document.getElementById('claimInput').style.height = 'auto';
   document.getElementById('claimInput').focus();
   _selectedClaim = null;
+  clearImage();
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
