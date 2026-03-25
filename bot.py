@@ -228,6 +228,7 @@ def _cors(response):
     return response
 
 @app.route("/api/factcheck", methods=["OPTIONS"])
+@app.route("/api/extract-claims", methods=["OPTIONS"])
 @app.route("/api/register", methods=["OPTIONS"])
 @app.route("/api/login", methods=["OPTIONS"])
 @app.route("/api/me", methods=["OPTIONS"])
@@ -5893,6 +5894,24 @@ def api_factcheck():
     except Exception as e:
         log.error("API factcheck error: %s", e)
         return jsonify({"error": "Fact-check failed. Please try again."}), 500
+
+@app.route("/api/extract-claims", methods=["POST"])
+def api_extract_claims():
+    """Fast claim extraction — no credit deduction. Used by web UI for claim picker."""
+    ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+    if not _check_rate(ip):
+        return jsonify({"error": "Rate limit reached"}), 429
+    data = request.get_json() or {}
+    query = (data.get("claim") or data.get("query") or "").strip()[:2000]
+    if not query:
+        return jsonify({"error": "No claim provided"}), 400
+    try:
+        neutral = neutralize_claim(query)
+        claims = extract_claims(neutral)
+        return jsonify({"claims": claims, "neutralized": neutral})
+    except Exception as e:
+        log.error("extract-claims error: %s", e)
+        return jsonify({"claims": [query], "neutralized": query})
 
 @app.route("/api/history", methods=["GET"])
 def api_history():

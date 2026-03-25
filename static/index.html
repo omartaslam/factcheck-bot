@@ -443,37 +443,220 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .loading-step.done .step-dot{background:var(--gold)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
 
+/* ── CLAIM PICKER ── */
+.claim-picker{
+  border-top:1px solid #f0f0f0;padding:1.1rem 1.4rem 1rem;
+  animation:slideDown 0.22s ease;
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.cp-header{
+  display:flex;align-items:center;gap:8px;
+  font-size:0.75rem;font-weight:700;color:#777;
+  letter-spacing:0.2px;margin-bottom:0.85rem;
+}
+.cp-list{display:flex;flex-direction:column;gap:0.45rem;margin-bottom:0.85rem}
+.cp-item{
+  display:flex;align-items:flex-start;gap:10px;
+  padding:9px 12px;border-radius:8px;
+  border:1.5px solid var(--border);cursor:pointer;
+  transition:border-color 0.15s,background 0.15s;
+  font-size:0.85rem;color:#333;line-height:1.5;text-align:left;
+  background:#fff;font-family:inherit;width:100%;
+}
+.cp-item:hover{border-color:#bbb;background:#fafafa}
+.cp-item.selected{border-color:var(--black);background:#f8f8f8}
+.cp-num{
+  flex-shrink:0;min-width:20px;height:20px;border-radius:50%;
+  border:1.5px solid #ddd;background:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.65rem;font-weight:800;color:#bbb;margin-top:1px;
+  transition:all 0.15s;
+}
+.cp-item.selected .cp-num{background:var(--black);border-color:var(--black);color:#fff}
+.cp-check-btn{
+  width:100%;padding:9px 18px;border-radius:8px;
+  background:var(--black);color:#fff;
+  font-family:inherit;font-size:0.85rem;font-weight:700;
+  border:none;cursor:pointer;transition:opacity 0.15s;
+}
+.cp-check-btn:hover{opacity:0.82}
+.cp-check-btn:disabled{opacity:0.35;cursor:not-allowed}
+
 /* ── RESULT PANEL ── */
-.result-panel{
-  display:none;border-top:1px solid #f0f0f0;padding:1.5rem 1.4rem;
-}
+.result-panel{display:none;border-top:1px solid #f0f0f0;animation:fadeIn 0.28s ease}
 .result-panel.visible{display:block}
-.result-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* Verdict bar */
+.rp-verdict-bar{
+  padding:0.9rem 1.4rem 0.85rem;
+  background:#fafafa;border-bottom:1px solid #f0f0f0;
+  display:flex;align-items:center;justify-content:space-between;
+  gap:0.75rem;flex-wrap:wrap;
+}
+.rp-verdict-left{display:flex;align-items:center;gap:0.6rem;flex-wrap:wrap}
+.rp-verdict-right{display:flex;gap:0.4rem;align-items:center}
+
+/* Verdict chip */
 .verdict-chip{
-  display:inline-flex;align-items:center;gap:5px;
-  padding:4px 12px;border-radius:20px;
-  font-size:0.73rem;font-weight:800;letter-spacing:0.5px;text-transform:uppercase;
+  display:inline-flex;align-items:center;
+  padding:4px 11px;border-radius:6px;
+  font-size:0.72rem;font-weight:800;letter-spacing:0.4px;text-transform:uppercase;
 }
-.verdict-chip.TRUE{background:#dcfce7;color:#15803d}
-.verdict-chip.FALSE{background:#fee2e2;color:#b91c1c}
-.verdict-chip.MISLEADING{background:#ffedd5;color:#c2410c}
-.verdict-chip.UNVERIFIABLE{background:#f3f4f6;color:#6b7280}
-.verdict-chip.PARTIALLY{background:#fef9c3;color:#a16207}
-.confidence-tag{font-size:0.72rem;color:#bbb;font-weight:600}
-.result-verdict{font-size:0.9rem;color:#333;line-height:1.7;margin-bottom:1rem}
-.result-sources{display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.85rem}
-.result-source-pill{
-  background:#f7f7f7;border:1px solid #ebebeb;
-  padding:3px 10px;border-radius:5px;
-  font-size:0.72rem;font-weight:600;color:#888;
+.verdict-chip.TRUE{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0}
+.verdict-chip.MOSTLY_TRUE{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}
+.verdict-chip.HALF_TRUE{background:#fef9c3;color:#854d0e;border:1px solid #fef08a}
+.verdict-chip.MISLEADING,.verdict-chip.NEEDS_CONTEXT{background:#fef3c7;color:#92400e;border:1px solid #fde68a}
+.verdict-chip.MOSTLY_FALSE{background:#ffedd5;color:#c2410c;border:1px solid #fed7aa}
+.verdict-chip.FALSE{background:#fee2e2;color:#dc2626;border:1px solid #fecaca}
+.verdict-chip.UNVERIFIABLE{background:#f3f4f6;color:#6b7280;border:1px solid #e5e7eb}
+.confidence-tag{
+  font-size:0.68rem;font-weight:700;color:#999;
+  padding:3px 8px;background:#f0f0f0;border-radius:5px;letter-spacing:0.3px;
 }
+.rp-copy-btn{
+  padding:5px 11px;border-radius:6px;
+  border:1px solid var(--border);background:#fff;
+  font-family:inherit;font-size:0.72rem;font-weight:700;color:#666;
+  cursor:pointer;transition:all 0.15s;
+}
+.rp-copy-btn:hover{border-color:#bbb;color:#333}
+.rp-newcheck-btn{
+  padding:5px 11px;border-radius:6px;
+  background:var(--black);color:#fff;border:none;
+  font-family:inherit;font-size:0.72rem;font-weight:700;
+  cursor:pointer;transition:opacity 0.15s;
+}
+.rp-newcheck-btn:hover{opacity:0.8}
+
+/* Claim display */
+.rp-claim-text{
+  padding:0.75rem 1.4rem;
+  font-size:0.84rem;color:#777;line-height:1.6;
+  font-style:italic;border-bottom:1px solid #f5f5f5;
+}
+
+/* Truth bar */
+.rp-truth-bar{
+  padding:0.7rem 1.4rem;border-bottom:1px solid #f5f5f5;
+  display:flex;align-items:center;gap:0.7rem;
+}
+.rp-truth-label{font-size:0.63rem;font-weight:700;letter-spacing:2px;color:#ccc;text-transform:uppercase;white-space:nowrap}
+.rp-truth-track{flex:1;height:5px;background:#f0f0f0;border-radius:3px;overflow:hidden}
+.rp-truth-fill{height:100%;border-radius:3px;transition:width 0.9s cubic-bezier(0.4,0,0.2,1)}
+.rp-truth-score{font-size:0.72rem;font-weight:800;color:#888;white-space:nowrap}
+
+/* Body sections */
+.rp-body{padding:1.1rem 1.4rem 0.25rem}
+.rp-section{margin-bottom:1.1rem}
+.rp-section-label{
+  font-size:0.62rem;font-weight:800;letter-spacing:2.5px;
+  text-transform:uppercase;color:#c0c0c0;margin-bottom:0.35rem;
+}
+.rp-section-text{font-size:0.9rem;color:#1a1a1a;line-height:1.72}
+.rp-key-facts{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:0.4rem}
+.rp-key-facts li{
+  display:flex;align-items:flex-start;gap:8px;
+  font-size:0.875rem;color:#2a2a2a;line-height:1.6;
+}
+.rp-fact-num{
+  flex-shrink:0;min-width:19px;height:19px;
+  background:var(--gold-dim);border:1px solid var(--gold-border);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:0.62rem;font-weight:800;color:#7a6000;margin-top:2px;
+}
+.rp-alert-section{
+  background:#fffbf0;border:1px solid #f0dea0;border-radius:8px;
+  padding:0.8rem 1rem;margin-bottom:1.1rem;
+}
+.rp-alert-section .rp-section-label{color:#9a6000}
+.rp-flags-list{
+  list-style:none;padding:0;margin:0;
+  display:flex;flex-direction:column;gap:0.4rem;
+}
+.rp-flags-list li{
+  display:flex;align-items:flex-start;gap:7px;
+  font-size:0.85rem;color:#7a4500;line-height:1.55;
+}
+.rp-flags-list li::before{content:'⚠';flex-shrink:0;font-size:0.78rem;margin-top:1px}
+
+/* Confidence row */
+.rp-confidence-row{
+  display:flex;align-items:flex-start;gap:0.6rem;
+  padding:0.8rem 1.4rem;
+  border-top:1px solid #f5f5f5;border-bottom:1px solid #f5f5f5;
+  background:#fafafa;
+}
+.rp-conf-dot{font-size:0.85rem;line-height:1.4;flex-shrink:0}
+.rp-conf-level{font-size:0.72rem;font-weight:800;color:#333;letter-spacing:0.4px;text-transform:uppercase}
+.rp-conf-reason{font-size:0.8rem;color:#999;line-height:1.55;margin-top:0.1rem}
+
+/* Sources */
+.rp-sources-section{padding:0.85rem 1.4rem 1rem}
+.rp-source-chips{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.45rem}
+.rp-source-chip{
+  padding:3px 9px;border-radius:5px;
+  background:#f5f5f5;border:1px solid #e8e8e8;
+  font-size:0.75rem;font-weight:600;color:#666;
+  text-decoration:none;transition:all 0.15s;white-space:nowrap;
+}
+.rp-source-chip:hover{background:#eee;color:#222;border-color:#ccc}
+.rp-source-chip.no-link{cursor:default}
+
+/* CTA row */
 .result-cta{
-  font-size:0.78rem;color:#aaa;
-  border-top:1px solid #f5f5f5;padding-top:0.85rem;
-  display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;
+  padding:0.8rem 1.4rem 1rem;
+  display:flex;align-items:center;justify-content:space-between;
+  font-size:0.78rem;gap:0.75rem;flex-wrap:wrap;
+  border-top:1px solid #f5f5f5;
 }
-.result-cta a{color:var(--black);font-weight:700;text-decoration:none;font-size:0.8rem}
+.result-cta span{color:#bbb}
+.result-cta a{color:var(--black);font-weight:700;text-decoration:none;font-size:0.79rem}
 .result-cta a:hover{text-decoration:underline}
+
+/* ── HISTORY SECTION ── */
+.history-section{
+  border-bottom:1px solid var(--border);background:var(--off);
+  padding:1.75rem 4rem;display:none;
+}
+.history-section.visible{display:block}
+.history-inner{max-width:660px;margin:0 auto}
+.history-header{
+  display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;
+}
+.history-title{font-size:0.65rem;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#ccc}
+.history-refresh{
+  font-size:0.72rem;color:#ccc;background:none;border:none;
+  cursor:pointer;font-family:inherit;padding:0;
+}
+.history-refresh:hover{color:#888}
+.history-list{display:flex;flex-direction:column;gap:0.4rem}
+.history-item{
+  display:flex;align-items:center;gap:0.75rem;
+  padding:0.65rem 0.85rem;background:#fff;border-radius:7px;
+  border:1px solid var(--border);cursor:pointer;transition:border-color 0.15s;
+}
+.history-item:hover{border-color:#ccc}
+.history-dot{flex-shrink:0;width:7px;height:7px;border-radius:50%;background:#e0e0e0}
+.history-dot.TRUE,.history-dot.MOSTLY_TRUE{background:#22c55e}
+.history-dot.HALF_TRUE,.history-dot.MISLEADING,.history-dot.NEEDS_CONTEXT{background:#eab308}
+.history-dot.MOSTLY_FALSE,.history-dot.FALSE{background:#ef4444}
+.history-dot.UNVERIFIABLE{background:#9ca3af}
+.history-query{flex:1;font-size:0.82rem;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.history-chip{
+  flex-shrink:0;font-size:0.65rem;font-weight:800;padding:2px 7px;
+  border-radius:4px;letter-spacing:0.2px;background:#f3f4f6;color:#777;
+}
+.history-chip.TRUE{background:#dcfce7;color:#15803d}
+.history-chip.FALSE{background:#fee2e2;color:#dc2626}
+.history-chip.MISLEADING,.history-chip.HALF_TRUE,.history-chip.NEEDS_CONTEXT{background:#fef9c3;color:#854d0e}
+.history-chip.MOSTLY_TRUE{background:#d1fae5;color:#065f46}
+.history-chip.MOSTLY_FALSE{background:#ffedd5;color:#c2410c}
+.history-date{font-size:0.7rem;color:#ccc;flex-shrink:0}
+@media(max-width:768px){
+  .history-section{padding:1.5rem 1.25rem}
+  .history-date{display:none}
+}
 
 /* ── GATE MODAL ── */
 .modal-overlay{
@@ -667,32 +850,148 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 
       <!-- Loading -->
       <div class="search-loading" id="searchLoading">
-        <div class="loading-label">Searching across 6 regions…</div>
+        <div class="loading-label">Searching 65+ sources across 6 world regions…</div>
         <div class="loading-steps">
-          <div class="loading-step" id="ls1"><div class="step-dot"></div>Querying Western &amp; global sources</div>
-          <div class="loading-step" id="ls2"><div class="step-dot"></div>Searching Arabic, Spanish &amp; French media</div>
-          <div class="loading-step" id="ls3"><div class="step-dot"></div>Cross-checking fact check organisations</div>
+          <div class="loading-step" id="ls1"><div class="step-dot"></div>Reading &amp; neutralising claim</div>
+          <div class="loading-step" id="ls2"><div class="step-dot"></div>Searching Western, Arabic &amp; Spanish sources</div>
+          <div class="loading-step" id="ls3"><div class="step-dot"></div>Cross-checking fact-check organisations</div>
           <div class="loading-step" id="ls4"><div class="step-dot"></div>Synthesising verdict</div>
         </div>
       </div>
 
-      <!-- Result -->
-      <div class="result-panel" id="resultPanel">
-        <div class="result-header">
-          <div class="verdict-chip" id="verdictChip"></div>
-          <span class="confidence-tag" id="confidenceTag"></span>
+      <!-- Claim Picker (shown when multiple claims detected) -->
+      <div class="claim-picker" id="claimPicker" style="display:none">
+        <div class="cp-header">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          <span id="cpHeaderText">Multiple claims found — select one to fact-check:</span>
         </div>
-        <div class="result-verdict" id="resultVerdict"></div>
-        <div class="result-sources" id="resultSources"></div>
+        <div class="cp-list" id="cpList"></div>
+        <button class="cp-check-btn" id="cpCheckBtn" onclick="checkSelectedClaim()" disabled>Select a claim above →</button>
+      </div>
+
+      <!-- Rich Result Panel -->
+      <div class="result-panel" id="resultPanel">
+
+        <!-- Verdict bar -->
+        <div class="rp-verdict-bar">
+          <div class="rp-verdict-left">
+            <div class="verdict-chip" id="verdictChip"></div>
+            <span class="confidence-tag" id="confidenceTag"></span>
+          </div>
+          <div class="rp-verdict-right">
+            <button class="rp-copy-btn" onclick="copyResult()">Copy</button>
+            <button class="rp-newcheck-btn" onclick="newCheck()">New check</button>
+          </div>
+        </div>
+
+        <!-- Claim checked -->
+        <div class="rp-claim-text" id="rpClaimText"></div>
+
+        <!-- Truth bar -->
+        <div class="rp-truth-bar" id="rpTruthBar">
+          <span class="rp-truth-label">Truth score</span>
+          <div class="rp-truth-track"><div class="rp-truth-fill" id="rpTruthFill" style="width:0%"></div></div>
+          <span class="rp-truth-score" id="rpTruthScore"></span>
+        </div>
+
+        <!-- Body sections -->
+        <div class="rp-body">
+
+          <!-- Rating reason -->
+          <div class="rp-section" id="rpRatingReasonSection" style="display:none">
+            <div class="rp-section-label">Why this rating</div>
+            <div class="rp-section-text" id="rpRatingReason"></div>
+          </div>
+
+          <!-- Analysis -->
+          <div class="rp-section">
+            <div class="rp-section-label">Analysis</div>
+            <div class="rp-section-text" id="resultVerdict"></div>
+          </div>
+
+          <!-- Key facts -->
+          <div class="rp-section" id="rpKeyFactsSection" style="display:none">
+            <div class="rp-section-label">Key facts</div>
+            <ol class="rp-key-facts" id="rpKeyFacts"></ol>
+          </div>
+
+          <!-- Regional perspectives -->
+          <div class="rp-section" id="rpPerspectivesSection" style="display:none">
+            <div class="rp-section-label">Regional perspectives</div>
+            <div class="rp-section-text" id="rpPerspectives"></div>
+          </div>
+
+          <!-- Background -->
+          <div class="rp-section" id="rpContextSection" style="display:none">
+            <div class="rp-section-label">Background</div>
+            <div class="rp-section-text" id="rpContext"></div>
+          </div>
+
+          <!-- Contested language -->
+          <div class="rp-section" id="rpContestedSection" style="display:none">
+            <div class="rp-section-label">Contested language</div>
+            <ul class="rp-key-facts" id="rpContested"></ul>
+          </div>
+
+          <!-- Red flags -->
+          <div class="rp-alert-section" id="rpRedFlagsSection" style="display:none">
+            <div class="rp-section-label">Red flags</div>
+            <ul class="rp-flags-list" id="rpRedFlags"></ul>
+          </div>
+
+          <!-- Who benefits -->
+          <div class="rp-section" id="rpWhoBenefitsSection" style="display:none">
+            <div class="rp-section-label">Who benefits?</div>
+            <div class="rp-section-text" id="rpWhoBenefits"></div>
+          </div>
+
+          <!-- Bias note -->
+          <div class="rp-section" id="rpBiasSection" style="display:none">
+            <div class="rp-section-label">Bias note</div>
+            <div class="rp-section-text" id="rpBias"></div>
+          </div>
+
+        </div><!-- /rp-body -->
+
+        <!-- Confidence -->
+        <div class="rp-confidence-row">
+          <span class="rp-conf-dot" id="rpConfDot"></span>
+          <div>
+            <div class="rp-conf-level" id="rpConfLevel"></div>
+            <div class="rp-conf-reason" id="rpConfReason"></div>
+          </div>
+        </div>
+
+        <!-- Sources cited -->
+        <div class="rp-sources-section">
+          <div class="rp-section-label" id="rpSourcesLabel">Sources cited</div>
+          <div class="rp-source-chips" id="resultSources"></div>
+        </div>
+
+        <!-- CTA -->
         <div class="result-cta">
           <span id="resultCtaNote"></span>
-          <a href="#contact">For full audit trail &amp; PDF export → Book a demo</a>
+          <a href="#contact">Full audit trail &amp; PDF export → Book a demo</a>
         </div>
-      </div>
+
+      </div><!-- /result-panel -->
     </div>
   </div>
 
   <p class="hero-note">Also on WhatsApp — <a href="https://wa.me/447863795638">message Fred →</a></p>
+</div>
+
+<!-- HISTORY (logged-in users only) -->
+<div class="history-section" id="historySection">
+  <div class="history-inner">
+    <div class="history-header">
+      <span class="history-title">Recent checks</span>
+      <button class="history-refresh" onclick="loadHistory()">Refresh ↺</button>
+    </div>
+    <div class="history-list" id="historyList">
+      <div style="font-size:0.82rem;color:#ccc;text-align:center;padding:0.75rem">Loading…</div>
+    </div>
+  </div>
 </div>
 
 <!-- AUTH MODAL -->
@@ -1124,7 +1423,6 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
           <li><a href="https://wa.me/447863795638">WhatsApp →</a></li>
           <li><a href="/fred.vcf">Save Fred as contact</a></li>
           <li><a href="https://fredcheck.com">fredcheck.com</a></li>
-          <li><a href="https://fredcheck.co.uk">fredcheck.co.uk</a></li>
         </ul>
       </div>
     </div>
@@ -1164,6 +1462,8 @@ async function fetchMe(token){
     _authUser = u;
     renderNavAuth(u);
     updateSearchHint(u.credits);
+    document.getElementById('historySection').classList.add('visible');
+    loadHistory();
   } catch(e){}
 }
 
@@ -1197,6 +1497,7 @@ function logout(){
   _authUser = null;
   renderNavAnon();
   updateSearchHint(0);
+  document.getElementById('historySection').classList.remove('visible');
 }
 
 function showBanner(msg){
@@ -1331,28 +1632,110 @@ function setStep(n){
   }
 }
 
-async function runCheck(){
-  const claim = document.getElementById('claimInput').value.trim();
-  if(!claim) return;
+// ── CLAIM PICKER + TWO-STEP FACT-CHECK ─────────────────────
+let _selectedClaim = null;
 
-  // Gate anonymous users after free check
+async function runCheck(){
+  const raw = document.getElementById('claimInput').value.trim();
+  if(!raw) return;
+
   if(!_authUser && localStorage.getItem(FREE_KEY)){
     openModal('signup');
     return;
   }
 
+  hidePicker();
+  document.getElementById('resultPanel').classList.remove('visible');
+
+  const btn = document.getElementById('checkBtn');
+  btn.disabled = true;
+  _selectedClaim = null;
+
+  // Step 1: fast claim extraction (haiku — ~2-3s, no credit)
+  setStep(1);
+  try {
+    const headers = {'Content-Type':'application/json'};
+    const token = localStorage.getItem(TOKEN_KEY);
+    if(token) headers['Authorization'] = 'Bearer ' + token;
+    const res = await fetch(API + '/api/extract-claims', {
+      method:'POST', headers, body: JSON.stringify({claim: raw})
+    });
+    const data = await res.json();
+    const claims = (data.claims || [raw]).filter(c => c && c.trim());
+    if(claims.length > 1){
+      showPicker(claims);
+      btn.disabled = false;
+      return;
+    }
+    _selectedClaim = claims[0] || raw;
+  } catch(e){
+    _selectedClaim = raw;
+  }
+
+  btn.disabled = false;
+  await _runFactcheck();
+}
+
+function showPicker(claims){
+  const picker = document.getElementById('claimPicker');
+  const list = document.getElementById('cpList');
+  document.getElementById('cpHeaderText').textContent =
+    claims.length + ' claims found — select one to fact-check:';
+  list.innerHTML = '';
+  _selectedClaim = null;
+  const checkBtn = document.getElementById('cpCheckBtn');
+  checkBtn.disabled = true;
+  checkBtn.textContent = 'Select a claim above →';
+
+  claims.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'cp-item';
+    btn.innerHTML = '<span class="cp-num">'+(i+1)+'</span><span>'+c+'</span>';
+    btn.onclick = () => selectClaim(c, btn);
+    list.appendChild(btn);
+  });
+
+  picker.style.display = 'block';
+  picker.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+function selectClaim(claim, el){
+  document.querySelectorAll('.cp-item').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  _selectedClaim = claim;
+  const btn = document.getElementById('cpCheckBtn');
+  btn.disabled = false;
+  btn.textContent = 'Check this claim →';
+}
+
+async function checkSelectedClaim(){
+  if(!_selectedClaim) return;
+  if(!_authUser && localStorage.getItem(FREE_KEY)){
+    openModal('signup');
+    return;
+  }
+  hidePicker();
+  await _runFactcheck();
+}
+
+function hidePicker(){
+  document.getElementById('claimPicker').style.display = 'none';
+}
+
+async function _runFactcheck(){
+  const claim = _selectedClaim || document.getElementById('claimInput').value.trim();
+  if(!claim) return;
+
   const btn = document.getElementById('checkBtn');
   const loading = document.getElementById('searchLoading');
-  const resultPanel = document.getElementById('resultPanel');
-
   btn.disabled = true;
-  resultPanel.classList.remove('visible');
   loading.classList.add('visible');
+  document.getElementById('resultPanel').classList.remove('visible');
 
   setStep(1);
-  const t1 = setTimeout(()=>setStep(2), 900);
-  const t2 = setTimeout(()=>setStep(3), 1900);
-  const t3 = setTimeout(()=>setStep(4), 3200);
+  const t1 = setTimeout(()=>setStep(2), 1000);
+  const t2 = setTimeout(()=>setStep(3), 3000);
+  const t3 = setTimeout(()=>setStep(4), 6000);
 
   const headers = {'Content-Type':'application/json'};
   const token = localStorage.getItem(TOKEN_KEY);
@@ -1374,36 +1757,14 @@ async function runCheck(){
     }
     if(data.error){ showError(data.error); btn.disabled = false; return; }
 
-    const analysis = (data.results && data.results[0] && data.results[0].analysis) || {};
-    const rating = analysis.rating || 'UNVERIFIABLE';
-    const confidence = analysis.confidence || '';
-    const verdict = analysis.verdict || analysis.rating_reason || '';
-    const sources = (analysis.sources || []).slice(0, 5);
+    renderResult(data, claim);
 
-    const chip = document.getElementById('verdictChip');
-    chip.className = 'verdict-chip ' + (rating.includes('PARTIALLY') ? 'PARTIALLY' : rating);
-    chip.textContent = rating.replace(/_/g,' ');
-
-    document.getElementById('confidenceTag').textContent = confidence ? confidence + ' confidence' : '';
-    document.getElementById('resultVerdict').textContent = verdict;
-
-    const srcEl = document.getElementById('resultSources');
-    srcEl.innerHTML = '';
-    sources.forEach(s => {
-      let label = s;
-      try{ label = new URL(s).hostname.replace('www.',''); } catch(e){}
-      const pill = document.createElement('span');
-      pill.className = 'result-source-pill';
-      pill.textContent = label;
-      srcEl.appendChild(pill);
-    });
-
-    // Update credits + CTA note
-    if(_authUser && data.credits_remaining !== null && data.credits_remaining !== undefined){
+    if(_authUser && data.credits_remaining != null){
       _authUser.credits = data.credits_remaining;
       renderNavAuth(_authUser);
       updateSearchHint(_authUser.credits);
-      document.getElementById('resultCtaNote').textContent = data.credits_remaining + ' credit' + (data.credits_remaining!==1?'s':'') + ' remaining.';
+      document.getElementById('resultCtaNote').textContent =
+        data.credits_remaining + ' credit' + (data.credits_remaining!==1?'s':'') + ' remaining.';
     } else {
       localStorage.setItem(FREE_KEY, '1');
       updateSearchHint(0);
@@ -1411,7 +1772,12 @@ async function runCheck(){
     }
 
     loading.classList.remove('visible');
-    resultPanel.classList.add('visible');
+    setStep(4);
+    document.getElementById('resultPanel').classList.add('visible');
+    document.getElementById('resultPanel').scrollIntoView({behavior:'smooth', block:'nearest'});
+
+    // Refresh history for logged-in users
+    if(_authUser) setTimeout(loadHistory, 1200);
 
   } catch(err){
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
@@ -1421,15 +1787,241 @@ async function runCheck(){
   }
 }
 
+function renderResult(data, submittedClaim){
+  const result = (data.results && data.results[0]) || {};
+  const a = result.analysis || {};
+  const claim = result.claim || submittedClaim || '';
+  const rating = (a.rating || 'UNVERIFIABLE').toUpperCase().replace(/\s+/g,'_');
+  const ratingDisplay = (a.rating || 'UNVERIFIABLE').toUpperCase();
+
+  // Verdict chip
+  const chip = document.getElementById('verdictChip');
+  chip.className = 'verdict-chip ' + rating;
+  chip.textContent = ratingDisplay.replace(/_/g,' ');
+
+  // Confidence tag
+  const conf = (a.confidence || '').toUpperCase();
+  document.getElementById('confidenceTag').textContent = conf ? conf + ' CONFIDENCE' : '';
+
+  // Claim text
+  const ct = document.getElementById('rpClaimText');
+  ct.textContent = '\u201c' + (claim.length>300 ? claim.slice(0,300)+'\u2026' : claim) + '\u201d';
+
+  // Truth bar
+  const scoreMap = {'TRUE':10,'MOSTLY_TRUE':8,'HALF_TRUE':5,'MOSTLY_FALSE':3,'FALSE':0};
+  const tb = document.getElementById('rpTruthBar');
+  if(rating in scoreMap){
+    const s = scoreMap[rating];
+    const fillColor = s>=8?'#22c55e':s>=5?'#eab308':s>=3?'#f97316':'#ef4444';
+    const fill = document.getElementById('rpTruthFill');
+    fill.style.width = '0%'; fill.style.background = fillColor;
+    setTimeout(()=>{ fill.style.width = (s*10)+'%'; }, 60);
+    document.getElementById('rpTruthScore').textContent = s+'/10';
+    tb.style.display = 'flex';
+  } else {
+    tb.style.display = 'none';
+  }
+
+  // Rating reason (non-TRUE/FALSE only)
+  const rrSec = document.getElementById('rpRatingReasonSection');
+  if(rating!=='TRUE' && rating!=='FALSE' && a.rating_reason){
+    document.getElementById('rpRatingReason').textContent = a.rating_reason;
+    rrSec.style.display = 'block';
+  } else { rrSec.style.display = 'none'; }
+
+  // Analysis
+  document.getElementById('resultVerdict').textContent = a.verdict || '';
+
+  // Key facts
+  const kfSec = document.getElementById('rpKeyFactsSection');
+  const kfList = document.getElementById('rpKeyFacts');
+  if(a.key_facts && a.key_facts.length){
+    kfList.innerHTML = '';
+    a.key_facts.slice(0,4).forEach((f,i)=>{
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="rp-fact-num">'+(i+1)+'</span><span>'+f+'</span>';
+      kfList.appendChild(li);
+    });
+    kfSec.style.display = 'block';
+  } else { kfSec.style.display = 'none'; }
+
+  // Perspectives
+  const perspSec = document.getElementById('rpPerspectivesSection');
+  let persp = a.perspectives || '';
+  if(typeof persp === 'object') persp = Object.values(persp).filter(v=>v&&v!=='No coverage found').join(' ');
+  if(persp && String(persp).trim() && persp!=='No coverage found'){
+    document.getElementById('rpPerspectives').textContent = String(persp);
+    perspSec.style.display = 'block';
+  } else { perspSec.style.display = 'none'; }
+
+  // Context/Background
+  const ctxSec = document.getElementById('rpContextSection');
+  if(a.context && a.context.trim()){
+    document.getElementById('rpContext').textContent = a.context;
+    ctxSec.style.display = 'block';
+  } else { ctxSec.style.display = 'none'; }
+
+  // Contested language
+  const clSec = document.getElementById('rpContestedSection');
+  const clList = document.getElementById('rpContested');
+  if(a.contested_language && a.contested_language.length){
+    clList.innerHTML = '';
+    a.contested_language.slice(0,3).forEach(item=>{
+      const li = document.createElement('li');
+      li.innerHTML = '<span class="rp-fact-num" style="border-radius:3px;font-size:0.7rem">\u2192</span><span>'+item+'</span>';
+      clList.appendChild(li);
+    });
+    clSec.style.display = 'block';
+  } else { clSec.style.display = 'none'; }
+
+  // Red flags
+  const rfSec = document.getElementById('rpRedFlagsSection');
+  const rfList = document.getElementById('rpRedFlags');
+  if(a.red_flags && a.red_flags.length){
+    rfList.innerHTML = '';
+    a.red_flags.slice(0,3).forEach(f=>{
+      const li = document.createElement('li');
+      li.textContent = f;
+      rfList.appendChild(li);
+    });
+    rfSec.style.display = 'block';
+  } else { rfSec.style.display = 'none'; }
+
+  // Who benefits
+  const wbSec = document.getElementById('rpWhoBenefitsSection');
+  if(a.who_benefits && a.who_benefits.trim()){
+    document.getElementById('rpWhoBenefits').textContent = a.who_benefits;
+    wbSec.style.display = 'block';
+  } else { wbSec.style.display = 'none'; }
+
+  // Bias note
+  const bSec = document.getElementById('rpBiasSection');
+  if(a.media_bias && a.media_bias.trim()){
+    document.getElementById('rpBias').textContent = a.media_bias;
+    bSec.style.display = 'block';
+  } else { bSec.style.display = 'none'; }
+
+  // Confidence row
+  const confColors = {HIGH:'#22c55e',MEDIUM:'#eab308',LOW:'#ef4444'};
+  document.getElementById('rpConfDot').textContent = '\u25CF';
+  document.getElementById('rpConfDot').style.color = confColors[conf]||'#9ca3af';
+  document.getElementById('rpConfLevel').textContent = 'Confidence: '+(conf||'Unknown');
+  document.getElementById('rpConfReason').textContent = a.confidence_reason || '';
+
+  // Sources
+  const srcEl = document.getElementById('resultSources');
+  srcEl.innerHTML = '';
+  const consulted = (result.sources_consulted||[]).length;
+  document.getElementById('rpSourcesLabel').textContent =
+    consulted ? 'Sources cited ('+consulted+' searched)' : 'Sources cited';
+  (a.sources||[]).slice(0,8).forEach(s=>{
+    // Format: "Name — URL" or just name or URL
+    const dashIdx = s.indexOf(' \u2014 ');
+    const name = dashIdx>=0 ? s.slice(0,dashIdx).trim() : s;
+    const url  = dashIdx>=0 ? s.slice(dashIdx+3).trim() : '';
+    const chip = document.createElement('a');
+    chip.className = 'rp-source-chip';
+    if(url && url.startsWith('http')){
+      chip.href = url; chip.target = '_blank'; chip.rel = 'noopener noreferrer';
+    } else {
+      chip.className += ' no-link';
+    }
+    const label = name.length>40 ? name.slice(0,40)+'\u2026' : name;
+    chip.textContent = label || url;
+    srcEl.appendChild(chip);
+  });
+}
+
+function newCheck(){
+  document.getElementById('resultPanel').classList.remove('visible');
+  hidePicker();
+  document.getElementById('claimInput').value = '';
+  document.getElementById('claimInput').style.height = 'auto';
+  document.getElementById('claimInput').focus();
+  _selectedClaim = null;
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+function copyResult(){
+  const chip    = document.getElementById('verdictChip').textContent;
+  const conf    = document.getElementById('confidenceTag').textContent;
+  const claim   = document.getElementById('rpClaimText').textContent;
+  const verdict = document.getElementById('resultVerdict').textContent;
+  const sources = Array.from(document.querySelectorAll('.rp-source-chip')).map(s=>s.textContent).join(', ');
+  const text = ['Fred Fact Check','','VERDICT: '+chip+'  |  '+conf,'CLAIM: '+claim,'','ANALYSIS: '+verdict,
+    sources?'SOURCES: '+sources:'','','fredcheck.com'].filter(l=>l!==undefined).join('\n');
+  navigator.clipboard.writeText(text).then(()=>{
+    const b = document.querySelector('.rp-copy-btn');
+    const orig = b.textContent; b.textContent = 'Copied \u2713';
+    setTimeout(()=>b.textContent=orig, 1800);
+  }).catch(()=>{
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  });
+}
+
 function showError(msg){
   document.getElementById('searchLoading').classList.remove('visible');
-  document.getElementById('verdictChip').className = 'verdict-chip UNVERIFIABLE';
-  document.getElementById('verdictChip').textContent = 'ERROR';
+  const chip = document.getElementById('verdictChip');
+  chip.className = 'verdict-chip UNVERIFIABLE';
+  chip.textContent = 'ERROR';
   document.getElementById('confidenceTag').textContent = '';
+  document.getElementById('rpClaimText').textContent = '';
+  document.getElementById('rpTruthBar').style.display = 'none';
+  document.getElementById('rpRatingReasonSection').style.display = 'none';
   document.getElementById('resultVerdict').textContent = msg;
+  document.getElementById('rpKeyFactsSection').style.display = 'none';
+  document.getElementById('rpPerspectivesSection').style.display = 'none';
+  document.getElementById('rpContextSection').style.display = 'none';
+  document.getElementById('rpContestedSection').style.display = 'none';
+  document.getElementById('rpRedFlagsSection').style.display = 'none';
+  document.getElementById('rpWhoBenefitsSection').style.display = 'none';
+  document.getElementById('rpBiasSection').style.display = 'none';
   document.getElementById('resultSources').innerHTML = '';
   document.getElementById('resultCtaNote').textContent = '';
   document.getElementById('resultPanel').classList.add('visible');
+}
+
+// ── HISTORY ─────────────────────────────────────────────────
+async function loadHistory(){
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(!token) return;
+  const list = document.getElementById('historyList');
+  list.innerHTML = '<div style="font-size:0.82rem;color:#ccc;text-align:center;padding:0.75rem">Loading\u2026</div>';
+  try {
+    const res = await fetch(API+'/api/history',{headers:{'Authorization':'Bearer '+token}});
+    if(!res.ok) return;
+    const data = await res.json();
+    const items = data.history || [];
+    if(!items.length){
+      list.innerHTML = '<div style="font-size:0.82rem;color:#ccc;text-align:center;padding:0.75rem">No checks yet.</div>';
+      return;
+    }
+    list.innerHTML = '';
+    items.forEach(item=>{
+      const results = item.results || [];
+      const rawRating = (results[0]&&results[0].analysis&&results[0].analysis.rating)||'UNKNOWN';
+      const rk = rawRating.toUpperCase().replace(/\s+/g,'_');
+      const date = new Date(item.created_at*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      const q = item.query||'';
+      const el = document.createElement('div');
+      el.className = 'history-item';
+      el.title = q;
+      el.onclick = ()=>{
+        document.getElementById('claimInput').value = q;
+        window.scrollTo({top:0,behavior:'smooth'});
+      };
+      el.innerHTML =
+        '<div class="history-dot '+rk+'"></div>'+
+        '<span class="history-query">'+(q.length>90?q.slice(0,90)+'\u2026':q)+'</span>'+
+        '<span class="history-chip '+rk+'">'+rawRating.toUpperCase().replace(/_/g,' ')+'</span>'+
+        '<span class="history-date">'+date+'</span>';
+      list.appendChild(el);
+    });
+  } catch(e){
+    list.innerHTML = '<div style="font-size:0.82rem;color:#ccc;text-align:center;padding:0.75rem">Could not load history.</div>';
+  }
 }
 
 // ── INIT ───────────────────────────────────────────────────
