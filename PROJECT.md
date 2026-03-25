@@ -334,9 +334,17 @@ Type HELP anytime for a full guide.
 
 **Verdict quality fixes (synth_prompt):**
 - RULE 2: vague phrasing not grounds for UNVERIFIABLE — match evidence to substance (`d76e70c`)
-- RULE 8: legal/moral characterisations ('criminally obtained', 'fraudulently acquired' etc.) — mandatory two-step: strip label → rate factual core → put label in contested_language. Concrete example included. Never UNVERIFIABLE for unverifiable legal labels. (`d76e70c`, `d275baf`)
-- Confirmed working: web "Trump family pocketed half billion from market movements" → MOSTLY TRUE / MEDIUM / 8/10
-- WA "criminally obtained profits" — awaiting retest after `d275baf`
+- RULE 8: legal/moral characterisations — mandatory two-step with example (`d76e70c`, `d275baf`)
+- Confirmed working on WA post: "criminally obtained profits" → MOSTLY TRUE ✅
+
+**WA UX / messaging:**
+- Welcome: `_forward, paste or type_` italic hint added (`4d2e101`)
+- Beta standardised across all touchpoints: `_(Beta)_` italic (`4d2e101`)
+- Reactions simplified to 3: 👍 👎 😐 (`4d2e101`)
+- Feedback reminder for free users in verdict footer (`278c249`)
+
+**HALF TRUE — discussed, pending update:**
+- Currently fires zero times. Tightening to compound-claim only: two separable assertions, one confirmed one refuted. NOT for ambiguity of a single assertion. Awaiting go-ahead to update RULE 8.
 
 ### Session 23 — 2026-03-25 (CLOSED)
 
