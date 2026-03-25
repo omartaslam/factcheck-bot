@@ -587,7 +587,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .rp-truth-score{font-size:0.72rem;font-weight:800;color:#888;white-space:nowrap}
 
 /* Body sections */
-.rp-body{padding:1.1rem 1.4rem 0.25rem}
+.rp-body{padding:1.1rem 1.4rem 0.25rem;text-align:left}
 .rp-section{margin-bottom:1.1rem}
 .rp-section-label{
   font-size:0.62rem;font-weight:800;letter-spacing:2.5px;
@@ -625,14 +625,14 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   display:flex;align-items:flex-start;gap:0.6rem;
   padding:0.8rem 1.4rem;
   border-top:1px solid #f5f5f5;border-bottom:1px solid #f5f5f5;
-  background:#fafafa;
+  background:#fafafa;text-align:left;
 }
 .rp-conf-dot{font-size:0.85rem;line-height:1.4;flex-shrink:0}
 .rp-conf-level{font-size:0.72rem;font-weight:800;color:#333;letter-spacing:0.4px;text-transform:uppercase}
 .rp-conf-reason{font-size:0.8rem;color:#999;line-height:1.55;margin-top:0.1rem}
 
 /* Sources */
-.rp-sources-section{padding:0.85rem 1.4rem 1rem}
+.rp-sources-section{padding:0.85rem 1.4rem 1rem;text-align:left}
 .rp-source-chips{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.45rem}
 .rp-source-chip{
   padding:3px 9px;border-radius:5px;
@@ -1931,7 +1931,7 @@ function renderResult(data, submittedClaim){
   ct.textContent = '\u201c' + (claim.length>300 ? claim.slice(0,300)+'\u2026' : claim) + '\u201d';
 
   // Truth bar — animated via IntersectionObserver when scrolled into view
-  const scoreMap = {'TRUE':10,'MOSTLY_TRUE':8,'HALF_TRUE':5,'MOSTLY_FALSE':3,'FALSE':0};
+  const scoreMap = {'TRUE':10,'MOSTLY_TRUE':8,'HALF_TRUE':5,'NEEDS_CONTEXT':5,'MISLEADING':3,'MOSTLY_FALSE':3,'FALSE':0};
   const tb = document.getElementById('rpTruthBar');
   if(rating in scoreMap){
     const s = scoreMap[rating];
