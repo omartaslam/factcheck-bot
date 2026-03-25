@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-24 (session 22 — CLOSED)
+**Last updated:** 2026-03-25 (session 23 — IN PROGRESS)
 
 ---
 
@@ -304,7 +304,7 @@ Type HELP anytime for a full guide.
 9. **Split verdict into multiple WA messages**
 10. **source_url stored in request_log** — ✅ done (commit `5149819`)
 11. **WEBSITE_URL env var** — set to `https://fredcheck.com` in Railway
-12. **fredcheck.co.uk** — add as custom domain in Railway
+12. ~~**fredcheck.co.uk footer link**~~ — removed from footer ✅ (domain not set up; Railway custom domain still pending)
 13. **FEEDBACK command** — freeform text (reactions + reply feedback already done)
 14. **Persist `pending` state to DB** — lost on every redeploy
 15. **SendGrid DMARC** — verify once DNS propagates
@@ -315,6 +315,21 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 23 — 2026-03-25 (IN PROGRESS)
+
+**Build baseline:** commit `8577e78` (session 22) — most stable Fred to-date.
+
+**Web v2 — full upgrade to production quality** (commit `ddcf08d`):
+
+- **`/api/extract-claims` endpoint**: fast claim extraction (haiku neutralise + sonnet extract, no credit deduction). Used by web UI claim picker. CORS preflight added.
+- **Claim picker UI**: when multiple claims detected, inline selector appears — "3 claims found — select one to fact-check:" — matches WA two-step flow exactly. Same `neutralize_claim` + `extract_claims` codebase as WA.
+- **Rich result panel**: all verdict engine fields now rendered on web — verdict chip (colour-coded), confidence badge, animated truth bar (0–10 with colour gradient), rating reason (non-TRUE/FALSE), analysis paragraph, key facts (numbered with gold circles), regional perspectives, background context, contested language, red flags (amber alert box), who benefits, bias note, confidence level + reason, clickable source chips (name + link, "N searched" count). Fade-in animation on result reveal.
+- **Copy result button**: one-click plain-text clipboard export of full verdict for pasting into editorial tools.
+- **New check button**: quick reset without page reload.
+- **History section**: logged-in users see last 20 checks below the hero — verdict colour dot, query preview, verdict chip, date. Click any row to reload that query into the input. Auto-refreshes after each new check.
+- **Loading labels** updated to reflect actual pipeline phases.
+- **Footer fix**: removed broken `fredcheck.co.uk` link.
 
 ### Session 21 — 2026-03-24
 
