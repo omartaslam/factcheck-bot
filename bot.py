@@ -4440,8 +4440,16 @@ def _send_feedback_email(feedback_type, emoji_or_text, log_id, from_num, profile
         req = _ur.Request("https://api.sendgrid.com/v3/mail/send", data=payload,
                           headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
                           method="POST")
-        _ur.urlopen(req, timeout=10)
-        log.info("Feedback email sent for log_id %s (%s)", log_id, feedback_type)
+        try:
+            resp = _ur.urlopen(req, timeout=10)
+            log.info("Feedback email sent for log_id %s (%s) — HTTP %s", log_id, feedback_type, resp.status)
+        except Exception as http_e:
+            import urllib.error as _ue
+            if isinstance(http_e, _ue.HTTPError):
+                body = http_e.read().decode(errors="ignore")[:500]
+                log.warning("Feedback email HTTP %s for log_id %s: %s", http_e.code, log_id, body)
+            else:
+                raise
     except Exception as e:
         log.warning("Feedback email failed: %s", e)
 
