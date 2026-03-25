@@ -4644,10 +4644,12 @@ def process(from_num, message, profile_name=None):
     # ── Reply-as-feedback ─────────────────────────────────────────────────────
     if _is_text:
         context_id = message.get("context", {}).get("id")
+        log.info("Reply-feedback check: context_id=%s", context_id)
         if context_id:
             try:
                 with _db() as c:
                     row = c.execute("SELECT id FROM request_log WHERE wa_message_id=? OR feedback_prompt_msg_id=?", (context_id, context_id)).fetchone()
+                log.info("Reply-feedback row lookup for context_id=%s: %s", context_id, row)
                 if row:
                     feedback_body = message.get("text", {}).get("body", "").strip()
                     with _db() as c:
