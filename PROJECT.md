@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 24 — IN PROGRESS, auto-save 5)
+**Last updated:** 2026-03-25 (session 24 — IN PROGRESS, auto-save 6)
 
 ---
 
@@ -352,9 +352,9 @@ Type HELP anytime for a full guide.
 - WhatsApp Cloud API cannot proactively message users who haven't sent a message — no "chat opened" webhook exists
 - Plan A: WhatsApp Business Profile "About" field — already has good description, only visible via "View business" tap
 - Plan B (SHIPPED `a0cf336`): Icebreakers — 3 set up in WhatsApp Manager Automations tab. Show as tappable buttons on blank chat screen. Handlers: "What can Fred check?" → HELP_MSG; "How does Fred work?" → step-by-step explainer; "Send me something to fact check" → instructional prompt. SHARE command also added.
-- Plan C (PENDING): reduce to ONE icebreaker with instructional label: `Forward, paste or type any claim to fact-check it` — user to update in WhatsApp Manager, bot handler to be updated to match
-- Display name locked — monthly limit hit trying to add bullet point. "Fred ·" comes from WABA account name; display name is just "Fact Check". Try `Fred - Fact Check` or `Fred | Fact Check` when limit resets next month.
-- Icebreaker UX verdict: 3 buttons felt like friction/extra step. ONE button with instructional copy is cleaner.
+- **SHIPPED**: Single icebreaker `Fred - Fact Check — forward, paste or type a claim` set in WhatsApp Manager. Bot intercepts via "FORWARD, PASTE OR TYPE" substring → HELP_MSG. ✅
+- **SHIPPED**: WA Business Profile `about` field updated to `Fact-check any claim in 60 seconds. No Western bias.` via `/admin/update-wa-profile` endpoint — fixes duplicate name on business card. ✅
+- Display name locked — monthly limit hit. Try `Fred - Fact Check` or `Fred | Fact Check` when limit resets next month. "Fred •" not allowed by Meta.
 
 **Admin delete-user endpoint (temporary, live):**
 - `POST /admin/delete-user` with `X-Admin-Token` header and `{"uid":"PHONE_NUMBER"}` — deletes from platform_users + request_log
