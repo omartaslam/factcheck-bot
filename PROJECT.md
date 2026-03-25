@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 24 — IN PROGRESS, auto-save 6)
+**Last updated:** 2026-03-25 (session 24 — CLOSED)
 
 ---
 
@@ -317,7 +317,7 @@ Type HELP anytime for a full guide.
 
 ## 12. Recently Completed Work
 
-### Session 24 — 2026-03-25 (IN PROGRESS)
+### Session 24 — 2026-03-25 (CLOSED)
 
 **Build baseline:** commit `d275baf`
 
