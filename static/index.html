@@ -1936,13 +1936,7 @@ function renderResult(data, submittedClaim){
     tb.style.display = 'flex';
     _observeTruthBar();
   } else {
-    // UNVERIFIABLE — show bar with neutral grey, no score
-    fill.style.width = '0%';
-    fill.style.background = '#d1d5db';
-    fill.dataset.target = '50';
-    document.getElementById('rpTruthScore').textContent = '—';
-    tb.style.display = 'flex';
-    _observeTruthBar();
+    tb.style.display = 'none';
   }
 
   // Rating reason (non-TRUE/FALSE only)
