@@ -3686,7 +3686,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
             if days > 180:
                 lines += ["⚠️ _Older content — verify claims are still current_"]
             lines += [""]
-    version = "Fred Check *(Beta)*" if BETA_MODE else "Fred Check"
+    version = "Fred Check _(Beta)_" if BETA_MODE else "Fred Check"
     if checks_remaining is not None:
         footer = ["──────────────", f"{checks_remaining} check{'s' if checks_remaining != 1 else ''} remaining  •  {version}"]
     else:
@@ -3699,9 +3699,9 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     return "\n".join(lines)
 
 def _welcome_msg():
-    beta_suffix = " _(BETA)_" if BETA_MODE else ""
+    beta_suffix = " _(Beta)_" if BETA_MODE else ""
     beta_line = (
-        "\n_🚧 Fred Check BETA — feedback welcome - "
+        "\n_🚧 Fred Check (Beta) — feedback welcome - "
         "WhatsApp +34643994740 or email hello@fredcheck.com. "
         "Reply HELP for more info._"
     ) if BETA_MODE else ""
@@ -3710,6 +3710,7 @@ def _welcome_msg():
         "I'm FRED, I fact check claims across 65+ sources from 6 world regions — "
         "with no default Western narrative.\n\n"
         "*Send me any of these:*\n"
+        "_forward, paste or type_\n"
         "• A text claim, headline or quote\n"
         "• A URL (news article, Facebook, Instagram, TikTok, YouTube)\n"
         "• An image, video or voice note\n\n"
@@ -3814,14 +3815,14 @@ _TAGLINES = [
 ]
 
 _VERDICT_REACTION = {
-    "TRUE":           "✅",
+    "TRUE":           "👍",
     "MOSTLY TRUE":    "👍",
-    "HALF TRUE":      "🤔",
-    "NEEDS CONTEXT":  "📌",
+    "HALF TRUE":      "😐",
+    "NEEDS CONTEXT":  "😐",
     "MOSTLY FALSE":   "👎",
-    "MISLEADING":     "⚠️",
-    "FALSE":          "❌",
-    "UNVERIFIABLE":   "❓",
+    "MISLEADING":     "👎",
+    "FALSE":          "👎",
+    "UNVERIFIABLE":   "😐",
 }
 _VERDICT_PRIORITY = ["FALSE","MISLEADING","MOSTLY FALSE",
                      "HALF TRUE","NEEDS CONTEXT","UNVERIFIABLE","MOSTLY TRUE","TRUE"]
@@ -5726,7 +5727,7 @@ def _psend_payment_prompt(platform, uid, balance_cents, send_fn):
     if SUB_LINK:
         lines += ["", f"*♾ Unlimited* → {SUB_LINK}{suffix}"]
     if not any([TOPUP_1_LINK, TOPUP_5_LINK, TOPUP_10_LINK, TOPUP_25_LINK, SUB_LINK]):
-        beta_note = "\n_We're in BETA — paid plans launching soon. Watch this space!_" if BETA_MODE else ""
+        beta_note = "\n_We're in (Beta) — paid plans launching soon. Watch this space!_" if BETA_MODE else ""
         lines += ["", f"_Payment system coming soon._{beta_note}"]
     lines += ["", "_Secure payment by Stripe_"]
     send_fn("\n".join(lines))
