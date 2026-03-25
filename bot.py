@@ -4687,7 +4687,8 @@ def process(from_num, message, profile_name=None):
             return
         # ── Single icebreaker (current WhatsApp Manager config) ──────────
         if "FORWARD, PASTE OR TYPE" in body_upper or "TAP TO FACT CHECK" in body_upper:
-            send(from_num, HELP_MSG)
+            if not is_new:
+                send(from_num, HELP_MSG)
             return
         # ── Icebreaker: What can Fred check? ─────────────────────────────
         if body_upper == "WHAT CAN FRED CHECK?":
