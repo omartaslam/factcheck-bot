@@ -4676,6 +4676,9 @@ def process(from_num, message, profile_name=None):
         log.info("=== VIDEO MESSAGE RECEIVED ===")
     if msg_type == "text":
         body = message["text"]["body"].strip(); body_upper = body.upper()
+        # ── Emoji-only — ignore silently ──────────────────────────────────
+        if body and re.match(r'^[\U0001F000-\U0001FFFF\u2600-\u27FF\uFE0F\uFE0E\u200D\s]+$', body) and not any(c.isalpha() or c.isdigit() for c in body):
+            return
         # ── HELP command ──────────────────────────────────────────────────
         if body_upper in ("HELP", "?", "START", "INFO"):
             send(from_num, HELP_MSG)
