@@ -3615,7 +3615,7 @@ def _trunc(text, limit):
     cut = chunk.rsplit(' ', 1)[0].rstrip('.,;:—- ')
     return cut + '…'
 
-def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None, wa_cost=0.0, checks_remaining=None):
+def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, osint=None, wa_cost=0.0, checks_remaining=None, is_free=False):
     rating = a.get("rating", "UNVERIFIABLE").upper()
     src_word = {"text":"Text","image":"Image","audio":"Voice","video":"Video","url":"Article","document":"Document"}
     badge_map = {"TRUE":"✅  VERDICT: TRUE","MOSTLY TRUE":"🟢  VERDICT: MOSTLY TRUE","HALF TRUE":"🟡  VERDICT: HALF TRUE","MOSTLY FALSE":"🟠  VERDICT: MOSTLY FALSE","FALSE":"❌  VERDICT: FALSE","UNVERIFIABLE":"❓  VERDICT: UNVERIFIABLE","MISLEADING":"⚠️  VERDICT: MISLEADING","NEEDS CONTEXT":"📌  VERDICT: NEEDS CONTEXT"}
@@ -3692,6 +3692,8 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     else:
         footer = ["──────────────", version]
     footer.append(f"_{random.choice(_TAGLINES)}_")
+    if is_free:
+        footer.append("_Useful? React 👍 👎 to this verdict, or reply with a comment._")
     footer.append(WEBSITE_URL)
     lines += footer
     if ad:
@@ -4042,7 +4044,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
             _checks_remaining = max(0, FREE_DAILY_LIMIT - _daily_free_used(_u) - 1)
         else:
             _checks_remaining = int(max(0, ((_u.get("balance_cents") or 0) - cost) // COST_PER_CHECK_CENTS))
-        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST, checks_remaining=_checks_remaining)
+        report = fmt_report(claim, a, st, cost, all_used, ad=ad, post_date=post_date, osint=osint, wa_cost=WA_CONVERSATION_COST, checks_remaining=_checks_remaining, is_free=(billing_type=="free"))
         log.info("VERDICT SENT to %s:\n%s", from_num, report)
         if multi:
             send(from_num, f"*— CLAIM {i+1}/{len(claims)} —*")
