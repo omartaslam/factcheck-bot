@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 24 — IN PROGRESS, auto-save 4)
+**Last updated:** 2026-03-25 (session 24 — IN PROGRESS, auto-save 5)
 
 ---
 
@@ -350,9 +350,11 @@ Type HELP anytime for a full guide.
 **Onboarding / new user UX (discussed, not yet implemented):**
 - Problem: users arriving via shared business card see a blank chat, don't know what Fred does
 - WhatsApp Cloud API cannot proactively message users who haven't sent a message — no "chat opened" webhook exists
-- Plan A: update WhatsApp Business Profile "About" field to `Fact-check any claim in 60 seconds. Forward, paste or type.` (manual, in Meta Business Manager → WhatsApp Manager → Profile)
-- Plan B: `SHARE` command — user types SHARE → Fred sends a shareable intro message with wa.me link — recipient taps link, pre-filled "Hi" fires welcome. Not yet built.
-- Plan C: wa.me link with `?text=Hi` pre-filled for all outbound shares of Fred's number
+- Plan A: WhatsApp Business Profile "About" field — already has good description, only visible via "View business" tap
+- Plan B (SHIPPED `a0cf336`): Icebreakers — 3 set up in WhatsApp Manager Automations tab. Show as tappable buttons on blank chat screen. Handlers: "What can Fred check?" → HELP_MSG; "How does Fred work?" → step-by-step explainer; "Send me something to fact check" → instructional prompt. SHARE command also added.
+- Plan C (PENDING): reduce to ONE icebreaker with instructional label: `Forward, paste or type any claim to fact-check it` — user to update in WhatsApp Manager, bot handler to be updated to match
+- Display name locked — monthly limit hit trying to add bullet point. "Fred ·" comes from WABA account name; display name is just "Fact Check". Try `Fred - Fact Check` or `Fred | Fact Check` when limit resets next month.
+- Icebreaker UX verdict: 3 buttons felt like friction/extra step. ONE button with instructional copy is cleaner.
 
 **Admin delete-user endpoint (temporary, live):**
 - `POST /admin/delete-user` with `X-Admin-Token` header and `{"uid":"PHONE_NUMBER"}` — deletes from platform_users + request_log
