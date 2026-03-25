@@ -4654,7 +4654,8 @@ def process(from_num, message, profile_name=None):
             except Exception as e:
                 log.warning("Reply-feedback store failed: %s", e)
     _body_upper = message.get("text", {}).get("body", "").strip().upper() if _is_text else ""
-    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "TOPUP", "NO", "N", "YES", "Y", "ALL", "A") or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
+    _ICEBREAKER_UPPER = {"WHAT CAN FRED CHECK?", "HOW DOES FRED WORK?", "SEND ME SOMETHING TO FACT CHECK"}
+    _is_command = _body_upper in ("HELP", "?", "START", "INFO", "BALANCE", "TOPUP", "SHARE", "NO", "N", "YES", "Y", "ALL", "A") or _body_upper in _ICEBREAKER_UPPER or bool(re.match(r'^[\d][,\s\d]*$', _body_upper))
     if not is_new and not _is_command:
         _bt_early = _wa_billing_type(from_num)
         if _bt_early in ("daily_capped", "trial_expired"):
@@ -4669,6 +4670,48 @@ def process(from_num, message, profile_name=None):
         # ── HELP command ──────────────────────────────────────────────────
         if body_upper in ("HELP", "?", "START", "INFO"):
             send(from_num, HELP_MSG)
+            return
+        # ── Icebreaker: What can Fred check? ─────────────────────────────
+        if body_upper == "WHAT CAN FRED CHECK?":
+            send(from_num, HELP_MSG)
+            return
+        # ── Icebreaker: How does Fred work? ──────────────────────────────
+        if body_upper == "HOW DOES FRED WORK?":
+            send(from_num,
+                "*How Fred works* 🔍\n\n"
+                "1. *You send a claim* — forward a WhatsApp post, paste a headline, share a URL, or type a claim directly.\n\n"
+                "2. *Fred searches live* — 65+ sources across Western, Arabic, Spanish and French media are searched simultaneously.\n\n"
+                "3. *You get a verdict* — TRUE / MOSTLY TRUE / HALF TRUE / NEEDS CONTEXT / MISLEADING / FALSE / UNVERIFIABLE — with sources, key facts, and any contested language flagged.\n\n"
+                "_No default Western narrative. Built for journalists, activists & curious minds._\n\n"
+                f"🌐 {WEBSITE_URL}"
+            )
+            return
+        # ── Icebreaker: Send me something to fact check ──────────────────
+        if body_upper == "SEND ME SOMETHING TO FACT CHECK":
+            send(from_num,
+                "*Ready to check something?* 👇\n\n"
+                "Just send me any of these:\n"
+                "• *Forward* a WhatsApp message or post\n"
+                "• *Paste* a headline, quote or claim\n"
+                "• *Share* a URL (Facebook, Instagram, TikTok, YouTube, news article)\n"
+                "• *Send* an image, video or voice note\n\n"
+                "_I'll search 65+ sources and give you a verdict in under 60 seconds._"
+            )
+            return
+        # ── SHARE command ─────────────────────────────────────────────────
+        if body_upper == "SHARE":
+            send(from_num,
+                "*Share Fred with someone* 👇\n\n"
+                "Forward this message to anyone who needs fact-checking:\n\n"
+                "——\n"
+                "*Meet Fred — your fact-checking assistant* 🔍\n\n"
+                "Forward, paste or type any claim, headline or WhatsApp post. "
+                "Fred checks it against 65+ live sources across Western, Arabic, Spanish and French media "
+                "and gives you a verdict in under 60 seconds. No default Western narrative.\n\n"
+                f"👉 Chat with Fred: https://wa.me/447863795638\n"
+                "——\n\n"
+                "_(Beta — free to try)_"
+            )
             return
         # ── BALANCE command ───────────────────────────────────────────────
         if body_upper in ("BALANCE", "TOPUP"):
