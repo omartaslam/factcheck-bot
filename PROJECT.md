@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 24 — IN PROGRESS)
+**Last updated:** 2026-03-25 (session 24 — IN PROGRESS, auto-save 4)
 
 ---
 
@@ -204,7 +204,8 @@ Type HELP anytime for a full guide.
 ### Special commands
 - `HELP` — full guide
 - `BALANCE` — shows remaining free checks or credit balance
-- React 👍/👎 to verdict — stores accuracy rating
+- `SHARE` — (planned) sends shareable intro message for forwarding to new users
+- React 👍/👎/😐 to verdict — stores accuracy rating (simplified to 3 emojis: 👍 TRUE/MOSTLY TRUE · 😐 HALF TRUE/NEEDS CONTEXT/UNVERIFIABLE · 👎 MOSTLY FALSE/MISLEADING/FALSE)
 - Long-press verdict → Reply — stores text feedback comment
 - `FEEDBACK` — (planned, not yet implemented — freeform command)
 
@@ -345,6 +346,18 @@ Type HELP anytime for a full guide.
 
 **HALF TRUE — discussed, pending update:**
 - Currently fires zero times. Tightening to compound-claim only: two separable assertions, one confirmed one refuted. NOT for ambiguity of a single assertion. Awaiting go-ahead to update RULE 8.
+
+**Onboarding / new user UX (discussed, not yet implemented):**
+- Problem: users arriving via shared business card see a blank chat, don't know what Fred does
+- WhatsApp Cloud API cannot proactively message users who haven't sent a message — no "chat opened" webhook exists
+- Plan A: update WhatsApp Business Profile "About" field to `Fact-check any claim in 60 seconds. Forward, paste or type.` (manual, in Meta Business Manager → WhatsApp Manager → Profile)
+- Plan B: `SHARE` command — user types SHARE → Fred sends a shareable intro message with wa.me link — recipient taps link, pre-filled "Hi" fires welcome. Not yet built.
+- Plan C: wa.me link with `?text=Hi` pre-filled for all outbound shares of Fred's number
+
+**Admin delete-user endpoint (temporary, live):**
+- `POST /admin/delete-user` with `X-Admin-Token` header and `{"uid":"PHONE_NUMBER"}` — deletes from platform_users + request_log
+- Used 2026-03-25 to simulate new user for welcome message testing
+- Should be removed after testing is complete (commits ec95e46, 55c8c35, a1640af, c49a84c)
 
 ### Session 23 — 2026-03-25 (CLOSED)
 
