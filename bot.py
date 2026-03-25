@@ -6805,6 +6805,22 @@ def admin_set_balance():
         c.execute(f"UPDATE platform_users SET {', '.join(fields)} WHERE platform=? AND platform_id=?", vals)
     return jsonify({"ok": True, "uid": uid, "balance_cents": cents, "reset_trial": reset_trial})
 
+@app.route("/admin/update-wa-profile", methods=["POST"])
+def admin_update_wa_profile():
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    payload = {"messaging_product": "whatsapp"}
+    for field in ("about", "description", "address", "email", "websites"):
+        if field in data:
+            payload[field] = data[field]
+    r = requests.post(
+        f"https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/whatsapp_business_profile",
+        headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"},
+        json=payload, timeout=10
+    )
+    return jsonify({"status": r.status_code, "body": r.json()})
+
 @app.route("/admin/delete-user", methods=["POST"])
 def admin_delete_user():
     """Delete a WA user entirely — for new-user simulation. Admin use only."""
