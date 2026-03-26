@@ -5735,9 +5735,9 @@ def _pbilling_type(platform, uid):
     """Returns 'subscriber' | 'free' | 'paid' | 'daily_capped' | 'trial_expired'."""
     u = _puser(platform, uid)
     if u["tier"] == "subscriber": return "subscriber"
-    # Free daily checks take priority over paid balance (while trial is active)
-    if not _is_trial_expired(u) and _daily_free_used(u) < FREE_DAILY_LIMIT: return "free"
     if u["balance_cents"] > 0: return "paid"
+    # Free daily checks only apply during trial (no paid balance)
+    if not _is_trial_expired(u) and _daily_free_used(u) < FREE_DAILY_LIMIT: return "free"
     if _is_trial_expired(u): return "trial_expired"
     return "daily_capped"
 
