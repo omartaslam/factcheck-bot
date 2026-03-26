@@ -6006,6 +6006,10 @@ def api_extract_claims():
     query = (data.get("claim") or data.get("query") or "").strip()[:2000]
     if not query:
         return jsonify({"error": "No claim provided"}), 400
+    if query.startswith("http"):
+        page_text = fetch(query) or _og_metadata(query)
+        if page_text:
+            query = page_text
     try:
         neutral = neutralize_claim(query)
         claims = extract_claims(neutral)
