@@ -2877,6 +2877,7 @@ def neutralize_claim(raw_text):
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
+                  "system": FRED_CHARTER,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=20)
         r.raise_for_status()
@@ -2924,6 +2925,7 @@ def extract_claims(text):
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json={"model": "claude-sonnet-4-6", "max_tokens": 400,
+                  "system": FRED_CHARTER,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=20)
         r.raise_for_status()
@@ -3161,8 +3163,8 @@ def _claude_call(prompt, model="claude-haiku-4-5-20251001", max_tokens=600, syst
     """Single Claude API call. Returns text or None. Tracks token cost."""
     body = {"model": model, "max_tokens": max_tokens, "temperature": 0,
             "messages": [{"role": "user", "content": prompt}]}
-    if system:
-        body["system"] = system
+    # Fred's Charter is the constitutional baseline for every Claude call
+    body["system"] = (system + "\n\n" + FRED_CHARTER) if system else FRED_CHARTER
     try:
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
