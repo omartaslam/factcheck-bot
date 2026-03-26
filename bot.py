@@ -6932,6 +6932,23 @@ def admin_usage():
     return jsonify({"period": {"from": from_str or "all", "to": to_str or "now"}, "users": result})
 
 
+@app.route("/admin/clear-history", methods=["POST"])
+def admin_clear_history():
+    """Delete all web history entries for a user by email. Admin use only."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "Unauthorized"}), 403
+    data = request.get_json() or {}
+    email = (data.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"error": "email required"}), 400
+    with _db() as c:
+        user = c.execute("SELECT id FROM users WHERE lower(email)=?", (email,)).fetchone()
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        c.execute("DELETE FROM history WHERE user_id=?", (user["id"],))
+        return jsonify({"ok": True, "cleared_for": email})
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 5000))
     log.info("Fred Check v3.2 starting (dev mode)...")
