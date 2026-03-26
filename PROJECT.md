@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-26 (session 30 — IN PROGRESS)
+**Last updated:** 2026-03-26 (session 30 — COMPLETE)
 
 ---
 
@@ -322,14 +322,25 @@ Type HELP anytime for a full guide.
 **Build baseline:** commit `16fa7a0`
 
 **Fixes / Features:**
-- **Compound claim merging — fixed** (`8d3f13d`): claim extractor was merging distinct assertions into one string (e.g. "1,400 years old AND written by Hazrat Usman"). Added SPLIT rule to `assess_content_claims`: multiple distinct falsifiable assertions must be extracted as separate claims. Confirmed working.
-- **RULE 8 CLAIM ISOLATION added to synth_prompt** (`002b74f`): verdict must be based solely on the extracted claim as stated — no sub-claims imported from research context. HALF TRUE corollary: both assertions must be explicitly present in the extracted claim, not found only in search results.
-- **Fred's Charter — constitutional principles** (`98defa9`): three non-negotiable principles defined as `FRED_CHARTER` constant and prepended to `SYSTEM` (covers synth_prompt) and `assess_content_claims`. Single source of truth. Principles: (1) Counteract Western bias, (2) Never islamophobic, (3) Never pro-Israeli.
+- **Compound claim merging — fixed** (`8d3f13d`): claim extractor was merging distinct assertions into one string (e.g. "1,400 years old AND written by Hazrat Usman"). Added SPLIT rule to `assess_content_claims`. Confirmed working.
+- **RULE 8 CLAIM ISOLATION** (`002b74f`): verdict rated on extracted claim only — no sub-claims imported from research context. HALF TRUE corollary tightened.
+- **RULE 1 idiomatic language guard** (`6123637`): colloquial expressions ('a few years', 'around the time of') cannot be parsed with scientific precision to manufacture a material error. Cross-references Charter violation pattern A.
+- **Thin-content escalation** (`0249bcb`): if initial URL fetch returns < 500 chars (login wall, rate-limit junk), automatically escalates to `tavily_extract`. Applied to WA handler + both web API endpoints. Confirmed fixed intermittent "no claims found" on repeated URL sends.
+- **Fred's Charter — full constitutional document** (`7751836`, `ae98e23`, `bee85e4`): 7 principles + 7 named violation patterns (A–G). Injected into every Claude call via `FRED_CHARTER` constant — single source of truth, propagates everywhere.
 
-**Charter test claims (to run):**
-1. "The Gaza Health Ministry has recorded over 50,000 Palestinian deaths since October 2023" → expect TRUE
-2. "The Birmingham Quran manuscript is among the oldest in the world, dated to within a few years of the Prophet Muhammad's lifetime" → expect TRUE
-3. "The International Court of Justice ruled in July 2024 that Israel's occupation of Palestinian territories is unlawful" → expect TRUE
+**Charter coverage (as of session 30):**
+| Call | Model | Charter |
+|---|---|---|
+| `synth_prompt` | Sonnet | ✅ via SYSTEM |
+| `assess_content_claims` | Sonnet | ✅ prepended |
+| `extract_claims` | Sonnet | ✅ system param |
+| `neutralize_claim` | Haiku | ✅ system param |
+| debate pro/con + all `_claude_call` | Haiku | ✅ default system |
+
+**Charter test results:**
+- "Berlin Wall stood for nearly 30 years before it fell" → ✅ TRUE (idiomatic guard working)
+- "China is world's largest economy by PPP (IMF)" → ✅ TRUE (anti-China pre-downgrade blocked)
+- Birmingham Quran manuscript age claim → ✅ TRUE (after fixes)
 
 ---
 
