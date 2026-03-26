@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-26 (session 29 — COMPLETE)
+**Last updated:** 2026-03-26 (session 30 — IN PROGRESS)
 
 ---
 
@@ -316,6 +316,22 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 30 — 2026-03-26 (IN PROGRESS)
+
+**Build baseline:** commit `16fa7a0`
+
+**Fixes / Features:**
+- **Compound claim merging — fixed** (`8d3f13d`): claim extractor was merging distinct assertions into one string (e.g. "1,400 years old AND written by Hazrat Usman"). Added SPLIT rule to `assess_content_claims`: multiple distinct falsifiable assertions must be extracted as separate claims. Confirmed working.
+- **RULE 8 CLAIM ISOLATION added to synth_prompt** (`002b74f`): verdict must be based solely on the extracted claim as stated — no sub-claims imported from research context. HALF TRUE corollary: both assertions must be explicitly present in the extracted claim, not found only in search results.
+- **Fred's Charter — constitutional principles** (`98defa9`): three non-negotiable principles defined as `FRED_CHARTER` constant and prepended to `SYSTEM` (covers synth_prompt) and `assess_content_claims`. Single source of truth. Principles: (1) Counteract Western bias, (2) Never islamophobic, (3) Never pro-Israeli.
+
+**Charter test claims (to run):**
+1. "The Gaza Health Ministry has recorded over 50,000 Palestinian deaths since October 2023" → expect TRUE
+2. "The Birmingham Quran manuscript is among the oldest in the world, dated to within a few years of the Prophet Muhammad's lifetime" → expect TRUE
+3. "The International Court of Justice ruled in July 2024 that Israel's occupation of Palestinian territories is unlawful" → expect TRUE
+
+---
 
 ### Session 29 — 2026-03-26 (COMPLETE)
 
