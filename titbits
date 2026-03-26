@@ -39,3 +39,24 @@ Current stable build: 62266d1 — "docs: session 20 closed" start session 21 of 
   git tag v20-stable 62266d1                                                                                   
   git push origin v20-stable               
 
+
+
+
+chk user usage .....
+
+ curl -s "https://fredcheck.com/admin/usage" -H "X-Admin-Token: qc-test-fred-2026" | python3 -m json.tool     
+                                               
+  curl -s "https://fredcheck.com/admin/usage?from=2026-03-01&to=2026-03-25" -H "X-Admin-Token:                 
+  qc-test-fred-2026" | python3 -m json.tool                                                                    
+                                                                                                               
+  curl -s "https://fredcheck.com/admin/usage?from=2026-03-25&to=2026-03-25" -H "X-Admin-Token:                 
+  qc-test-fred-2026" | python3 -m json.tool                                                                    
+                                                    
+
+
+add credit to wa
+
+curl -s -X POST https://fredcheck.com/admin/set-balance \                                                    
+    -H "Content-Type: application/json" \
+    -H "X-Admin-Token: qc-test-fred-2026" \                                                                    
+    -d '{"platform": "whatsapp", "uid": "34643994740", "cents": 850, "free_checks_used": 3}'  
