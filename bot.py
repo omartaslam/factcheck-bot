@@ -4351,6 +4351,12 @@ def _handle_platform_message(platform, uid, msg_type, text_body, send_fn,
             url = urls[0]
             send_fn("🔍 Analysing post/article...")
             page_text = fetch(url) or _og_metadata(url) or tavily_extract(url)
+            # Thin-content escalation: fetch() can return truthy junk (login walls, rate-limit pages)
+            # that passes the or-chain but contains no article body. If < 500 chars, try Tavily.
+            if page_text and len(page_text.strip()) < 500 and TAVILY_API_KEY:
+                richer = tavily_extract(url)
+                if richer and len(richer) > len(page_text):
+                    page_text = richer
             if not page_text:
                 reason = _url_fetch_reason(url)
                 send_fn(f"🔒 I couldn't access this article — it appears to be {reason}.\n\nTry copying the specific claim as text and sending it instead.")
@@ -6040,6 +6046,10 @@ def api_factcheck():
                     query = "\n\n".join(_fb_parts)
             else:
                 page_text = fetch(query) or _og_metadata(query) or tavily_extract(query)
+                if page_text and len(page_text.strip()) < 500 and TAVILY_API_KEY:
+                    richer = tavily_extract(query)
+                    if richer and len(richer) > len(page_text):
+                        page_text = richer
                 if page_text:
                     query = page_text
     try:
@@ -6081,6 +6091,10 @@ def api_extract_claims():
                 query = "\n\n".join(_fb_parts)
         else:
             page_text = fetch(query) or _og_metadata(query) or tavily_extract(query)
+            if page_text and len(page_text.strip()) < 500 and TAVILY_API_KEY:
+                richer = tavily_extract(query)
+                if richer and len(richer) > len(page_text):
+                    page_text = richer
             if page_text:
                 query = page_text
     try:
