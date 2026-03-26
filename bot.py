@@ -5976,9 +5976,19 @@ def api_factcheck():
         source_type = "url" if query.startswith("http") else "text"
         # For article URLs, scrape the page text first
         if source_type == "url":
-            page_text = fetch(query) or _og_metadata(query)
-            if page_text:
-                query = page_text
+            if any(d in query for d in ["facebook.com", "fb.watch", "instagram.com"]):
+                fb_og = _fb_ig_post_scrape(query)
+                _fb_parts = []
+                if fb_og.get("description"):
+                    _fb_parts.append(fb_og["description"][:1200])
+                if fb_og.get("title") and not _is_useless_title(fb_og.get("title", "")):
+                    _fb_parts.append(fb_og["title"])
+                if _fb_parts:
+                    query = "\n\n".join(_fb_parts)
+            else:
+                page_text = fetch(query) or _og_metadata(query) or tavily_extract(query)
+                if page_text:
+                    query = page_text
     try:
         results = _factcheck_pipeline(query, source_type)
         credits_remaining = None
@@ -6007,9 +6017,19 @@ def api_extract_claims():
     if not query:
         return jsonify({"error": "No claim provided"}), 400
     if query.startswith("http"):
-        page_text = fetch(query) or _og_metadata(query)
-        if page_text:
-            query = page_text
+        if any(d in query for d in ["facebook.com", "fb.watch", "instagram.com"]):
+            fb_og = _fb_ig_post_scrape(query)
+            _fb_parts = []
+            if fb_og.get("description"):
+                _fb_parts.append(fb_og["description"][:1200])
+            if fb_og.get("title") and not _is_useless_title(fb_og.get("title", "")):
+                _fb_parts.append(fb_og["title"])
+            if _fb_parts:
+                query = "\n\n".join(_fb_parts)
+        else:
+            page_text = fetch(query) or _og_metadata(query) or tavily_extract(query)
+            if page_text:
+                query = page_text
     try:
         neutral = neutralize_claim(query)
         claims = extract_claims(neutral)
