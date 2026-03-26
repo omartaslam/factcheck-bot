@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-25 (session 28 — COMPLETE)
+**Last updated:** 2026-03-26 (session 29 — IN PROGRESS)
 
 ---
 
@@ -280,7 +280,11 @@ Type HELP anytime for a full guide.
 
    **Permanent automation (blocked):** `scripts/refresh_cookies.py` + `.github/workflows/refresh-fb-ig-cookies.yml` built (commit `94a2ce4`, not yet pushed). Needs: GitHub PAT `workflow` scope → push → add 9 GitHub secrets (`FB_EMAIL`, `FB_PASSWORD`, `IG_USERNAME`, `IG_PASSWORD`, `RAILWAY_TOKEN`, `RAILWAY_PROJECT_ID`, `RAILWAY_ENV_ID`, `RAILWAY_SERVICE_ID`, `SENDGRID_API_KEY`) → dedicated FB/IG account with 2FA disabled.
 
-### Immediate bugs (fixed this session)
+### Immediate bugs — session 29
+1. **Web URL fact-check broken** — `/api/extract-claims` doesn't fetch URL content; raw URL passed to claim extractor. Fix: add URL fetch block (4 lines) mirroring `api_factcheck` lines 5978–5981. User approved fix. ← **implement now**
+2. **"Could not reach Fred" error on web** — intermittent; to investigate.
+
+### Immediate bugs (fixed previous sessions)
 1. ~~**"FACTCHECK PRO"** still in claim selection~~ — fixed (commit `466c9e8`) ✅
 2. ~~**"free checks remaining today"**~~ — fixed, removed "today" ✅
 3. ~~**Est. cost shown in claim selection**~~ — removed entirely ✅
@@ -316,6 +320,14 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 29 — 2026-03-26 (IN PROGRESS)
+
+**Bug identified (not yet fixed):**
+- **Web URL fact-check broken** — `/api/extract-claims` does not fetch URL content before extracting claims. Raw URL string passed to `extract_claims()`, so Claude extracts a meta-claim ("AI can't access Facebook links") instead of the actual post content. `/api/factcheck` correctly fetches URLs (lines 5978–5981) but the web flow calls `extract-claims` first and sends the picked claim text (not the URL) to `factcheck`, bypassing the URL fetch. Fix: add 4-line URL fetch block to `api_extract_claims()` mirroring the logic already in `api_factcheck()`. User confirmed fix — **pending implementation**.
+- **"Could not reach Fred" error on web** — mentioned by user, to investigate separately.
+
+---
 
 ### Session 28 — 2026-03-25 (COMPLETE)
 
