@@ -6837,7 +6837,7 @@ def admin_set_balance():
         vals = [cents]
         if free_checks_used is not None:
             fields.append("free_checks_used=?"); vals.append(int(free_checks_used))
-            fields.append("free_checks_date=?"); vals.append(None)
+            fields.append("free_checks_date=?"); vals.append(_today())
         if reset_trial:
             fields.append("created_at=?"); vals.append(int(_t.time()))
         vals += [platform, uid]
