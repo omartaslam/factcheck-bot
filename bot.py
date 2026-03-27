@@ -128,9 +128,9 @@ SRC_CHANNEL4         = os.getenv("SRC_CHANNEL4",         "true").lower() == "tru
 SRC_REUTERS          = os.getenv("SRC_REUTERS",          "true").lower() == "true"
 SRC_AP               = os.getenv("SRC_AP",               "true").lower() == "true"
 SRC_GUARDIAN         = os.getenv("SRC_GUARDIAN",         "true").lower() == "true"
-SRC_CNN              = os.getenv("SRC_CNN",              "true").lower() == "true"
+SRC_CNN              = False  # removed: charter conflict P1/P4/P6 (US state narrative alignment)
 SRC_CHANNEL4         = os.getenv("SRC_CHANNEL4",         "true").lower() == "true"
-SRC_ATLANTIC         = os.getenv("SRC_ATLANTIC",         "true").lower() == "true"
+SRC_ATLANTIC         = False  # removed: charter conflict P1/P6 (US foreign policy establishment framing)
 # Middle East expanded sources
 SRC_MEMO             = os.getenv("SRC_MEMO",             "true").lower() == "true"
 SRC_NEWARAB          = os.getenv("SRC_NEWARAB",          "true").lower() == "true"
@@ -139,7 +139,7 @@ SRC_BELLINGCAT       = os.getenv("SRC_BELLINGCAT",       "true").lower() == "tru
 SRC_HRW              = os.getenv("SRC_HRW",              "true").lower() == "true"
 SRC_AMNESTY          = os.getenv("SRC_AMNESTY",          "true").lower() == "true"
 SRC_UNNEWS           = os.getenv("SRC_UNNEWS",           "true").lower() == "true"
-SRC_TOI              = os.getenv("SRC_TOI",              "true").lower() == "true"
+SRC_TOI              = False  # removed: charter conflict P3/Pattern E (Israeli nationalist framing)
 SRC_ARABNEWS         = os.getenv("SRC_ARABNEWS",         "true").lower() == "true"
 SRC_RESPSTATECRAFT   = os.getenv("SRC_RESPSTATECRAFT",   "true").lower() == "true"
 SRC_ANADOLU          = os.getenv("SRC_ANADOLU",          "true").lower() == "true"  # Anadolu Agency (Turkey)
@@ -1991,7 +1991,6 @@ _DISPLAY_EXCLUDED = {
     "Palestine Solidarity",
     "Double Down News", "Double Down News (YouTube)",
     "Zeteo",
-    "Times of Israel",
 }
 
 # Reputation tiers per source — used for display priority only, not evidentiary weight
@@ -3166,9 +3165,7 @@ _SOURCE_PERSPECTIVE = {
     "AP News":           "WESTERN MAINSTREAM",
     "The Guardian":      "WESTERN MAINSTREAM",
     "Channel 4 News":    "WESTERN MAINSTREAM",
-    "The Atlantic":      "WESTERN MAINSTREAM",
-    "CNN":               "WESTERN MAINSTREAM",
-    "Times of Israel":   "WESTERN MAINSTREAM",
+    # The Atlantic, CNN, Times of Israel removed — charter conflicts P1/P3/P4/P6
     # Fact-check organisations
     "Snopes":            "FACT-CHECK ORGS",
     "FullFact":          "FACT-CHECK ORGS",
