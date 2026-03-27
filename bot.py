@@ -2892,8 +2892,11 @@ def extract_claims(text):
         "in the source text. Never correct, normalise, or substitute a name — even if you think you recognise "
         "a similar name. If the text says 'Joe Kent', write 'Joe Kent'. If it says 'Jon Kent', write 'Jon Kent'. "
         "Do not change spellings of people's names.\n\n"
+        "RULE 5 — RETURN EMPTY FOR NON-CLAIMS: If the text is a greeting, instruction, question asking the user "
+        "to provide input (e.g. 'I'm ready, please provide the text'), conversational filler, or contains "
+        "no independently verifiable factual assertions at all, return an empty array [].\n\n"
         f"TEXT:\n{text[:3000]}\n\n"
-        'Respond ONLY with a JSON array, e.g.: ["Claim one", "Claim two"]'
+        'Respond ONLY with a JSON array, e.g.: ["Claim one", "Claim two"] or [] if no claims found.'
     )
     try:
         r = requests.post("https://api.anthropic.com/v1/messages",
@@ -2908,12 +2911,11 @@ def extract_claims(text):
         if s >= 0 and e > s:
             claims = json.loads(raw[s:e])
             claims = [c.strip() for c in claims if isinstance(c, str) and c.strip()][:4]
-            if claims:
-                log.info(f"Extracted {len(claims)} claim(s)")
-                return claims
+            log.info(f"Extracted {len(claims)} claim(s)")
+            return claims  # may be [] — callers handle empty
     except Exception as e:
         log.warning(f"Claim extraction failed: {e}")
-    return [text]
+    return [text]  # fallback on parse/network error only
 
 
 def assess_content_claims(text, source_type, post_date=None):
@@ -5925,7 +5927,7 @@ def _factcheck_pipeline(query, source_type="text"):
     """Core pipeline: neutralize → extract → scrape → analyse. Returns list of result dicts."""
     if source_type in ("text", "url"):
         neutral = neutralize_claim(query)
-        claims = extract_claims(neutral)
+        claims = extract_claims(neutral) or [neutral]
     else:
         neutral = query
         claims = [query]
@@ -6093,6 +6095,8 @@ def api_extract_claims():
     try:
         neutral = neutralize_claim(query)
         claims = extract_claims(neutral)
+        if not claims:
+            return jsonify({"claims": [], "no_claim": True, "neutralized": neutral})
         return jsonify({"claims": claims, "neutralized": neutral})
     except Exception as e:
         log.error("extract-claims error: %s", e)

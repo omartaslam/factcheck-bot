@@ -1774,6 +1774,11 @@ async function runCheck(){
       method:'POST', headers, body: JSON.stringify({claim: raw})
     });
     const data = await res.json();
+    if(data.no_claim){
+      showError('Please enter a factual claim to fact-check — e.g. a news headline, statement, or quote.');
+      btn.disabled = false;
+      return;
+    }
     const claims = (data.claims || [raw]).filter(c => c && c.trim());
     if(claims.length > 1){
       showPicker(claims);
