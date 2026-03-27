@@ -6676,6 +6676,10 @@ def topup_thankyou():
 def privacy_policy():
     return send_from_directory("static", "privacy.html")
 
+@app.route("/charter", methods=["GET"])
+def charter():
+    return send_from_directory("static", "charter.html")
+
 @app.route("/fred.vcf", methods=["GET"])
 def contact_card():
     return send_from_directory("static", "Fred.vcf",
