@@ -445,12 +445,17 @@ def build_meter(r):
     return verdict_block(r)
 
 def meter_visual(r):
-    patterns = {"TRUE":(0,10),"MOSTLY TRUE":(2,8),"HALF TRUE":(5,5),"MOSTLY FALSE":(8,2),"FALSE":(10,0)}
     labels = {"TRUE":"✅ VERIFIED TRUE","MOSTLY TRUE":"🟢 MOSTLY TRUE","HALF TRUE":"🟡 HALF TRUE","MOSTLY FALSE":"🟠 MOSTLY FALSE","FALSE":"❌ FALSE","UNVERIFIABLE":"❓ UNVERIFIABLE","MISLEADING":"⚠️ MISLEADING","NEEDS CONTEXT":"📌 NEEDS CONTEXT"}
-    if r not in patterns: return labels.get(r, r)
-    red, green = patterns[r]
-    bar = "🟩" * green + "🟥" * red
-    return bar
+    bars = {
+        "TRUE":        ("🟩🟩🟩🟩🟩", 5),
+        "MOSTLY TRUE": ("🟩🟩🟩🟩🟥", 4),
+        "HALF TRUE":   ("🟩🟩🟨🟥🟥", 3),
+        "MOSTLY FALSE":("🟩🟩🟥🟥🟥", 2),
+        "FALSE":       ("🟥🟥🟥🟥🟥", 0),
+    }
+    if r not in bars: return labels.get(r, r)
+    bar, score = bars[r]
+    return f"{bar} _({score}/5)_"
 
 def html_text(html, lim=2000):
     class P(HTMLParser):
@@ -3730,15 +3735,15 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"],180), ""]
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
-        "TRUE": 10, "MOSTLY TRUE": 8, "HALF TRUE": 5,
-        "MOSTLY FALSE": 3, "FALSE": 0,
+        "TRUE": 5, "MOSTLY TRUE": 4, "HALF TRUE": 3,
+        "MOSTLY FALSE": 2, "FALSE": 0,
     }
     if rating in _rating_score:
         s = _rating_score[rating]
-        filled = "█" * s + "░" * (10 - s)
-        lines += [f"*TRUTH SCORE*  `{filled}` {s}/10", ""]
+        filled = "█" * s + "░" * (5 - s)
+        lines += [f"*TRUTH SCORE*  `{filled}` {s}/5", ""]
     elif rating in ("UNVERIFIABLE", "MISLEADING", "NEEDS CONTEXT"):
-        lines += [f"*TRUTH SCORE*  `░░░░░░░░░░` ?/10  _(insufficient evidence to score)_", ""]
+        lines += [f"*TRUTH SCORE*  `░░░░░` ?/5  _(insufficient evidence to score)_", ""]
     conf = a.get("confidence","LOW")
     conf_icon = {"HIGH":"🟢","MEDIUM":"🟡","LOW":"🔴"}.get(conf,"")
     lines += [f"*CONFIDENCE*  {conf_icon} {conf}", f"_{_trunc(a.get('confidence_reason',''), 200)}_",""]
@@ -3770,6 +3775,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
         footer = ["──────────────", version]
     footer.append(f"_{random.choice(_TAGLINES)}_")
     footer.append(WEBSITE_URL)
+    footer += ["", "_Type HELP for useful commands_"]
     lines += footer
     if ad:
         lines += ["", f"💡 *Sponsored:* {ad}"]
