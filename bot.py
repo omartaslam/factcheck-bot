@@ -467,7 +467,7 @@ def meter_visual(r):
     bars = {
         "TRUE":        ("🟩🟩🟩🟩🟩", 5),
         "MOSTLY TRUE": ("🟩🟩🟩🟩🟥", 4),
-        "HALF TRUE":   ("🟩🟩🟨🟥🟥", 3),
+        "HALF TRUE":   ("🟩🟩🟨🟥🟥", 2.5),
         "MOSTLY FALSE":("🟩🟩🟥🟥🟥", 2),
         "FALSE":       ("🟥🟥🟥🟥🟥", 0),
     }
@@ -2842,7 +2842,7 @@ ANALYSE_JSON_SCHEMA = (
     '"lenz_score":7,'
     '"rating_reason":"For MOSTLY TRUE: state the specific material factual error in the claim — not a caveat, not an unverified detail, but the precise factual inaccuracy and why it matters. If you cannot name a specific material factual error, the rating should be TRUE, not MOSTLY TRUE. For all other non-TRUE/non-FALSE ratings: 1 sentence on why. Empty string if rating is TRUE or FALSE.",'
     '"verdict":"2-3 sentence factual verdict. Do not adopt Western framing by default. Max 400 chars. CRITICAL: Do NOT append irrelevant qualifications, caveats, or \'this does not affect X\' statements that were not part of the original claim — even if technically accurate, they are irrelevant to the claim being checked and read as attempts to undermine the finding. Stick strictly to what the claim states and what the evidence confirms.",'
-    '"key_facts":["1 sentence per fact, max 120 chars each"],'
+    '"key_facts":["1 sentence per fact, max 120 chars each. CRITICAL: only include facts drawn from the search results returned in this request. If search results were empty or generic and a fact comes from your training knowledge rather than a retrieved source, prefix it with \'[Prior knowledge]\'. Do not present training-data facts as if they were found in live research."],'
     '"perspectives":"Single sentence covering what all regions found — Western, Middle Eastern/Arabic, African, South Asian, Latin American. Mention any region by name only if it has actual coverage; otherwise say \'No coverage found across all regions\' or \'No coverage found except [region] which reports X\'. Max 150 chars.",'
     '"contested_language":["term — dispute in max 90 chars"],'
     '"context":"1-2 sentences of structural/historical background. Max 180 chars.",'
@@ -3603,17 +3603,27 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "or destroyed by the party under investigation — and that suppression is itself documented — maximum "
         "confidence is MEDIUM. You cannot rate HIGH when a significant portion of relevant evidence was withheld "
         "by interested parties.\n"
-        "CREDIBLE INDEPENDENT INVESTIGATORS RAISING UNRESOLVED QUESTIONS = minimum HALF TRUE or UNVERIFIABLE. "
+        "CREDIBLE INDEPENDENT INVESTIGATORS RAISING UNRESOLVED QUESTIONS = minimum UNVERIFIABLE. "
         "If investigative journalists, declassified documents, whistleblowers, or academic researchers have raised "
         "specific unresolved questions the official account has not answered, the claim cannot be rated FALSE. Use:\n"
-        "  HALF TRUE: one component of the claim is documented, the other is genuinely contested but not "
-        "affirmatively disproven by independent evidence.\n"
-        "  UNVERIFIABLE: entire claim cannot be assessed because key evidence was suppressed or destroyed.\n"
-        "EXAMPLE — 'The US government knew about 9/11 in advance and allowed it to happen': "
-        "'Knew in advance' = documented (Aug 6 PDB, CIA/FBI field warnings, congressional testimony) → confirmed. "
-        "'Allowed it to happen' = contested; 28 classified pages suppressed 15 years; Commission controlled its "
-        "own evidence and scope → cannot be rated FALSE by official denial alone. "
-        "Correct verdict: HALF TRUE. Confidence: MEDIUM.\n\n"
+        "  HALF TRUE: ONLY when the submitted claim itself contains two separable explicit assertions — one "
+        "documented, one genuinely contested. Do NOT import a second assertion from research context that is not "
+        "stated in the claim. A single-assertion claim ('deliberately allowed') cannot be HALF TRUE regardless "
+        "of what background research reveals about related facts.\n"
+        "  UNVERIFIABLE: single-assertion misconduct claim where evidence was suppressed or destroyed and "
+        "independent investigators have raised unresolved questions. Also use when the entire claim cannot be "
+        "assessed because key evidence was withheld by the investigated party.\n"
+        "  MOSTLY FALSE: single-assertion misconduct claim where evidence leans against it but official "
+        "investigation cannot be treated as independent disproof.\n"
+        "EXAMPLE A (two explicit assertions in claim) — 'The US government knew about 9/11 in advance and "
+        "allowed it to happen': claim contains TWO stated parts. 'Knew in advance' = documented (Aug 6 PDB, "
+        "CIA/FBI field warnings). 'Allowed it to happen' = contested, not affirmatively disproven by independent "
+        "evidence; 28 classified pages suppressed 15 years; Commission controlled own scope. "
+        "Correct verdict: HALF TRUE. Confidence: MEDIUM.\n"
+        "EXAMPLE B (single assertion) — 'The US government deliberately allowed 9/11 to occur': ONE assertion. "
+        "Do NOT split into foreknowledge + facilitation — that second component is not in the claim. "
+        "Evidence of foreknowledge exists but facilitation is unproven and suppressed evidence prevents disproof. "
+        "Correct verdict: UNVERIFIABLE. Confidence: LOW.\n\n"
         "══ FIELD INSTRUCTIONS ══\n\n"
         "perspectives: single sentence — what ALL regions found; name a region only if it has actual coverage; "
         "state disagreements explicitly (e.g. 'Western outlets confirm X; Arabic sources dispute the framing'). Max 150 chars.\n"
@@ -3747,13 +3757,14 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     if a.get("media_bias"): lines += ["*BIAS NOTE*", _trunc(a["media_bias"],180), ""]
     # Derive truth score from rating — deterministic, not Claude's lenz_score.
     _rating_score = {
-        "TRUE": 5, "MOSTLY TRUE": 4, "HALF TRUE": 3,
+        "TRUE": 5, "MOSTLY TRUE": 4, "HALF TRUE": 2.5,
         "MOSTLY FALSE": 2, "FALSE": 0,
     }
     if rating in _rating_score:
         s = _rating_score[rating]
-        filled = "█" * s + "░" * (5 - s)
-        lines += [f"*TRUTH SCORE*  `{filled}` {s}/5", ""]
+        filled = "█" * int(s) + "░" * (5 - int(s))
+        s_display = int(s) if s == int(s) else s
+        lines += [f"*TRUTH SCORE*  `{filled}` {s_display}/5", ""]
     elif rating in ("UNVERIFIABLE", "MISLEADING", "NEEDS CONTEXT"):
         lines += [f"*TRUTH SCORE*  `░░░░░` ?/5  _(insufficient evidence to score)_", ""]
     conf = a.get("confidence","LOW")
