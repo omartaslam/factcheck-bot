@@ -2079,26 +2079,13 @@ def _geo_boost_sources(from_num):
     return []
 
 def _source_preview_msg(topic_text="", from_num=""):
-    """Return (total_count, preview_string) — 8-10 sources, regionally balanced,
-    reputation-weighted within each region, topic-aware, geo-boosted.
+    """Return (total_count, preview_string) — exactly 1 random source per category,
+    giving a balanced 10-source mix on every check.
     """
     all_src = enabled_sources()
     total = len(all_src)
-    all_src_set = set(all_src)
-    ql = topic_text.lower()
 
-    # Step 1: detect topic-priority + geo-boosted sources
-    priority_set = set()
-    for s in _geo_boost_sources(from_num):
-        if s in all_src_set:
-            priority_set.add(s)
-    for keywords, sources in _TOPIC_SOURCE_MAP:
-        if any(kw in ql for kw in keywords):
-            for s in sources:
-                if s in all_src_set:
-                    priority_set.add(s)
-
-    # Step 2: bucket by region — exclude activist/commentary sources from display
+    # Bucket by category — exclude activist/commentary sources from display
     by_cat = {}
     for s in all_src:
         if s in _DISPLAY_EXCLUDED:
@@ -2106,46 +2093,28 @@ def _source_preview_msg(topic_text="", from_num=""):
         cat = _SOURCE_PERSPECTIVE.get(s, "OTHER")
         by_cat.setdefault(cat, []).append(s)
 
-    def pick_from(pool, n):
-        """Pick n from pool: topic-priority first, then shuffle within each reputation tier."""
-        prio = [s for s in pool if s in priority_set]
-        rest = [s for s in pool if s not in priority_set]
-        # Group by tier, shuffle within each tier so same-tier sources rotate freely
-        by_tier = {}
-        for s in rest:
-            by_tier.setdefault(_SOURCE_REPUTATION.get(s, 2), []).append(s)
-        shuffled = []
-        for tier in sorted(by_tier):
-            bucket = by_tier[tier]
-            random.shuffle(bucket)
-            shuffled.extend(bucket)
-        return (prio + shuffled)[:n]
-
-    # Regional quota — one slot per region, 2 for Western mainstream
-    _quota = [
-        ("WESTERN MAINSTREAM",        2),
-        ("REGIONAL / MIDDLE EAST",    1),
-        ("FACT-CHECK ORGS",           1),
-        ("INDEPENDENT / ALTERNATIVE", 1),
-        ("HUMAN RIGHTS & INTL LAW",   1),
-        ("FRENCH / FRANCOPHONE",      1),
-        ("SOUTH ASIAN / URDU",        1),
-        ("SPANISH / LATIN AMERICAN",  1),
-        ("SWAHILI / EAST AFRICA",     1),
+    categories = [
+        "WESTERN MAINSTREAM",
+        "REGIONAL / MIDDLE EAST",
+        "FACT-CHECK ORGS",
+        "INDEPENDENT / ALTERNATIVE",
+        "HUMAN RIGHTS & INTL LAW",
+        "FRENCH / FRANCOPHONE",
+        "SOUTH ASIAN / URDU",
+        "SPANISH / LATIN AMERICAN",
+        "SWAHILI / EAST AFRICA",
+        "LIVE WEB SEARCH",
     ]
 
     chosen = []
-    for cat, n in _quota:
+    for cat in categories:
         pool = [s for s in by_cat.get(cat, []) if s not in chosen]
         if pool:
-            chosen.extend(pick_from(pool, n))
+            chosen.append(random.choice(pool))
 
-    # Cap at 10
-    final = chosen[:10]
-
-    preview = ", ".join(final)
-    if total > len(final):
-        preview += f" +{total - len(final)} more"
+    preview = ", ".join(chosen)
+    if total > len(chosen):
+        preview += f" +{total - len(chosen)} more"
     return total, preview
 
 
@@ -3278,6 +3247,7 @@ _SOURCE_PERSPECTIVE = {
     "Double Down News (YouTube)": "INDEPENDENT / ALTERNATIVE",
     # Real-time search AI
     "Perplexity Sonar (live)":    "LIVE WEB SEARCH",
+    "Brave Search (live)":        "LIVE WEB SEARCH",
     "Tavily Search":              "LIVE WEB SEARCH",
     "Tavily Summary":             "LIVE WEB SEARCH",
     "Live Web Search":            "LIVE WEB SEARCH",
