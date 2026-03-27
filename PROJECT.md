@@ -317,7 +317,17 @@ Type HELP anytime for a full guide.
 
 ## 12. Recently Completed Work
 
-### Session 30 — 2026-03-26 (IN PROGRESS)
+### Session 31 — 2026-03-27 (IN PROGRESS)
+
+**Build baseline:** commit `b57a477`
+
+**Fixes / Features:**
+- **Truth bar redesigned** (`ace0fc5`): 0–5 scale replaces 0–10. 5 emoji blocks, 🟨 centre block for HALF TRUE. Score shown as `_(X/5)_` on same line. TRUTH SCORE `█` line updated to `/5`. FALSE = 0/5 (all red), TRUE = 5/5 (all green).
+- **Verdict footer** (`ace0fc5`): blank line + `_Type HELP for useful commands_` appended to every verdict.
+
+---
+
+### Session 30 — 2026-03-26 (COMPLETE)
 
 **Build baseline:** commit `16fa7a0`
 
