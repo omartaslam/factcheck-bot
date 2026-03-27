@@ -1991,6 +1991,7 @@ _DISPLAY_EXCLUDED = {
     "Palestine Solidarity",
     "Double Down News", "Double Down News (YouTube)",
     "Zeteo",
+    "Times of Israel",
 }
 
 # Reputation tiers per source — used for display priority only, not evidentiary weight
