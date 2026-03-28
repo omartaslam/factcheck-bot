@@ -4167,7 +4167,7 @@ def run_check(from_num, query, st, img_bytes, cost, video_bytes=None, billing_ty
         send_reaction(from_num, msg_id, emoji)
 
     # ── Billing: record cost and deduct balance ────────────────────────────
-    actual_cents = COST_PER_CHECK_CENTS
+    actual_cents = COST_PER_CHECK_CENTS * len(claims)
     _wa_deduct(from_num, actual_cents, f"{st} fact-check", billing_type)
     log.info("Billing %s: type=%s cost=%d¢", from_num, billing_type, actual_cents)
     if billing_type == "free":
@@ -4226,7 +4226,7 @@ def run_check_platform(platform, uid, query, st, billing_type, send_fn, pre_clai
         else:
             send_fn(report)
 
-    actual_cents = COST_PER_CHECK_CENTS
+    actual_cents = COST_PER_CHECK_CENTS * len(claims)
     _pdeduct(platform, uid, actual_cents, f"{st} fact-check", billing_type)
     if billing_type == "paid":
         u = _puser(platform, uid)
@@ -6108,10 +6108,11 @@ def api_factcheck():
         results = _factcheck_pipeline(query, source_type)
         credits_remaining = None
         if uid:
+            actual_cents = COST_PER_CHECK_CENTS * len(results)
             with _db() as c:
-                c.execute("UPDATE users SET balance_cents = MAX(0, balance_cents - ?) WHERE id=?", (COST_PER_CHECK_CENTS, uid))
+                c.execute("UPDATE users SET balance_cents = MAX(0, balance_cents - ?) WHERE id=?", (actual_cents, uid))
                 c.execute("INSERT INTO transactions (user_type, user_id, txn_type, amount_cents, description, created_at) VALUES ('web',?,?,?,?,?)",
-                          (str(uid), 'debit', COST_PER_CHECK_CENTS, 'Web fact-check', int(t.time())))
+                          (str(uid), 'debit', actual_cents, 'Web fact-check', int(t.time())))
                 c.execute("INSERT INTO history (user_id, query, results_json, created_at) VALUES (?,?,?,?)",
                           (uid, query[:500], json.dumps(results), int(t.time())))
                 updated = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
