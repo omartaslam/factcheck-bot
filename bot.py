@@ -5713,6 +5713,7 @@ def init_db():
         except Exception: pass
         try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_prompt_msg_id TEXT")
         except Exception: pass
+        c.execute("CREATE TABLE IF NOT EXISTS anon_checks (ip TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0)")
         # Migrate existing wa_users into platform_users
         try:
             rows = c.execute("SELECT * FROM wa_users").fetchall()
@@ -5933,22 +5934,17 @@ def _verify_stripe_sig(payload_bytes, sig_header):
         return False
 
 # Anonymous rate-limit: 5 fact-checks per IP per day
-_rate_store = {}  # ip -> {"count": n, "date": "YYYY-MM-DD"}
-_rate_lock = threading.Lock()
-ANON_DAILY_LIMIT = 5
+ANON_FREE_LIMIT = int(os.getenv("ANON_FREE_LIMIT", "5"))  # total free checks per IP, no reset
 
 def _check_rate(ip, increment=True):
-    """Return True if request is allowed, False if limit exceeded."""
-    today = t.strftime("%Y-%m-%d")
-    with _rate_lock:
-        entry = _rate_store.get(ip, {"count": 0, "date": today})
-        if entry["date"] != today:
-            entry = {"count": 0, "date": today}
-        if entry["count"] >= ANON_DAILY_LIMIT:
+    """Return True if request is allowed, False if lifetime limit exceeded."""
+    with _db() as c:
+        row = c.execute("SELECT count FROM anon_checks WHERE ip=?", (ip,)).fetchone()
+        count = row["count"] if row else 0
+        if count >= ANON_FREE_LIMIT:
             return False
         if increment:
-            entry["count"] += 1
-        _rate_store[ip] = entry
+            c.execute("INSERT INTO anon_checks (ip, count) VALUES (?,1) ON CONFLICT(ip) DO UPDATE SET count=count+1", (ip,))
     return True
 
 def _hash_pw(pw):
@@ -6062,7 +6058,7 @@ def api_factcheck():
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
     # Rate-limit anonymous users
     if not uid and not _check_rate(ip):
-        return jsonify({"error": f"Daily limit of {ANON_DAILY_LIMIT} fact-checks reached. Sign up for unlimited access."}), 429
+        return jsonify({"error": f"You've used your {ANON_FREE_LIMIT} free fact-checks. Sign up for more."}), 429
     # Billing gate for authenticated web users
     if uid:
         with _db() as c:
