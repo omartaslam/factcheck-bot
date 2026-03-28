@@ -4577,7 +4577,7 @@ def _send_daily_summary(date_str=None):
 
     try:
         with _db() as c:
-            # Per-user breakdown
+            # WhatsApp per-user breakdown
             rows = c.execute("""
                 SELECT r.uid, r.source_type, r.extracted_claim, r.rating, r.cost_usd,
                        p.profile_name
@@ -4589,12 +4589,27 @@ def _send_daily_summary(date_str=None):
                 ORDER BY r.uid, r.created_at
             """, (day_start, day_end)).fetchall()
 
-            # New users that day (exclude QC test users)
+            # New WA users that day
             new_users = c.execute("""
                 SELECT platform_id, profile_name FROM platform_users
                 WHERE platform='whatsapp'
                   AND platform_id NOT LIKE 'qctest_%'
                   AND created_at >= ? AND created_at < ?
+            """, (day_start, day_end)).fetchall()
+
+            # Web checks (authenticated + anon)
+            web_rows = c.execute("""
+                SELECT uid, source_type, extracted_claim, rating
+                FROM request_log
+                WHERE platform='web'
+                  AND created_at >= ? AND created_at < ?
+                ORDER BY uid, created_at
+            """, (day_start, day_end)).fetchall()
+
+            # New web registrations
+            new_web_users = c.execute("""
+                SELECT email FROM users
+                WHERE created_at >= ? AND created_at < ?
             """, (day_start, day_end)).fetchall()
     except Exception as e:
         log.error("Daily summary DB error: %s", e)
@@ -4603,32 +4618,41 @@ def _send_daily_summary(date_str=None):
     total_checks = len(rows)
     total_cost = sum(r["cost_usd"] or 0 for r in rows)
 
-    # Group by user
     from collections import defaultdict as _dd
     by_user = _dd(list)
     for r in rows:
         by_user[r["uid"]].append(r)
 
+    web_by_user = _dd(list)
+    for r in web_rows:
+        web_by_user[r["uid"]].append(r)
+
     lines = [
         f"Fred Check — Daily Usage Summary",
         f"Date: {date_str} (UTC)",
         f"",
-        f"Total checks: {total_checks}",
-        f"Total cost:   ${total_cost:.4f}",
+        f"── WhatsApp ──",
+        f"Checks:       {total_checks}",
+        f"Cost:         ${total_cost:.4f}",
         f"Active users: {len(by_user)}",
         f"New users:    {len(new_users)}",
+        f"",
+        f"── Web ──",
+        f"Checks:       {len(web_rows)}",
+        f"Active users: {len(web_by_user)}",
+        f"New signups:  {len(new_web_users)}",
         f"",
     ]
 
     if new_users:
-        lines.append("── New Users ──")
+        lines.append("── New WA Users ──")
         for u in new_users:
             name = u["profile_name"] or "(no name)"
             lines.append(f"  +{u['platform_id']}  {name}")
         lines.append("")
 
     if by_user:
-        lines.append("── Usage by User ──")
+        lines.append("── WA Usage by User ──")
         for uid, checks in sorted(by_user.items(), key=lambda x: -len(x[1])):
             name = checks[0]["profile_name"] or "(no name)"
             user_cost = sum(r["cost_usd"] or 0 for r in checks)
@@ -4639,7 +4663,20 @@ def _send_daily_summary(date_str=None):
                 src = r["source_type"] or "text"
                 lines.append(f"  [{src}] {rating}: {claim}")
     else:
-        lines.append("No checks recorded for this date.")
+        lines.append("No WA checks recorded for this date.")
+
+    if web_by_user:
+        lines.append("\n── Web Usage ──")
+        for uid, checks in sorted(web_by_user.items(), key=lambda x: -len(x[1])):
+            label = uid if uid.startswith("anon:") else f"user:{uid}"
+            lines.append(f"\n{label}  ({len(checks)} check{'s' if len(checks)!=1 else ''})")
+            for r in checks:
+                claim = (r["extracted_claim"] or "")[:80]
+                rating = r["rating"] or "—"
+                src = r["source_type"] or "text"
+                lines.append(f"  [{src}] {rating}: {claim}")
+    else:
+        lines.append("\nNo web checks recorded for this date.")
 
     lines += ["", "Fred Check"]
     body = "\n".join(lines)
@@ -4648,7 +4685,7 @@ def _send_daily_summary(date_str=None):
         payload = _json.dumps({
             "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com"}]}],
             "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
-            "subject": f"📊 Fred daily summary — {date_str} ({total_checks} checks, {len(by_user)} users)",
+            "subject": f"📊 Fred daily summary — {date_str} (WA: {total_checks}, Web: {len(web_rows)})",
             "content": [{"type": "text/plain", "value": body}]
         }).encode()
         req = _ur.Request(
@@ -5936,6 +5973,19 @@ def _verify_stripe_sig(payload_bytes, sig_header):
 # Anonymous rate-limit: 5 fact-checks per IP per day
 ANON_FREE_LIMIT = int(os.getenv("ANON_FREE_LIMIT", "5"))  # total free checks per IP, no reset
 
+_throttle_store = {}  # ip -> last_request_epoch (float)
+_throttle_lock = threading.Lock()
+
+def _check_throttle(ip, min_interval=2.0):
+    """Return True if request is allowed (not too fast), False if throttled."""
+    now = t.time()
+    with _throttle_lock:
+        last = _throttle_store.get(ip, 0)
+        if now - last < min_interval:
+            return False
+        _throttle_store[ip] = now
+    return True
+
 def _check_rate(ip, increment=True):
     """Return True if request is allowed, False if lifetime limit exceeded."""
     with _db() as c:
@@ -6056,6 +6106,9 @@ def api_me():
 def api_factcheck():
     uid = _auth_user()
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
+    # Per-request throttle (all users) — blocks automated scraping
+    if not _check_throttle(ip):
+        return jsonify({"error": "Too many requests. Please slow down."}), 429
     # Rate-limit anonymous users
     if not uid and not _check_rate(ip):
         return jsonify({"error": f"You've used your {ANON_FREE_LIMIT} free fact-checks. Sign up for more."}), 429
@@ -6122,6 +6175,10 @@ def api_factcheck():
                           (uid, query[:500], json.dumps(results), int(t.time())))
                 updated = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
                 credits_remaining = (updated["balance_cents"] or 0) // COST_PER_CHECK_CENTS
+        # Log all web checks (authenticated or anon) to request_log for audit and daily summary
+        log_uid = str(uid) if uid else f"anon:{ip}"
+        for r in results:
+            _log_request("web", log_uid, source_type, query, r.get("claim"), r.get("analysis", {}), None, 0)
         return jsonify({"results": results, "credits_remaining": credits_remaining})
     except Exception as e:
         log.error("API factcheck error: %s", e)
@@ -6132,6 +6189,8 @@ def api_extract_claims():
     """Fast claim extraction — no credit deduction. Used by web UI for claim picker."""
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
     uid = _auth_user()
+    if not _check_throttle(ip):
+        return jsonify({"error": "Too many requests. Please slow down."}), 429
     # Authenticated users are never rate-limited on extraction (free op, no abuse vector)
     # Anonymous users: check limit but don't increment — extraction is free and shouldn't
     # consume their daily fact-check allowance
