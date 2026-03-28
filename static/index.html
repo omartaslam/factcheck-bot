@@ -1741,6 +1741,7 @@ function _observeTruthBar(){
 
 // ── CLAIM PICKER + TWO-STEP FACT-CHECK ─────────────────────
 let _selectedClaim = null;
+let _preExtracted = false;
 
 async function runCheck(){
   const raw = document.getElementById('claimInput').value.trim();
@@ -1787,8 +1788,10 @@ async function runCheck(){
       return;
     }
     _selectedClaim = claims[0] || raw;
+    _preExtracted = true;
   } catch(e){
     _selectedClaim = raw;
+    _preExtracted = false;
   }
 
   btn.disabled = false;
@@ -1822,6 +1825,7 @@ function selectClaim(claim, el){
   document.querySelectorAll('.cp-item').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   _selectedClaim = claim;
+  _preExtracted = true;
   const btn = document.getElementById('cpCheckBtn');
   btn.disabled = false;
   btn.textContent = 'Check this claim →';
@@ -1860,7 +1864,7 @@ async function _runFactcheck(){
   const token = localStorage.getItem(TOKEN_KEY);
   if(token) headers['Authorization'] = 'Bearer ' + token;
 
-  const body = _imageB64 ? {image_b64: _imageB64, claim: claim||''} : {claim};
+  const body = _imageB64 ? {image_b64: _imageB64, claim: claim||''} : {claim, pre_extracted: _preExtracted};
 
   try {
     const res = await fetch(API + '/api/factcheck', {
@@ -2044,6 +2048,7 @@ function renderResult(data, submittedClaim){
 function newCheck(){
   document.getElementById('resultPanel').classList.remove('visible');
   hidePicker();
+  _selectedClaim = null; _preExtracted = false;
   document.getElementById('claimInput').value = '';
   document.getElementById('claimInput').style.height = 'auto';
   document.getElementById('claimInput').focus();

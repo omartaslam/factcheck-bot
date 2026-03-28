@@ -5937,7 +5937,7 @@ _rate_store = {}  # ip -> {"count": n, "date": "YYYY-MM-DD"}
 _rate_lock = threading.Lock()
 ANON_DAILY_LIMIT = 5
 
-def _check_rate(ip):
+def _check_rate(ip, increment=True):
     """Return True if request is allowed, False if limit exceeded."""
     today = t.strftime("%Y-%m-%d")
     with _rate_lock:
@@ -5946,7 +5946,8 @@ def _check_rate(ip):
             entry = {"count": 0, "date": today}
         if entry["count"] >= ANON_DAILY_LIMIT:
             return False
-        entry["count"] += 1
+        if increment:
+            entry["count"] += 1
         _rate_store[ip] = entry
     return True
 
@@ -5980,9 +5981,13 @@ def _auth_user():
         row = c.execute("SELECT user_id FROM tokens WHERE token=? AND expires_at>?", (token, now)).fetchone()
     return row["user_id"] if row else None
 
-def _factcheck_pipeline(query, source_type="text"):
+def _factcheck_pipeline(query, source_type="text", pre_claims=None):
     """Core pipeline: neutralize → extract → scrape → analyse. Returns list of result dicts."""
-    if source_type in ("text", "url"):
+    if pre_claims:
+        # Claim already extracted by picker — skip re-extraction to avoid double-billing
+        neutral = query
+        claims = pre_claims
+    elif source_type in ("text", "url"):
         neutral = neutralize_claim(query)
         claims = extract_claims(neutral) or [neutral]
     else:
@@ -6105,7 +6110,11 @@ def api_factcheck():
                 if page_text:
                     query = page_text
     try:
-        results = _factcheck_pipeline(query, source_type)
+        # If the frontend sent a pre-extracted claim (from the picker), skip re-extraction
+        pre_claims = None
+        if data.get("pre_extracted") and not image_b64:
+            pre_claims = [query]
+        results = _factcheck_pipeline(query, source_type, pre_claims=pre_claims)
         credits_remaining = None
         if uid:
             actual_cents = COST_PER_CHECK_CENTS * len(results)
@@ -6126,7 +6135,11 @@ def api_factcheck():
 def api_extract_claims():
     """Fast claim extraction — no credit deduction. Used by web UI for claim picker."""
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
-    if not _check_rate(ip):
+    uid = _auth_user()
+    # Authenticated users are never rate-limited on extraction (free op, no abuse vector)
+    # Anonymous users: check limit but don't increment — extraction is free and shouldn't
+    # consume their daily fact-check allowance
+    if not uid and not _check_rate(ip, increment=False):
         return jsonify({"error": "Rate limit reached"}), 429
     data = request.get_json() or {}
     query = (data.get("claim") or data.get("query") or "").strip()[:2000]
