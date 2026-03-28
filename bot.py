@@ -3810,7 +3810,7 @@ def _welcome_msg():
     return (
         f"*Welcome to Fred • Fact Check*{beta_suffix}\n\n"
         "👋 I'm FRED — I fact check claims across 65+ sources worldwide, "
-        "with no default Western narrative.\n\n"
+        "without the spin and media bias.\n\n"
         "*Send me any of these:*\n"
         "_forward, paste or type_\n"
         "• A text claim, headline or quote\n"
