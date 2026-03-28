@@ -3817,7 +3817,7 @@ def _welcome_msg():
         "• A URL (news article, Facebook, Instagram, TikTok, YouTube)\n"
         "• An image, video or voice note\n\n"
         f"You have *{FREE_DAILY_LIMIT} free checks per day* for {FREE_TRIAL_DAYS} days to try it out.\n\n"
-        f"_Type HELP for a full guide._\n\n_Balanced, bias-aware fact checking — built for truth, not narrative._\n{WEBSITE_URL}"
+        f"_Type HELP for a full guide or to contact support._\n\n_Balanced, bias-aware fact checking — built for truth, not narrative._\n{WEBSITE_URL}"
     )
 
 HELP_MSG = (
