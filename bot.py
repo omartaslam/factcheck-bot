@@ -3838,6 +3838,9 @@ HELP_MSG = (
     "Balanced, bias-aware fact checking using Western, Middle Eastern, Arabic, and independent sources. "
     "Identifies contested language, geopolitical framing, and who benefits from a claim.\n\n"
     f"🌐 {WEBSITE_URL}\n\n"
+    "*Support & Enquiries:*\n"
+    "• General support: hello@fredcheck.com\n"
+    "• Newsroom & press enquiries: hello@fredcheck.com\n\n"
     "_Truth Beyond Borders — built for journalists, activists & curious minds._"
 )
 
