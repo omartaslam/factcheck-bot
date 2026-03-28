@@ -3809,7 +3809,7 @@ def _welcome_msg():
     beta_suffix = " _(Beta)_" if BETA_MODE else ""
     return (
         f"*Welcome to Fred • Fact Check*{beta_suffix}\n\n"
-        "👋 I'm FRED — I fact check claims across 65+ sources worldwide, "
+        "👋 I'm FRED — I fact check claims across 65+ sources worldwide — "
         "without the spin and media bias.\n\n"
         "*Send me any of these:*\n"
         "_forward, paste or type_\n"
