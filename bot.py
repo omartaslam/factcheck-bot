@@ -5997,46 +5997,29 @@ def _check_throttle(ip, min_interval=2.0):
     return True
 
 def _check_rate(ip, increment=True):
-    """Trial-aware anon rate limit: FREE_DAILY_LIMIT checks/day for FREE_TRIAL_DAYS days.
-    Returns (allowed: bool, reason: None | 'trial_expired' | 'daily_capped').
+    """Anon rate limit: 1 free check lifetime per IP.
+    Returns (allowed: bool, reason: None | 'limit_reached').
     """
-    now_ts = int(t.time())
-    today = _today()
     with _db() as c:
-        row = c.execute("SELECT first_seen, daily_count, daily_date FROM anon_checks WHERE ip=?", (ip,)).fetchone()
+        row = c.execute("SELECT count FROM anon_checks WHERE ip=?", (ip,)).fetchone()
         if row is None:
             if increment:
                 c.execute(
                     "INSERT INTO anon_checks (ip, count, first_seen, daily_count, daily_date) VALUES (?,1,?,1,?)",
-                    (ip, now_ts, today)
+                    (ip, int(t.time()), _today())
                 )
             return True, None
-        first_seen = row["first_seen"] or now_ts
-        if (now_ts - first_seen) > (FREE_TRIAL_DAYS * 86400):
-            return False, "trial_expired"
-        daily_used = row["daily_count"] if row["daily_date"] == today else 0
-        if daily_used >= FREE_DAILY_LIMIT:
-            return False, "daily_capped"
+        if row["count"] >= 1:
+            return False, "limit_reached"
         if increment:
-            if row["daily_date"] == today:
-                c.execute("UPDATE anon_checks SET daily_count=daily_count+1 WHERE ip=?", (ip,))
-            else:
-                c.execute("UPDATE anon_checks SET daily_count=1, daily_date=? WHERE ip=?", (today, ip))
+            c.execute("UPDATE anon_checks SET count=count+1 WHERE ip=?", (ip,))
         return True, None
 
 def _anon_remaining(ip):
-    """Return how many free checks an anon IP has left today (0 if trial expired)."""
-    now_ts = int(t.time())
-    today = _today()
+    """Return 1 if this IP has not used their free check, else 0."""
     with _db() as c:
-        row = c.execute("SELECT first_seen, daily_count, daily_date FROM anon_checks WHERE ip=?", (ip,)).fetchone()
-    if row is None:
-        return FREE_DAILY_LIMIT
-    first_seen = row["first_seen"] or now_ts
-    if (now_ts - first_seen) > (FREE_TRIAL_DAYS * 86400):
-        return 0
-    daily_used = row["daily_count"] if row["daily_date"] == today else 0
-    return max(0, FREE_DAILY_LIMIT - daily_used)
+        row = c.execute("SELECT count FROM anon_checks WHERE ip=?", (ip,)).fetchone()
+    return 0 if (row and row["count"] >= 1) else 1
 
 def _web_billing_type(uid):
     """Returns billing type for a logged-in web user.
@@ -6209,9 +6192,7 @@ def api_factcheck():
     if not uid:
         allowed, reason = _check_rate(ip)
         if not allowed:
-            if reason == "trial_expired":
-                return jsonify({"error": "Your free trial has ended. Create a free account to continue.", "code": "trial_expired"}), 402
-            return jsonify({"error": f"You've used your {FREE_DAILY_LIMIT} free checks for today. Come back tomorrow or create an account.", "code": "daily_capped"}), 429
+            return jsonify({"error": "You've used your free check. Create a free account for 3 checks/day over 7 days.", "code": "limit_reached"}), 402
     # Gate: logged-in web users — trial free or paid
     if uid:
         bt = _web_billing_type(uid)
