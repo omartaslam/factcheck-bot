@@ -6203,8 +6203,8 @@ def api_me():
 def api_factcheck():
     uid = _auth_user()
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
-    # Per-request throttle (all users) — blocks automated scraping
-    if not _check_throttle(ip):
+    # Per-request throttle (anon only) — blocks automated scraping; logged-in users rate-limited by credits
+    if not uid and not _check_throttle(ip):
         return jsonify({"error": "Too many requests. Please slow down."}), 429
     # Gate: anonymous users get FREE_DAILY_LIMIT checks/day for FREE_TRIAL_DAYS days
     if not uid:
@@ -6307,7 +6307,7 @@ def api_extract_claims():
     """Fast claim extraction — no credit deduction. Used by web UI for claim picker."""
     ip = request.headers.get("X-Forwarded-For", request.remote_addr or "").split(",")[0].strip()
     uid = _auth_user()
-    if not _check_throttle(ip):
+    if not uid and not _check_throttle(ip):
         return jsonify({"error": "Too many requests. Please slow down."}), 429
     # Extraction is free — no trial gate, just throttle (already checked above)
     data = request.get_json() or {}
