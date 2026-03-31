@@ -6121,6 +6121,22 @@ def _factcheck_pipeline(query, source_type="text", pre_claims=None):
 def web_index():
     return send_from_directory("static", "index.html")
 
+@app.route("/about")
+def page_about():
+    return send_from_directory("static", "about.html")
+
+@app.route("/methodology")
+def page_methodology():
+    return send_from_directory("static", "methodology.html")
+
+@app.route("/corrections")
+def page_corrections():
+    return send_from_directory("static", "corrections.html")
+
+@app.route("/charter")
+def page_charter():
+    return send_from_directory("static", "charter.html")
+
 @app.route("/api/register", methods=["POST"])
 def api_register():
     data = request.get_json() or {}

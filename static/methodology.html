@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Methodology — How Fred Fact-Checks</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a;line-height:1.7}
+:root{
+  --gold:#D4AF37;
+  --gold-dim:rgba(212,175,55,0.12);
+  --gold-border:rgba(212,175,55,0.25);
+  --black:#0a0a0a;
+  --border:#ebebeb;
+  --muted:#888;
+}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 4rem;height:88px;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.logo-text{font-size:1.15rem;font-weight:900;letter-spacing:4px;color:var(--black)}
+.nav-back{font-size:0.82rem;color:var(--muted);text-decoration:none;font-weight:500;border:1px solid var(--border);padding:7px 16px;border-radius:8px}
+.nav-back:hover{color:var(--black)}
+.page{max-width:760px;margin:0 auto;padding:4rem 2rem 6rem}
+.page-tag{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem}
+.page-title{font-size:2.4rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:1rem;line-height:1.1}
+.page-lead{font-size:1.05rem;color:#555;margin-bottom:3rem;line-height:1.7;border-bottom:1px solid var(--border);padding-bottom:2rem}
+h2{font-size:1.1rem;font-weight:800;letter-spacing:-0.3px;margin:2.5rem 0 0.75rem}
+p{font-size:0.95rem;color:#444;margin-bottom:1rem}
+.step{display:grid;grid-template-columns:40px 1fr;gap:0 1rem;margin-bottom:1.75rem;align-items:start}
+.step-num{width:40px;height:40px;background:var(--black);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.82rem;font-weight:800;flex-shrink:0;margin-top:2px}
+.step-body h3{font-size:0.95rem;font-weight:700;margin-bottom:0.35rem}
+.step-body p{margin:0;font-size:0.9rem;color:#555}
+.verdict-table{width:100%;border-collapse:collapse;margin:1.5rem 0;font-size:0.88rem}
+.verdict-table th{text-align:left;font-size:0.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:0.5rem 1rem;border-bottom:2px solid var(--border)}
+.verdict-table td{padding:0.75rem 1rem;border-bottom:1px solid var(--border);vertical-align:top}
+.verdict-table tr:last-child td{border-bottom:none}
+.verdict-label{font-weight:700;white-space:nowrap}
+.v-true{color:#2e7d32}
+.v-mostly-true{color:#558b2f}
+.v-half{color:#f57f17}
+.v-mostly-false{color:#bf360c}
+.v-false{color:#b71c1c}
+.v-unverifiable{color:#555}
+.source-tier{margin:1rem 0}
+.tier-row{display:flex;gap:1rem;align-items:baseline;padding:0.6rem 0;border-bottom:1px solid var(--border);font-size:0.9rem}
+.tier-row:last-child{border-bottom:none}
+.tier-label{font-size:0.7rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;width:60px;flex-shrink:0;color:var(--muted)}
+.tier-desc{color:#444}
+.highlight{background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:10px;padding:1.25rem 1.5rem;margin:2rem 0}
+.highlight p{color:#7a6000;margin:0;font-size:0.92rem}
+.tag-row{display:flex;flex-wrap:wrap;gap:0.5rem;margin:0.75rem 0}
+.tag{background:#f2f2f2;border-radius:6px;padding:4px 10px;font-size:0.78rem;font-weight:600;color:#444}
+footer{border-top:1px solid var(--border);padding:2rem 4rem;text-align:center;font-size:0.8rem;color:var(--muted)}
+@media(max-width:768px){nav{padding:0 1.25rem;height:68px} .page{padding:2.5rem 1.25rem 4rem} footer{padding:1.5rem 1.25rem}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">
+    <img src="/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED<span style="color:var(--gold)">.</span></span>
+  </a>
+  <a href="/" class="nav-back">← Back to fredcheck.com</a>
+</nav>
+
+<div class="page">
+
+  <div class="page-tag">Methodology</div>
+  <h1 class="page-title">How Fred Fact-Checks</h1>
+  <p class="page-lead">This page explains how Fred selects, researches, and rates claims. We publish this because verifiable methodology is a prerequisite for trust. Any reader should be able to understand — and challenge — how a verdict was reached.</p>
+
+  <h2>Claim Selection</h2>
+  <p>Fred is a user-submitted fact-checking service. Claims are submitted by users via WhatsApp or the web and are checked on demand. Fred does not proactively select claims to check based on political or editorial criteria. All submitted claims that contain a verifiable factual assertion are processed regardless of their origin, subject, or apparent political valence.</p>
+  <p>Claims that are purely opinion, questions without factual content, or statements with no checkable assertion are identified and not put through the verdict pipeline.</p>
+
+  <h2>The Assessment Process</h2>
+  <p>Every claim passes through the following steps in sequence:</p>
+
+  <div style="margin:1.75rem 0">
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-body">
+        <h3>Claim extraction & neutralisation</h3>
+        <p>If the user submits a URL, image, or social media post, Fred extracts the factual claim(s) contained within it. The claim is then neutralised — rewritten to remove loaded or leading language — before any assessment begins. This prevents the framing of the original source from influencing the verdict.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-body">
+        <h3>Multi-source search</h3>
+        <p>Fred searches across its source network simultaneously: Google Fact Check API (for existing verified fact-checks), live web search (Brave Search), and a curated set of 65+ outlets across six world regions. Searches are run against all sources regardless of their geographic or political orientation.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-body">
+        <h3>Evidence synthesis</h3>
+        <p>Retrieved evidence is assembled and passed to the assessment model. The model is required to consider evidence from all sources, weight them according to the published source tier system, and apply the rules set out in Fred's Charter. It is explicitly prohibited from treating source origin as a proxy for credibility.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-body">
+        <h3>Verdict and confidence rating</h3>
+        <p>The model produces a verdict from the scale below, a confidence level (HIGH / MEDIUM / LOW), a summary of key evidence, and a list of sources consulted. Confidence is determined by the quantity and consistency of corroborating evidence — not by whether the evidence comes from mainstream Western outlets.</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-body">
+        <h3>Human review (contested verdicts)</h3>
+        <p>Verdicts are published immediately. When a verdict is challenged by a user or third party, it is reviewed by a human editor against the source evidence and the charter rules. Where an error is confirmed, a correction is issued. See the <a href="/static/corrections.html" style="color:var(--black);font-weight:600">Corrections Policy</a>.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <h2>Verdict Scale</h2>
+  <p>Fred uses a six-point scale. Every verdict maps to one of these categories:</p>
+
+  <table class="verdict-table">
+    <thead>
+      <tr>
+        <th>Verdict</th>
+        <th>Score</th>
+        <th>Meaning</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="verdict-label v-true">TRUE</span></td>
+        <td>5/5</td>
+        <td>The claim is accurate and supported by multiple independent sources. No material inaccuracy identified.</td>
+      </tr>
+      <tr>
+        <td><span class="verdict-label v-mostly-true">MOSTLY TRUE</span></td>
+        <td>4/5</td>
+        <td>The core claim is accurate but contains a specific, identifiable factual error or significant omission. The error must be material — not a caveat, qualification, or imprecision in colloquial language.</td>
+      </tr>
+      <tr>
+        <td><span class="verdict-label v-half">HALF TRUE</span></td>
+        <td>2.5/5</td>
+        <td>The claim contains elements that are accurate and elements that are inaccurate or misleading. Evidence is genuinely mixed.</td>
+      </tr>
+      <tr>
+        <td><span class="verdict-label v-mostly-false">MOSTLY FALSE</span></td>
+        <td>1/5</td>
+        <td>The claim is predominantly inaccurate. A minor element may be accurate but does not redeem the central assertion.</td>
+      </tr>
+      <tr>
+        <td><span class="verdict-label v-false">FALSE</span></td>
+        <td>0/5</td>
+        <td>The claim is inaccurate and contradicted by evidence from multiple independent sources.</td>
+      </tr>
+      <tr>
+        <td><span class="verdict-label v-unverifiable">UNVERIFIABLE</span></td>
+        <td>—</td>
+        <td>Insufficient independent evidence exists to determine accuracy. This is not a verdict on truth — it is a verdict on available evidence. Used sparingly and only when search is genuinely exhausted.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>Source Network & Tiers</h2>
+  <p>Fred draws on 65+ outlets across six world regions. Sources are organised into three tiers based on editorial independence, track record for accuracy, and demonstrated freedom from state or commercial editorial control:</p>
+
+  <div class="source-tier">
+    <div class="tier-row">
+      <div class="tier-label">Tier 1</div>
+      <div class="tier-desc">High-reliability independent outlets with strong editorial standards and a track record of corrections. Evidence from Tier 1 sources carries the highest weight.</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-label">Tier 2</div>
+      <div class="tier-desc">Reputable outlets with some degree of state affiliation, commercial pressure, or known editorial perspective. Evidence is weighted accordingly and cross-referenced.</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-label">Tier 3</div>
+      <div class="tier-desc">Regional, specialist, or community sources. Used for corroboration and to surface underreported perspectives. Not used as sole evidence for a verdict.</div>
+    </div>
+  </div>
+
+  <p>Regions covered:</p>
+  <div class="tag-row">
+    <span class="tag">Western / Anglophone</span>
+    <span class="tag">Arabic</span>
+    <span class="tag">Francophone</span>
+    <span class="tag">Spanish-language</span>
+    <span class="tag">Russian / Eastern European</span>
+    <span class="tag">South & Southeast Asian</span>
+    <span class="tag">Chinese-language</span>
+    <span class="tag">African</span>
+  </div>
+
+  <p style="margin-top:1rem">No region's sources are treated as default or authoritative. The absence of coverage in Western outlets is not treated as evidence that a claim is false or uncertain.</p>
+
+  <div class="highlight">
+    <p><strong>Bias control:</strong> Fred's assessment model operates under a published constitutional charter that explicitly prohibits a set of named bias patterns — including religious double standards, conflict source hierarchy, geopolitical pre-downgrade, and good actor / bad actor framing. The full charter is available at <a href="/static/charter.html" style="color:#7a6000;font-weight:600">fredcheck.com/charter</a>.</p>
+  </div>
+
+  <h2>Confidence Levels</h2>
+  <p>Every verdict carries a confidence rating independent of the verdict itself:</p>
+  <div class="source-tier">
+    <div class="tier-row">
+      <div class="tier-label">HIGH</div>
+      <div class="tier-desc">Multiple independent sources corroborate the verdict. Evidence is consistent across different geographic and editorial perspectives.</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-label">MEDIUM</div>
+      <div class="tier-desc">Evidence points in one direction but corroboration is limited, or sources are fewer than ideal. Verdict is well-grounded but should be treated with some caution.</div>
+    </div>
+    <div class="tier-row">
+      <div class="tier-label">LOW</div>
+      <div class="tier-desc">Limited or conflicting evidence. The verdict reflects the best available assessment but the reader should be aware of the evidential constraints.</div>
+    </div>
+  </div>
+
+  <h2>Limitations</h2>
+  <p>Fred is an automated system and is not infallible. Known limitations include:</p>
+  <p><strong>Recency:</strong> Fred searches live sources but may not have access to breaking events in the first hours of a story. Verdicts on fast-moving events should be treated as provisional.</p>
+  <p><strong>Language:</strong> Fred operates primarily in English. Non-English sources are included but coverage depth varies by language.</p>
+  <p><strong>Paywalled content:</strong> Some source material is behind paywalls and cannot be retrieved. Where this affects a verdict, confidence will be rated accordingly.</p>
+  <p><strong>AI limitations:</strong> Like all language models, Fred's underlying AI can make errors, particularly on highly technical, legal, or statistical claims. We encourage users to challenge verdicts that seem wrong — see our <a href="/static/corrections.html" style="color:var(--black);font-weight:600">Corrections Policy</a>.</p>
+
+  <h2>Selection of Claims for Publication</h2>
+  <p>Fred does not currently publish a public archive of all fact-checks. We are building a public-facing archive and will announce its launch. When published, the archive will include the original claim, the sources consulted, the verdict, and the date of assessment.</p>
+
+</div>
+
+<footer>
+  Fred Check &nbsp;·&nbsp; fredcheck.com &nbsp;·&nbsp; Independent fact-checking, no default narrative
+</footer>
+
+</body>
+</html>

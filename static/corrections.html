@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corrections Policy — Fred Fact Check</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a;line-height:1.7}
+:root{
+  --gold:#D4AF37;
+  --gold-dim:rgba(212,175,55,0.12);
+  --gold-border:rgba(212,175,55,0.25);
+  --black:#0a0a0a;
+  --border:#ebebeb;
+  --muted:#888;
+}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 4rem;height:88px;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.logo-text{font-size:1.15rem;font-weight:900;letter-spacing:4px;color:var(--black)}
+.nav-back{font-size:0.82rem;color:var(--muted);text-decoration:none;font-weight:500;border:1px solid var(--border);padding:7px 16px;border-radius:8px}
+.nav-back:hover{color:var(--black)}
+.page{max-width:760px;margin:0 auto;padding:4rem 2rem 6rem}
+.page-tag{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem}
+.page-title{font-size:2.4rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:1rem;line-height:1.1}
+.page-lead{font-size:1.05rem;color:#555;margin-bottom:3rem;line-height:1.7;border-bottom:1px solid var(--border);padding-bottom:2rem}
+h2{font-size:1.1rem;font-weight:800;letter-spacing:-0.3px;margin:2.5rem 0 0.75rem}
+p{font-size:0.95rem;color:#444;margin-bottom:1rem}
+.step{display:grid;grid-template-columns:28px 1fr;gap:0 1rem;margin-bottom:1.5rem;align-items:start}
+.step-num{width:28px;height:28px;background:var(--black);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;flex-shrink:0;margin-top:3px}
+.step-body h3{font-size:0.92rem;font-weight:700;margin-bottom:0.3rem}
+.step-body p{margin:0;font-size:0.88rem;color:#555}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1.25rem;margin:1.5rem 0}
+.card{background:#f9f9f9;border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
+.card h3{font-size:0.75rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:0.4rem}
+.card p{font-size:0.9rem;color:#444;margin:0}
+.timeline{border-left:2px solid var(--border);padding-left:1.5rem;margin:1.5rem 0}
+.timeline-item{position:relative;margin-bottom:1.5rem}
+.timeline-item::before{content:'';position:absolute;left:-1.65rem;top:6px;width:10px;height:10px;border-radius:50%;background:var(--gold);border:2px solid #fff;box-shadow:0 0 0 2px var(--gold)}
+.timeline-item h3{font-size:0.88rem;font-weight:700;margin-bottom:0.25rem}
+.timeline-item p{font-size:0.85rem;color:#666;margin:0}
+.highlight{background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:10px;padding:1.25rem 1.5rem;margin:2rem 0}
+.highlight p{color:#7a6000;margin:0;font-size:0.92rem}
+.correction-form{background:#f9f9f9;border:1px solid var(--border);border-radius:12px;padding:2rem;margin:2rem 0}
+.correction-form h3{font-size:0.95rem;font-weight:700;margin-bottom:1rem}
+.form-row{margin-bottom:1rem}
+.form-row label{display:block;font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:0.4rem}
+.form-row input,.form-row textarea,.form-row select{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:inherit;font-size:0.9rem;color:var(--black);background:#fff;outline:none}
+.form-row textarea{min-height:100px;resize:vertical}
+.form-row input:focus,.form-row textarea:focus{border-color:#bbb}
+.submit-btn{padding:10px 24px;background:var(--black);color:#fff;border:none;border-radius:8px;font-family:inherit;font-size:0.88rem;font-weight:700;cursor:pointer}
+.submit-btn:hover{opacity:0.82}
+#formSuccess{display:none;color:#2e7d32;font-size:0.9rem;margin-top:0.75rem;font-weight:600}
+footer{border-top:1px solid var(--border);padding:2rem 4rem;text-align:center;font-size:0.8rem;color:var(--muted)}
+@media(max-width:768px){nav{padding:0 1.25rem;height:68px} .page{padding:2.5rem 1.25rem 4rem} .grid{grid-template-columns:1fr} footer{padding:1.5rem 1.25rem}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">
+    <img src="/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED<span style="color:var(--gold)">.</span></span>
+  </a>
+  <a href="/" class="nav-back">← Back to fredcheck.com</a>
+</nav>
+
+<div class="page">
+
+  <div class="page-tag">Corrections</div>
+  <h1 class="page-title">Corrections Policy</h1>
+  <p class="page-lead">We get things wrong. When that happens, we correct the record promptly and transparently. This page explains how to report an error, how we review it, and how corrections are published. Accuracy matters more than protecting a verdict.</p>
+
+  <h2>Our Commitment</h2>
+  <p>Fred is an AI-assisted fact-checking system. Despite our best efforts to eliminate bias and errors through the published <a href="/static/charter.html" style="color:var(--black);font-weight:600">Fred Charter</a> and our <a href="/static/methodology.html" style="color:var(--black);font-weight:600">methodology</a>, verdicts can be wrong. Sources can be incomplete. The AI can make errors of reasoning or evidence weighting.</p>
+  <p>We commit to:</p>
+  <div style="margin:1rem 0 1.5rem 0">
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-body"><p>Reviewing every correction request submitted in good faith</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-body"><p>Acknowledging receipt within 48 hours</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-body"><p>Completing a full editorial review within 5 working days</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-body"><p>Publishing corrections transparently — not silently editing verdicts</p></div>
+    </div>
+    <div class="step">
+      <div class="step-num">✓</div>
+      <div class="step-body"><p>Explaining clearly what was wrong and what the correct information is</p></div>
+    </div>
+  </div>
+
+  <h2>What We Correct</h2>
+  <p><strong>Material factual errors</strong> — where evidence cited is wrong, misattributed, or misrepresented.</p>
+  <p><strong>Source errors</strong> — where a source is described incorrectly or a key source was missed that would have materially changed the verdict.</p>
+  <p><strong>Verdict miscalibration</strong> — where the verdict does not follow from the evidence according to the published methodology or charter rules.</p>
+  <p><strong>Bias pattern violations</strong> — where a verdict applies one of the named violation patterns in the charter (e.g. conflict source hierarchy, religious double standard, good actor / bad actor framing).</p>
+
+  <p>We do not issue corrections for disagreements of interpretation where the evidence is genuinely contested, or for differences of opinion that do not involve factual error.</p>
+
+  <h2>Review Process</h2>
+
+  <div class="timeline">
+    <div class="timeline-item">
+      <h3>Submission received</h3>
+      <p>Your correction request is logged and assigned to a human editor. You receive an acknowledgement within 48 hours.</p>
+    </div>
+    <div class="timeline-item">
+      <h3>Editorial review</h3>
+      <p>The editor reviews the original claim, the sources consulted, the verdict, and the evidence you have provided. The review is conducted against the methodology and charter — not against the original AI output.</p>
+    </div>
+    <div class="timeline-item">
+      <h3>Decision</h3>
+      <p>We inform you of the outcome: correction upheld, partially upheld, or not upheld, with reasons. We aim to complete this within 5 working days of receipt.</p>
+    </div>
+    <div class="timeline-item">
+      <h3>Correction published</h3>
+      <p>Where a correction is upheld, it is published alongside the original verdict with a clear note explaining what was wrong and what has changed. The original verdict text is retained for transparency — we do not silently rewrite history.</p>
+    </div>
+    <div class="timeline-item">
+      <h3>Escalation</h3>
+      <p>If you disagree with our decision, you may request escalation to senior editorial review. We will respond within 10 working days.</p>
+    </div>
+  </div>
+
+  <div class="highlight">
+    <p><strong>IFCN complaints:</strong> If you believe Fred is in violation of the IFCN Code of Principles, you may submit a complaint directly to IFCN at <a href="https://www.ifcncodeofprinciples.poynter.org" style="color:#7a6000;font-weight:600">ifcncodeofprinciples.poynter.org</a>. We support this process and will cooperate fully with any IFCN-initiated review.</p>
+  </div>
+
+  <h2>Submit a Correction Request</h2>
+
+  <div class="correction-form">
+    <h3>Report an error in a Fred verdict</h3>
+    <form id="correctionForm" onsubmit="submitCorrection(event)">
+      <div class="form-row">
+        <label>Your name (optional)</label>
+        <input type="text" name="name" placeholder="Jane Smith">
+      </div>
+      <div class="form-row">
+        <label>Your email *</label>
+        <input type="email" name="email" required placeholder="you@example.com">
+      </div>
+      <div class="form-row">
+        <label>The claim that was checked *</label>
+        <input type="text" name="claim" required placeholder="Paste the original claim here">
+      </div>
+      <div class="form-row">
+        <label>Fred's verdict</label>
+        <select name="verdict">
+          <option value="">— Select —</option>
+          <option>TRUE</option>
+          <option>MOSTLY TRUE</option>
+          <option>HALF TRUE</option>
+          <option>MOSTLY FALSE</option>
+          <option>FALSE</option>
+          <option>UNVERIFIABLE</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>What is wrong, and what is the correct information? *</label>
+        <textarea name="detail" required placeholder="Please describe the error and provide any supporting evidence or sources…"></textarea>
+      </div>
+      <button type="submit" class="submit-btn">Submit correction request →</button>
+      <div id="formSuccess">✓ Submitted. We will acknowledge within 48 hours.</div>
+    </form>
+  </div>
+
+  <h2>Contact</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>Corrections email</h3>
+      <p>corrections@fredcheck.com</p>
+    </div>
+    <div class="card">
+      <h3>Response time</h3>
+      <p>Acknowledgement within 48 hours · Decision within 5 working days</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Fred Check &nbsp;·&nbsp; fredcheck.com &nbsp;·&nbsp; Independent fact-checking, no default narrative
+</footer>
+
+<script>
+function submitCorrection(e){
+  e.preventDefault();
+  const form = e.target;
+  const data = {
+    name: form.name.value,
+    email: form.email.value,
+    claim: form.claim.value,
+    verdict: form.verdict.value,
+    detail: form.detail.value,
+  };
+  fetch('/api/contact', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({
+      name: data.name || 'Anonymous',
+      email: data.email,
+      message: `CORRECTION REQUEST\n\nClaim: ${data.claim}\nVerdict: ${data.verdict}\n\nDetail:\n${data.detail}`
+    })
+  }).then(()=>{
+    document.getElementById('formSuccess').style.display = 'block';
+    form.reset();
+  }).catch(()=>{
+    document.getElementById('formSuccess').textContent = 'Submitted. We will be in touch within 48 hours.';
+    document.getElementById('formSuccess').style.display = 'block';
+  });
+}
+</script>
+
+</body>
+</html>

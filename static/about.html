@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About Fred — Transparency & Independence</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#fff;color:#0a0a0a;line-height:1.7}
+:root{
+  --gold:#D4AF37;
+  --gold-dim:rgba(212,175,55,0.12);
+  --gold-border:rgba(212,175,55,0.25);
+  --black:#0a0a0a;
+  --border:#ebebeb;
+  --muted:#888;
+}
+nav{display:flex;align-items:center;justify-content:space-between;padding:0 4rem;height:88px;border-bottom:1px solid var(--border)}
+.logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.logo img{width:52px;height:52px;border-radius:50%;object-fit:cover}
+.logo-text{font-size:1.15rem;font-weight:900;letter-spacing:4px;color:var(--black)}
+.nav-back{font-size:0.82rem;color:var(--muted);text-decoration:none;font-weight:500;border:1px solid var(--border);padding:7px 16px;border-radius:8px}
+.nav-back:hover{color:var(--black)}
+.page{max-width:760px;margin:0 auto;padding:4rem 2rem 6rem}
+.page-tag{font-size:0.7rem;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:1rem}
+.page-title{font-size:2.4rem;font-weight:900;letter-spacing:-1.5px;margin-bottom:1rem;line-height:1.1}
+.page-lead{font-size:1.05rem;color:#555;margin-bottom:3rem;line-height:1.7;border-bottom:1px solid var(--border);padding-bottom:2rem}
+h2{font-size:1.1rem;font-weight:800;letter-spacing:-0.3px;margin:2.5rem 0 0.75rem}
+p{font-size:0.95rem;color:#444;margin-bottom:1rem}
+.item{margin-bottom:2rem}
+.item-label{font-size:0.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:0.3rem}
+.item-value{font-size:0.95rem;color:#222;font-weight:500}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin:1.5rem 0}
+.card{background:#f9f9f9;border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem}
+.card h3{font-size:0.82rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:0.5rem}
+.card p{font-size:0.9rem;color:#444;margin:0}
+.highlight{background:var(--gold-dim);border:1px solid var(--gold-border);border-radius:10px;padding:1.25rem 1.5rem;margin:2rem 0}
+.highlight p{color:#7a6000;margin:0;font-size:0.92rem}
+footer{border-top:1px solid var(--border);padding:2rem 4rem;text-align:center;font-size:0.8rem;color:var(--muted)}
+@media(max-width:768px){nav{padding:0 1.25rem;height:68px} .page{padding:2.5rem 1.25rem 4rem} .grid{grid-template-columns:1fr} footer{padding:1.5rem 1.25rem}}
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="/" class="logo">
+    <img src="/static/fred-logo.png" alt="Fred">
+    <span class="logo-text">FRED<span style="color:var(--gold)">.</span></span>
+  </a>
+  <a href="/" class="nav-back">← Back to fredcheck.com</a>
+</nav>
+
+<div class="page">
+
+  <div class="page-tag">Transparency</div>
+  <h1 class="page-title">About Fred</h1>
+  <p class="page-lead">Fred is an independent, AI-assisted fact-checking service committed to evidence-based verification free from geographic, political, religious, or cultural bias. This page discloses our ownership, funding, editorial structure, and independence commitments in accordance with international fact-checking standards.</p>
+
+  <h2>What Fred Is</h2>
+  <p>Fred is a fact-checking tool available via WhatsApp and the web at fredcheck.com. Users submit claims — text, URLs, images, or social media posts — and Fred returns a sourced verdict drawn from a network of 65+ outlets across six world regions. Verdicts are produced by a large language model operating under a published constitutional charter, with human editorial oversight.</p>
+  <p>Fred is not affiliated with any news organisation, political party, government body, or advocacy group.</p>
+
+  <h2>Ownership & Legal Entity</h2>
+  <div class="grid">
+    <div class="item">
+      <div class="item-label">Operating name</div>
+      <div class="item-value">Fred Check</div>
+    </div>
+    <div class="item">
+      <div class="item-label">Registered in</div>
+      <div class="item-value">Spain (Canary Islands)</div>
+    </div>
+    <div class="item">
+      <div class="item-label">Editorial responsibility</div>
+      <div class="item-value">Fred Check — contact details below</div>
+    </div>
+    <div class="item">
+      <div class="item-label">Website</div>
+      <div class="item-value">fredcheck.com</div>
+    </div>
+  </div>
+
+  <h2>Funding Model</h2>
+  <p>Fred is funded entirely through user subscription and pay-per-check revenue. We do not accept grants, donations, advertising revenue, or funding from political organisations, governments, advocacy groups, or any entity with a declared interest in the outcome of fact-checks.</p>
+  <p>No funder, advertiser, or commercial partner has any ability to influence, review, suppress, or direct individual fact-checks or verdicts prior to publication. Editorial decisions are made independently.</p>
+
+  <div class="highlight">
+    <p><strong>Independence statement:</strong> Fred Check has no institutional, financial, or editorial relationship with any political party, government, military, intelligence service, advocacy organisation, or media conglomerate. This independence is a condition of our operation, not a preference.</p>
+  </div>
+
+  <h2>Editorial Oversight</h2>
+  <p>Fred's AI system operates under a published constitutional charter — the <a href="/static/charter.html" style="color:var(--black);font-weight:600">Fred Charter</a> — which governs how every verdict is assessed. The charter is applied algorithmically and reviewed by human editors. All verdicts are subject to correction upon challenge (see our <a href="/static/corrections.html" style="color:var(--black);font-weight:600">Corrections Policy</a>).</p>
+  <p>Human editorial staff are responsible for: maintaining and updating the charter, reviewing contested verdicts, applying corrections, and overseeing the source network. Staff details are available on request.</p>
+
+  <h2>Source Network</h2>
+  <p>Fred draws on a curated network of 65+ outlets covering Western, Arabic, Francophone, Spanish-language, Russian, Chinese, and South Asian media. Sources are weighted by reliability, not by geographic or political origin. The full source list and tiering methodology are published in our <a href="/static/methodology.html" style="color:var(--black);font-weight:600">Methodology</a>.</p>
+
+  <h2>AI Disclosure</h2>
+  <p>Fred's verdicts are produced by an AI language model (Claude, by Anthropic) operating under strict written rules. The AI does not determine its own editorial standards — those are set by the human editorial team through the charter. We disclose this because transparency about AI involvement is, in our view, a basic obligation for any fact-checking service.</p>
+  <p>We do not represent AI-generated verdicts as human journalism. Fred is a tool. Human editorial judgement governs the rules under which it operates, and human editors handle all corrections and disputes.</p>
+
+  <h2>Contact</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>General enquiries</h3>
+      <p>hello@fredcheck.com</p>
+    </div>
+    <div class="card">
+      <h3>Corrections & disputes</h3>
+      <p>corrections@fredcheck.com</p>
+    </div>
+    <div class="card">
+      <h3>Press & partnerships</h3>
+      <p>press@fredcheck.com</p>
+    </div>
+    <div class="card">
+      <h3>WhatsApp</h3>
+      <p>+44 7863 795638</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  Fred Check &nbsp;·&nbsp; fredcheck.com &nbsp;·&nbsp; Independent fact-checking, no default narrative
+</footer>
+
+</body>
+</html>
