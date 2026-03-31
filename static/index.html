@@ -1540,9 +1540,11 @@ async function fetchMe(token){
 
 function renderNavAuth(u){
   const nav = document.getElementById('navAuth');
+  const total = (u.free_remaining || 0) + (u.credits || 0);
+  const creditLabel = `${total} check${total!==1?'s':''}`;
   nav.innerHTML = `
     <span class="nav-email">${u.email}</span>
-    <span class="nav-credits">${u.credits} credit${u.credits!==1?'s':''}</span>
+    <span class="nav-credits">${creditLabel}</span>
     <button class="btn-ghost" onclick="openTopup()">Top up</button>
     <button class="btn-ghost" onclick="logout()">Log out</button>
   `;
@@ -1918,6 +1920,7 @@ async function _runFactcheck(){
       } else if(data.free_remaining != null){
         _authUser.free_remaining = data.free_remaining;
         if(data.free_remaining <= 0) _authUser.billing_type = 'daily_capped';
+        renderNavAuth(_authUser);
         updateSearchHint(_authUser.credits);
         const rem = data.free_remaining;
         document.getElementById('resultCtaNote').textContent =
