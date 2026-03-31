@@ -5751,6 +5751,19 @@ def init_db():
         try: c.execute("ALTER TABLE request_log ADD COLUMN feedback_prompt_msg_id TEXT")
         except Exception: pass
         c.execute("CREATE TABLE IF NOT EXISTS anon_checks (ip TEXT PRIMARY KEY, count INTEGER NOT NULL DEFAULT 0)")
+        try: c.execute("ALTER TABLE anon_checks ADD COLUMN first_seen INTEGER")
+        except Exception: pass
+        try: c.execute("ALTER TABLE anon_checks ADD COLUMN daily_count INTEGER NOT NULL DEFAULT 0")
+        except Exception: pass
+        try: c.execute("ALTER TABLE anon_checks ADD COLUMN daily_date TEXT NOT NULL DEFAULT ''")
+        except Exception: pass
+        # Backfill first_seen for existing rows (give them a fresh trial from now)
+        try: c.execute("UPDATE anon_checks SET first_seen=? WHERE first_seen IS NULL", (int(t.time()),))
+        except Exception: pass
+        try: c.execute("ALTER TABLE users ADD COLUMN free_checks_used INTEGER NOT NULL DEFAULT 0")
+        except Exception: pass
+        try: c.execute("ALTER TABLE users ADD COLUMN free_checks_date TEXT")
+        except Exception: pass
         # Migrate existing wa_users into platform_users
         try:
             rows = c.execute("SELECT * FROM wa_users").fetchall()
@@ -5970,9 +5983,6 @@ def _verify_stripe_sig(payload_bytes, sig_header):
         log.error("Stripe sig verification error: %s", e)
         return False
 
-# Anonymous rate-limit: 5 fact-checks per IP per day
-ANON_FREE_LIMIT = int(os.getenv("ANON_FREE_LIMIT", "5"))  # total free checks per IP, no reset
-
 _throttle_store = {}  # ip -> last_request_epoch (float)
 _throttle_lock = threading.Lock()
 
@@ -5987,15 +5997,84 @@ def _check_throttle(ip, min_interval=2.0):
     return True
 
 def _check_rate(ip, increment=True):
-    """Return True if request is allowed, False if lifetime limit exceeded."""
+    """Trial-aware anon rate limit: FREE_DAILY_LIMIT checks/day for FREE_TRIAL_DAYS days.
+    Returns (allowed: bool, reason: None | 'trial_expired' | 'daily_capped').
+    """
+    now_ts = int(t.time())
+    today = _today()
     with _db() as c:
-        row = c.execute("SELECT count FROM anon_checks WHERE ip=?", (ip,)).fetchone()
-        count = row["count"] if row else 0
-        if count >= ANON_FREE_LIMIT:
-            return False
+        row = c.execute("SELECT first_seen, daily_count, daily_date FROM anon_checks WHERE ip=?", (ip,)).fetchone()
+        if row is None:
+            if increment:
+                c.execute(
+                    "INSERT INTO anon_checks (ip, count, first_seen, daily_count, daily_date) VALUES (?,1,?,1,?)",
+                    (ip, now_ts, today)
+                )
+            return True, None
+        first_seen = row["first_seen"] or now_ts
+        if (now_ts - first_seen) > (FREE_TRIAL_DAYS * 86400):
+            return False, "trial_expired"
+        daily_used = row["daily_count"] if row["daily_date"] == today else 0
+        if daily_used >= FREE_DAILY_LIMIT:
+            return False, "daily_capped"
         if increment:
-            c.execute("INSERT INTO anon_checks (ip, count) VALUES (?,1) ON CONFLICT(ip) DO UPDATE SET count=count+1", (ip,))
-    return True
+            if row["daily_date"] == today:
+                c.execute("UPDATE anon_checks SET daily_count=daily_count+1 WHERE ip=?", (ip,))
+            else:
+                c.execute("UPDATE anon_checks SET daily_count=1, daily_date=? WHERE ip=?", (today, ip))
+        return True, None
+
+def _anon_remaining(ip):
+    """Return how many free checks an anon IP has left today (0 if trial expired)."""
+    now_ts = int(t.time())
+    today = _today()
+    with _db() as c:
+        row = c.execute("SELECT first_seen, daily_count, daily_date FROM anon_checks WHERE ip=?", (ip,)).fetchone()
+    if row is None:
+        return FREE_DAILY_LIMIT
+    first_seen = row["first_seen"] or now_ts
+    if (now_ts - first_seen) > (FREE_TRIAL_DAYS * 86400):
+        return 0
+    daily_used = row["daily_count"] if row["daily_date"] == today else 0
+    return max(0, FREE_DAILY_LIMIT - daily_used)
+
+def _web_billing_type(uid):
+    """Returns billing type for a logged-in web user.
+    'subscriber' | 'paid' | 'free' | 'daily_capped' | 'trial_expired'
+    """
+    with _db() as c:
+        u = c.execute(
+            "SELECT tier, balance_cents, created_at, free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)
+        ).fetchone()
+    if not u:
+        return "trial_expired"
+    if u["tier"] == "subscriber":
+        return "subscriber"
+    if (u["balance_cents"] or 0) > 0:
+        return "paid"
+    if _is_trial_expired(u):
+        return "trial_expired"
+    if _daily_free_used(u) < FREE_DAILY_LIMIT:
+        return "free"
+    return "daily_capped"
+
+def _web_deduct_free(uid):
+    """Increment free_checks_used for a logged-in web user (trial free check)."""
+    today = _today()
+    with _db() as c:
+        row = c.execute("SELECT free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)).fetchone()
+        if row and row["free_checks_date"] == today:
+            c.execute("UPDATE users SET free_checks_used=free_checks_used+1, free_checks_date=? WHERE id=?", (today, uid))
+        else:
+            c.execute("UPDATE users SET free_checks_used=1, free_checks_date=? WHERE id=?", (today, uid))
+
+def _web_free_remaining(uid):
+    """Return free checks left today for a logged-in web trial user."""
+    with _db() as c:
+        u = c.execute("SELECT free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)).fetchone()
+    if not u:
+        return 0
+    return max(0, FREE_DAILY_LIMIT - _daily_free_used(u))
 
 def _hash_pw(pw):
     salt = secrets.token_hex(16)
@@ -6096,11 +6175,28 @@ def api_me():
     if not uid:
         return jsonify({"error": "Unauthorised"}), 401
     with _db() as c:
-        row = c.execute("SELECT email, tier, balance_cents, created_at FROM users WHERE id=?", (uid,)).fetchone()
+        row = c.execute(
+            "SELECT email, tier, balance_cents, created_at, free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)
+        ).fetchone()
         count = c.execute("SELECT COUNT(*) as n FROM history WHERE user_id=?", (uid,)).fetchone()["n"]
     credits = (row["balance_cents"] or 0) // COST_PER_CHECK_CENTS
-    return jsonify({"email": row["email"], "tier": row["tier"], "checks_total": count,
-                    "balance_cents": row["balance_cents"] or 0, "credits": credits})
+    bt = _web_billing_type(uid)
+    trial_expired = bt == "trial_expired"
+    import datetime as _dt_me
+    created = row["created_at"] or int(t.time())
+    days_in = int((t.time() - created) / 86400)
+    trial_days_remaining = max(0, FREE_TRIAL_DAYS - days_in) if not trial_expired else 0
+    free_today_used = _daily_free_used(row)
+    return jsonify({
+        "email": row["email"], "tier": row["tier"], "checks_total": count,
+        "balance_cents": row["balance_cents"] or 0, "credits": credits,
+        "billing_type": bt,
+        "is_trial": bt in ("free", "daily_capped") or (not trial_expired and (row["balance_cents"] or 0) == 0),
+        "trial_days_remaining": trial_days_remaining,
+        "free_today_used": free_today_used,
+        "free_daily_limit": FREE_DAILY_LIMIT,
+        "free_remaining": max(0, FREE_DAILY_LIMIT - free_today_used) if bt in ("free", "daily_capped") else 0,
+    })
 
 @app.route("/api/factcheck", methods=["POST"])
 def api_factcheck():
@@ -6109,15 +6205,25 @@ def api_factcheck():
     # Per-request throttle (all users) — blocks automated scraping
     if not _check_throttle(ip):
         return jsonify({"error": "Too many requests. Please slow down."}), 429
-    # Rate-limit anonymous users
-    if not uid and not _check_rate(ip):
-        return jsonify({"error": f"You've used your {ANON_FREE_LIMIT} free fact-checks. Sign up for more."}), 429
-    # Billing gate for authenticated web users
+    # Gate: anonymous users get FREE_DAILY_LIMIT checks/day for FREE_TRIAL_DAYS days
+    if not uid:
+        allowed, reason = _check_rate(ip)
+        if not allowed:
+            if reason == "trial_expired":
+                return jsonify({"error": "Your free trial has ended. Create a free account to continue.", "code": "trial_expired"}), 402
+            return jsonify({"error": f"You've used your {FREE_DAILY_LIMIT} free checks for today. Come back tomorrow or create an account.", "code": "daily_capped"}), 429
+    # Gate: logged-in web users — trial free or paid
     if uid:
-        with _db() as c:
-            user = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
-        if not user or (user["balance_cents"] or 0) < COST_PER_CHECK_CENTS:
-            return jsonify({"error": "Insufficient credits. Please top up to continue.", "code": "insufficient_credits"}), 402
+        bt = _web_billing_type(uid)
+        if bt == "trial_expired":
+            return jsonify({"error": "Your free trial has ended. Please top up to continue.", "code": "insufficient_credits"}), 402
+        if bt == "daily_capped":
+            return jsonify({"error": f"You've used your {FREE_DAILY_LIMIT} free checks for today. Come back tomorrow or top up.", "code": "daily_capped"}), 429
+        if bt == "paid":
+            with _db() as c:
+                user = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
+            if not user or (user["balance_cents"] or 0) < COST_PER_CHECK_CENTS:
+                return jsonify({"error": "Insufficient credits. Please top up to continue.", "code": "insufficient_credits"}), 402
     data = request.get_json() or {}
     source_type = "text"
     # Image submission — decode base64, OCR, use result as query
@@ -6165,21 +6271,34 @@ def api_factcheck():
             pre_claims = [query]
         results = _factcheck_pipeline(query, source_type, pre_claims=pre_claims)
         credits_remaining = None
+        free_remaining = None
+        anon_remaining = None
         if uid:
-            actual_cents = COST_PER_CHECK_CENTS * len(results)
-            with _db() as c:
-                c.execute("UPDATE users SET balance_cents = MAX(0, balance_cents - ?) WHERE id=?", (actual_cents, uid))
-                c.execute("INSERT INTO transactions (user_type, user_id, txn_type, amount_cents, description, created_at) VALUES ('web',?,?,?,?,?)",
-                          (str(uid), 'debit', actual_cents, 'Web fact-check', int(t.time())))
-                c.execute("INSERT INTO history (user_id, query, results_json, created_at) VALUES (?,?,?,?)",
-                          (uid, query[:500], json.dumps(results), int(t.time())))
-                updated = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
+            # bt was computed before the pipeline — re-use it (it's in scope)
+            if bt == "free":
+                _web_deduct_free(uid)
+                with _db() as c:
+                    c.execute("INSERT INTO history (user_id, query, results_json, created_at) VALUES (?,?,?,?)",
+                              (uid, query[:500], json.dumps(results), int(t.time())))
+                free_remaining = _web_free_remaining(uid)
+            elif bt in ("paid", "subscriber"):
+                actual_cents = COST_PER_CHECK_CENTS * len(results)
+                with _db() as c:
+                    c.execute("UPDATE users SET balance_cents = MAX(0, balance_cents - ?) WHERE id=?", (actual_cents, uid))
+                    c.execute("INSERT INTO transactions (user_type, user_id, txn_type, amount_cents, description, created_at) VALUES ('web',?,?,?,?,?)",
+                              (str(uid), 'debit', actual_cents, 'Web fact-check', int(t.time())))
+                    c.execute("INSERT INTO history (user_id, query, results_json, created_at) VALUES (?,?,?,?)",
+                              (uid, query[:500], json.dumps(results), int(t.time())))
+                    updated = c.execute("SELECT balance_cents FROM users WHERE id=?", (uid,)).fetchone()
                 credits_remaining = (updated["balance_cents"] or 0) // COST_PER_CHECK_CENTS
+        else:
+            anon_remaining = _anon_remaining(ip)
         # Log all web checks (authenticated or anon) to request_log for audit and daily summary
         log_uid = str(uid) if uid else f"anon:{ip}"
         for r in results:
             _log_request("web", log_uid, source_type, query, r.get("claim"), r.get("analysis", {}), None, 0)
-        return jsonify({"results": results, "credits_remaining": credits_remaining})
+        return jsonify({"results": results, "credits_remaining": credits_remaining,
+                        "free_remaining": free_remaining, "anon_remaining": anon_remaining})
     except Exception as e:
         log.error("API factcheck error: %s", e)
         return jsonify({"error": "Fact-check failed. Please try again."}), 500
@@ -6191,11 +6310,7 @@ def api_extract_claims():
     uid = _auth_user()
     if not _check_throttle(ip):
         return jsonify({"error": "Too many requests. Please slow down."}), 429
-    # Authenticated users are never rate-limited on extraction (free op, no abuse vector)
-    # Anonymous users: check limit but don't increment — extraction is free and shouldn't
-    # consume their daily fact-check allowance
-    if not uid and not _check_rate(ip, increment=False):
-        return jsonify({"error": "Rate limit reached"}), 429
+    # Extraction is free — no trial gate, just throttle (already checked above)
     data = request.get_json() or {}
     query = (data.get("claim") or data.get("query") or "").strip()[:2000]
     if not query:

@@ -890,7 +890,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
       </div>
       <div class="search-footer">
         <div class="search-footer-left">
-          <span class="search-hint" id="searchHint">1 free check · No account needed</span>
+          <span class="search-hint" id="searchHint">3 free checks/day · No account needed</span>
           <label class="attach-btn" for="imgFileInput" title="Attach image (or paste from clipboard)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           </label>
@@ -1059,7 +1059,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
       <button class="auth-tab" id="tabLogin" onclick="switchTab('login')">Sign in</button>
     </div>
     <h3 id="modalTitle">Get <em>started free.</em></h3>
-    <p id="modalSubtitle">Create a free account to top up credits and access your check history.</p>
+    <p id="modalSubtitle">Create a free account — 3 checks/day free for 7 days, then top up to continue.</p>
     <input type="email" class="modal-email" id="modalEmail" placeholder="your@email.com" autocomplete="email">
     <input type="password" class="modal-pw" id="modalPw" placeholder="Password (min 8 characters)" autocomplete="new-password">
     <input type="password" class="modal-pw" id="modalPw2" placeholder="Confirm password" autocomplete="new-password">
@@ -1495,7 +1495,6 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 const API = window.location.hostname === 'localhost' || window.location.protocol === 'file:'
   ? 'https://web-production-1f0a4.up.railway.app'
   : '';
-const FREE_KEY = 'fred_free_used';
 const TOKEN_KEY = 'fred_token';
 let _authUser = null; // {email, credits, balance_cents}
 let _modalMode = 'signup';
@@ -1545,9 +1544,21 @@ function renderNavAnon(){
 
 function updateSearchHint(credits){
   const el = document.getElementById('searchHint');
-  if(_authUser) el.textContent = credits + ' credit' + (credits!==1?'s':'') + ' remaining';
-  else if(localStorage.getItem(FREE_KEY)) el.textContent = 'Free check used · Sign up for more';
-  else el.textContent = '1 free check · No account needed';
+  if(_authUser){
+    const bt = _authUser.billing_type;
+    if(bt === 'free' || bt === 'daily_capped'){
+      const rem = _authUser.free_remaining || 0;
+      const day = _authUser.trial_days_remaining || 0;
+      if(bt === 'daily_capped') el.textContent = 'Free checks used today · Resets at midnight';
+      else el.textContent = rem + ' free check' + (rem!==1?'s':'') + ' left today · ' + day + ' trial day' + (day!==1?'s':'') + ' remaining';
+    } else if(bt === 'trial_expired'){
+      el.textContent = 'Trial ended · Top up to continue';
+    } else {
+      el.textContent = credits + ' credit' + (credits!==1?'s':'') + ' remaining';
+    }
+  } else {
+    el.textContent = '3 free checks/day · No account needed';
+  }
 }
 
 function logout(){
@@ -1593,7 +1604,7 @@ function switchTab(mode){
   document.getElementById('modalPw2').style.display = mode==='signup' ? 'block' : 'none';
   document.getElementById('modalTitle').innerHTML = mode==='signup' ? 'Get <em>started free.</em>' : 'Welcome <em>back.</em>';
   document.getElementById('modalSubtitle').textContent = mode==='signup'
-    ? 'Create a free account to top up credits and access your check history.'
+    ? 'Create a free account — 3 checks/day free for 7 days, then top up to continue.'
     : 'Sign in to your Fred account.';
   document.getElementById('modalSubmit').textContent = mode==='signup' ? 'Create free account →' : 'Sign in →';
   document.getElementById('modalPw').placeholder = mode==='signup' ? 'Password (min 8 characters)' : 'Password';
@@ -1625,7 +1636,6 @@ async function submitAuth(){
     const data = await res.json();
     if(!res.ok){ errEl.textContent = data.error || 'Something went wrong.'; return; }
     localStorage.setItem(TOKEN_KEY, data.token);
-    localStorage.removeItem(FREE_KEY);
     await fetchMe(data.token);
     closeModal();
     showBanner(_modalMode === 'signup' ? 'Account created! Welcome to Fred.' : 'Signed in successfully.');
@@ -1747,11 +1757,6 @@ async function runCheck(){
   const raw = document.getElementById('claimInput').value.trim();
   if(!raw && !_imageB64) return;
 
-  if(!_authUser && localStorage.getItem(FREE_KEY)){
-    openModal('signup');
-    return;
-  }
-
   hidePicker();
   document.getElementById('resultPanel').classList.remove('visible');
 
@@ -1833,10 +1838,6 @@ function selectClaim(claim, el){
 
 async function checkSelectedClaim(){
   if(!_selectedClaim) return;
-  if(!_authUser && localStorage.getItem(FREE_KEY)){
-    openModal('signup');
-    return;
-  }
   hidePicker();
   await _runFactcheck();
 }
@@ -1877,23 +1878,39 @@ async function _runFactcheck(){
     if(res.status === 402){
       loading.classList.remove('visible');
       btn.disabled = false;
-      openTopup();
+      if(data.code === 'trial_expired') openModal('signup');
+      else openTopup();
       return;
     }
     if(data.error){ showError(data.error); btn.disabled = false; return; }
 
     renderResult(data, claim);
 
-    if(_authUser && data.credits_remaining != null){
-      _authUser.credits = data.credits_remaining;
-      renderNavAuth(_authUser);
-      updateSearchHint(_authUser.credits);
-      document.getElementById('resultCtaNote').textContent =
-        data.credits_remaining + ' credit' + (data.credits_remaining!==1?'s':'') + ' remaining.';
+    if(_authUser){
+      if(data.credits_remaining != null){
+        _authUser.credits = data.credits_remaining;
+        renderNavAuth(_authUser);
+        updateSearchHint(_authUser.credits);
+        document.getElementById('resultCtaNote').textContent =
+          data.credits_remaining + ' credit' + (data.credits_remaining!==1?'s':'') + ' remaining.';
+      } else if(data.free_remaining != null){
+        _authUser.free_remaining = data.free_remaining;
+        if(data.free_remaining <= 0) _authUser.billing_type = 'daily_capped';
+        updateSearchHint(_authUser.credits);
+        const rem = data.free_remaining;
+        document.getElementById('resultCtaNote').textContent =
+          rem > 0 ? rem + ' free check' + (rem!==1?'s':'') + ' left today.' : 'Free checks used for today.';
+      }
     } else {
-      localStorage.setItem(FREE_KEY, '1');
-      updateSearchHint(0);
-      document.getElementById('resultCtaNote').textContent = 'Free check used.';
+      if(data.anon_remaining != null){
+        const rem = data.anon_remaining;
+        document.getElementById('searchHint').textContent =
+          rem > 0 ? rem + ' free check' + (rem!==1?'s':'') + ' left today · No account needed'
+                  : 'Free checks used today · Sign up for more';
+        document.getElementById('resultCtaNote').textContent =
+          rem > 0 ? rem + ' free check' + (rem!==1?'s':'') + ' remaining today.'
+                  : 'Free checks used for today. Sign up for unlimited access.';
+      }
     }
 
     loading.classList.remove('visible');
@@ -2147,9 +2164,6 @@ async function loadHistory(){
 
 // ── INIT ───────────────────────────────────────────────────
 initAuth();
-if(!localStorage.getItem(TOKEN_KEY) && localStorage.getItem(FREE_KEY)){
-  document.getElementById('searchHint').textContent = 'Free check used · Sign up for more';
-}
 
 // ── TYPEWRITER ─────────────────────────────────────────────
 (function(){
