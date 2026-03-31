@@ -851,6 +851,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     <a href="#api" onclick="closeMenu()">API</a>
     <a href="#pricing" onclick="closeMenu()">Pricing</a>
     <a href="#contact" onclick="closeMenu()">Contact</a>
+    <a href="#" onclick="closeMenu();openTopup()" style="color:var(--black);font-weight:700;display:none" id="navMenuTopup">Top up</a>
     <a href="#" onclick="closeMenu();openModal('login')" style="color:var(--black);font-weight:700" id="navMenuSignIn">Sign in</a>
   </div>
   <div style="display:flex;align-items:center;gap:0.5rem">
@@ -1545,6 +1546,8 @@ function renderNavAuth(u){
     <button class="btn-ghost" onclick="openTopup()">Top up</button>
     <button class="btn-ghost" onclick="logout()">Log out</button>
   `;
+  const tu = document.getElementById('navMenuTopup');
+  if(tu) tu.style.display = '';
   const si = document.getElementById('navMenuSignIn');
   if(si){ si.textContent = 'Sign out'; si.onclick = function(){ closeMenu(); logout(); }; }
 }
@@ -1555,6 +1558,8 @@ function renderNavAnon(){
     <button class="btn-ghost" onclick="openModal('login')">Sign in</button>
     <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
   `;
+  const tu = document.getElementById('navMenuTopup');
+  if(tu) tu.style.display = 'none';
   const si = document.getElementById('navMenuSignIn');
   if(si){ si.textContent = 'Sign in'; si.onclick = function(){ closeMenu(); openModal('login'); }; }
 }

@@ -6026,11 +6026,12 @@ def _web_billing_type(uid):
     'subscriber' | 'paid' | 'free' | 'daily_capped' | 'trial_expired'
     """
     with _db() as c:
-        u = c.execute(
+        row = c.execute(
             "SELECT tier, balance_cents, created_at, free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)
         ).fetchone()
-    if not u:
+    if not row:
         return "trial_expired"
+    u = dict(row)
     if u["tier"] == "subscriber":
         return "subscriber"
     if (u["balance_cents"] or 0) > 0:
@@ -6054,10 +6055,10 @@ def _web_deduct_free(uid):
 def _web_free_remaining(uid):
     """Return free checks left today for a logged-in web trial user."""
     with _db() as c:
-        u = c.execute("SELECT free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)).fetchone()
-    if not u:
+        row = c.execute("SELECT free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)).fetchone()
+    if not row:
         return 0
-    return max(0, FREE_DAILY_LIMIT - _daily_free_used(u))
+    return max(0, FREE_DAILY_LIMIT - _daily_free_used(dict(row)))
 
 def _hash_pw(pw):
     salt = secrets.token_hex(16)
@@ -6158,10 +6159,11 @@ def api_me():
     if not uid:
         return jsonify({"error": "Unauthorised"}), 401
     with _db() as c:
-        row = c.execute(
+        _row = c.execute(
             "SELECT email, tier, balance_cents, created_at, free_checks_used, free_checks_date FROM users WHERE id=?", (uid,)
         ).fetchone()
         count = c.execute("SELECT COUNT(*) as n FROM history WHERE user_id=?", (uid,)).fetchone()["n"]
+    row = dict(_row)
     credits = (row["balance_cents"] or 0) // COST_PER_CHECK_CENTS
     bt = _web_billing_type(uid)
     trial_expired = bt == "trial_expired"
