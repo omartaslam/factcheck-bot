@@ -1546,7 +1546,7 @@ function renderNavAuth(u){
     <button class="btn-ghost" onclick="logout()">Log out</button>
   `;
   const si = document.getElementById('navMenuSignIn');
-  if(si) si.style.display = 'none';
+  if(si){ si.textContent = 'Sign out'; si.onclick = function(){ closeMenu(); logout(); }; }
 }
 
 function renderNavAnon(){
@@ -1555,6 +1555,8 @@ function renderNavAnon(){
     <button class="btn-ghost" onclick="openModal('login')">Sign in</button>
     <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
   `;
+  const si = document.getElementById('navMenuSignIn');
+  if(si){ si.textContent = 'Sign in'; si.onclick = function(){ closeMenu(); openModal('login'); }; }
 }
 
 function updateSearchHint(credits){
