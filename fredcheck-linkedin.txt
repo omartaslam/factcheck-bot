@@ -1,0 +1,426 @@
+FREDCHECK — LINKEDIN COMPANY PAGE & MARKETING PACK
+====================================================
+
+
+── COMPANY PAGE SETUP ──────────────────────────────
+
+Company name:   Fred Check
+LinkedIn URL:   linkedin.com/company/fredcheck
+Website:        fredcheck.com
+Tagline:        Fact-checking without the spin and media bias.
+
+Specialities (add as tags):
+  Fact-Checking · Misinformation · Media Literacy · Investigative Journalism
+  AI · WhatsApp · Global News · Disinformation · Press Freedom · Independent Media
+
+
+── ABOUT SECTION ───────────────────────────────────
+
+Fred Check is an independent fact-checking service built for a world where
+the news is increasingly filtered through a single narrative.
+
+Most fact-checkers rely on the same handful of Western outlets. Fred doesn't.
+We cross-reference 65+ sources across Western, Arabic, Spanish, French and
+Global South media simultaneously — so you get the full picture, not just one
+side of it.
+
+Send Fred a claim on WhatsApp or via our web app. Within seconds you'll get a
+verdict — TRUE, MOSTLY TRUE, HALF TRUE, NEEDS CONTEXT, MISLEADING, FALSE or
+UNVERIFIABLE — backed by named sources, key facts, and any contested language
+flagged.
+
+Built for journalists, activists, researchers and curious minds who want the
+truth without the agenda.
+
+🌐 fredcheck.com
+💬 Available on WhatsApp
+
+
+── LAUNCH POST ─────────────────────────────────────
+
+We built Fred because we kept asking the same question: fact-checked by whom?
+
+Most fact-checkers use the same sources. The same wire services. The same
+editorial assumptions. If a story doesn't get Western coverage, it often
+doesn't get verified at all.
+
+Fred is different.
+
+Send Fred any claim — a WhatsApp forward, a news headline, a viral quote.
+Fred searches 65+ sources across Western, Arabic, Spanish, French and Global
+South media and comes back with a verdict in seconds. No default narrative.
+No editorial agenda.
+
+TRUE. FALSE. HALF TRUE. MISLEADING. UNVERIFIABLE. With sources, every time.
+
+Available on WhatsApp and at fredcheck.com. Free to try.
+
+If you're a journalist, researcher, activist or just someone who wants the
+truth without the spin — Fred is for you.
+
+#FactCheck #Misinformation #MediaLiteracy #IndependentMedia #Journalism
+
+
+── FOLLOW-UP POSTS (weeks 2–5) ─────────────────────
+
+POST 2 — The bias angle:
+A claim goes viral. Reuters covers it one way. Al Jazeera another. Neither is
+lying — but neither is the full story. Fred reads both. That's the point.
+
+#MediaBias #Journalism #FactCheck
+
+---
+
+POST 3 — Use case:
+A journalist forwarded us a claim about election results. Three Western outlets
+hadn't touched it. Four African news organisations had. Fred's verdict: TRUE.
+The story existed — just not in the places most fact-checkers look.
+
+#GlobalJournalism #PressFreedom #Verification
+
+---
+
+POST 4 — How it works:
+How Fred works in 3 steps:
+  1. You send a claim (WhatsApp, web, URL, image, audio)
+  2. Fred searches 65+ global sources live
+  3. You get a verdict with sources in under 30 seconds
+
+No account needed to try it. fredcheck.com
+
+#AI #FactCheck #Misinformation
+
+---
+
+POST 5 — The charter:
+Fred operates by a published constitutional charter — 11 principles that
+govern every verdict. No official source gets automatic credibility. No
+government investigation corroborates itself. Suppressed evidence doesn't
+become absent evidence.
+
+Read the charter: fredcheck.com/charter
+
+#MediaLiteracy #Journalism #IndependentMedia
+
+
+── JOURNALIST / PRESS ROOM OUTREACH ────────────────
+
+DM TEMPLATE (for reaching individual journalists):
+
+Hi [Name],
+
+I came across your work on [topic] and thought Fred Check might be useful
+to you.
+
+Fred is a fact-checking tool that searches 65+ global sources simultaneously
+— Western, Arabic, Spanish, French and African media — and returns a sourced
+verdict in seconds. It's built specifically to avoid the Western-source bias
+most fact-checkers have.
+
+Available on WhatsApp and at fredcheck.com. Free to try — no signup needed.
+
+Happy to answer any questions.
+
+[Your name]
+
+---
+
+HASHTAGS TO ENGAGE WITH (to build visibility in press circles):
+  #DataJournalism
+  #OSINT
+  #Verification
+  #Journalism
+  #FactCheck
+  #PressFreedom
+  #Misinformation
+  #MediaLiteracy
+  #InvestigativeJournalism
+  #GlobalJournalism
+
+LinkedIn groups to join and post in:
+  - Journalists Network
+  - Global Investigative Journalism Network
+  - Data Journalism
+  - Digital Media & Journalism Professionals
+
+
+── LONG-FORM LINKEDIN ARTICLE ──────────────────────
+
+TITLE: Why Western Fact-Checkers Are Failing Global Journalism
+
+A claim spreads across WhatsApp in Lagos. Within hours it's viral across
+West Africa. By the time a mainstream fact-checker looks at it — if they
+look at it at all — the damage is done.
+
+But here's the deeper problem: even when Western fact-checkers do engage,
+they often reach for the same set of sources. Reuters. AP. BBC. The New
+York Times. These are credible outlets. But they are not the whole picture.
+
+A story that goes unreported in London or New York isn't necessarily false.
+It may simply be inconvenient, niche, or outside the editorial priorities
+of a handful of Western gatekeepers.
+
+This is the blind spot at the heart of modern fact-checking.
+
+WHAT GOOD VERIFICATION ACTUALLY REQUIRES
+
+Real verification means casting the net wide. It means checking what Al
+Jazeera reported alongside Reuters. What Agencia EFE found alongside AFP.
+What regional African outlets documented alongside the BBC.
+
+It means not treating the absence of Western coverage as evidence of
+falsehood.
+
+It means not importing political background — "resigned amid controversy,"
+"disputed by officials" — to weaken a specific claim that may be entirely
+accurate.
+
+And it means being honest about the difference between "we couldn't verify
+this" and "this is false."
+
+HOW FRED APPROACHES IT
+
+Fred Check was built around a single principle: no source gets automatic
+authority. Not governments. Not wire services. Not official investigations.
+
+Every claim is cross-referenced across 65+ sources spanning Western, Arabic,
+Spanish, French and Global South media. Verdicts require corroboration from
+independent outlets — not just volume of coverage.
+
+The result is a verdict that reflects the actual state of global evidence,
+not the editorial consensus of a few dominant voices.
+
+WHO IT'S FOR
+
+Fred is built for journalists who need fast, sourced verification without
+the bias baked into most tools. For press rooms that cover regions where
+Western sources are thin. For researchers and activists who need to know
+whether a claim holds up — not just whether it's been covered.
+
+It's available on WhatsApp and at fredcheck.com. Free to try.
+
+The question isn't whether bias exists in fact-checking. It's whether you
+want a tool that actively works against it.
+
+[End article]
+
+
+── MARKETING TO PROFESSIONAL & PAYING AUDIENCES ────
+
+
+WHO TO TARGET ON LINKEDIN
+--------------------------
+These are the people most likely to pay for Fred:
+
+1. Journalists & Correspondents — especially those covering politics,
+   conflict, elections, and international affairs
+2. Editors & News Directors — who need fast verification for their teams
+3. Press Room Managers at regional/independent outlets
+4. Fact-Checking Organisations — looking for tools or partnerships
+5. PR & Communications Professionals — need to verify claims before
+   publishing or responding
+6. Lawyers & Legal Researchers — verifying public statements and claims
+7. Academic Researchers — media studies, political science, disinformation
+8. NGOs & Human Rights Organisations — Amnesty, Reporters Without Borders
+   etc — verifying field reports
+9. Political Campaign Teams — opposition research, rapid response
+10. Corporate Affairs / Risk Teams — monitoring claims about their sector
+
+
+LINKEDIN SEARCH FILTERS TO FIND THEM
+--------------------------------------
+Use LinkedIn's search to find and connect:
+
+  Job titles to search:
+    "Journalist"
+    "Foreign Correspondent"
+    "Editor"
+    "Fact Checker"
+    "Communications Director"
+    "Press Officer"
+    "Research Analyst"
+    "Disinformation Researcher"
+    "Media Analyst"
+    "Investigative Reporter"
+
+  Industries to filter by:
+    Newspapers
+    Online Media
+    Broadcast Media
+    Public Relations
+    Political Organisation
+    Think Tanks
+    International Affairs
+    Non-profit / NGO
+
+
+POSTS AIMED AT PROFESSIONAL / PAYING AUDIENCES
+------------------------------------------------
+
+POST 6 — For press rooms:
+Your team fact-checks dozens of claims a week. Each one takes time —
+searching sources, cross-referencing, writing it up.
+
+Fred does the search in seconds. 65+ global sources. A sourced verdict.
+Ready to use or verify further.
+
+We offer team access for press rooms. DM us or visit fredcheck.com.
+
+#Journalism #Newsroom #FactCheck #MediaTools
+
+---
+
+POST 7 — For PR and comms professionals:
+A claim about your organisation goes viral. You have 20 minutes before
+the press calls.
+
+Fred can tell you in seconds whether it holds up — and which outlets are
+running with it. Know what you're dealing with before you respond.
+
+fredcheck.com
+
+#PRTools #CrisisComms #Reputation #Communications
+
+---
+
+POST 8 — For NGOs and human rights workers:
+Field reports. Witness testimony. Government statements. You need to know
+what holds up before you publish.
+
+Fred cross-references 65+ sources across global media — including Arabic,
+French and African outlets that most tools ignore. Sourced verdicts in
+seconds.
+
+Built for the work you do. fredcheck.com
+
+#HumanRights #NGO #Verification #PressFreedom
+
+---
+
+POST 9 — For researchers:
+Studying disinformation? Tracking how false claims spread across different
+media ecosystems?
+
+Fred shows you not just the verdict but which outlets covered it, how, and
+what the evidence actually says. A live research tool, not a static database.
+
+fredcheck.com | API access available on request.
+
+#Research #Disinformation #MediaStudies #AcademicResearch
+
+---
+
+POST 10 — ROI / value post (for decision makers):
+One bad claim published costs more to correct than a year of fact-checking.
+
+Fred Check: sourced verdicts from 65+ global sources in under 30 seconds.
+Available on WhatsApp and web. Team plans available.
+
+What's your verification workflow costing you right now?
+
+fredcheck.com
+
+#MediaROI #Journalism #RiskManagement #Editorial
+
+
+DIRECT OUTREACH — PROFESSIONAL / PAYING AUDIENCE
+--------------------------------------------------
+
+DM TEMPLATE FOR EDITORS & NEWS DIRECTORS:
+
+Hi [Name],
+
+I wanted to introduce Fred Check — a fact-checking tool built specifically
+for press rooms.
+
+Fred searches 65+ global sources simultaneously (Western, Arabic, Spanish,
+French, African) and returns a sourced verdict in seconds — TRUE, FALSE,
+MISLEADING, UNVERIFIABLE etc — with the evidence trail.
+
+Most of our press room users save 20–30 minutes per claim. We offer team
+access with usage reporting.
+
+Free to try at fredcheck.com or on WhatsApp. Happy to walk you through it
+if useful.
+
+[Your name]
+
+---
+
+DM TEMPLATE FOR NGOs / HUMAN RIGHTS ORGS:
+
+Hi [Name],
+
+I work on Fred Check — a fact-checking tool used by journalists and
+researchers who need verification that goes beyond Western sources.
+
+We cover 65+ outlets including Arabic, French, Spanish and African media.
+Verdicts come with named sources and flagged contested language. Available
+on WhatsApp — no app download needed.
+
+Given [Organisation]'s work on [region/topic], I thought it might be
+genuinely useful. Free to try at fredcheck.com.
+
+[Your name]
+
+---
+
+DM TEMPLATE FOR PR / COMMS PROFESSIONALS:
+
+Hi [Name],
+
+Quick intro — Fred Check is a real-time fact-checking tool that tells you
+in seconds whether a claim is supported by global media sources.
+
+Useful when a story is breaking and you need to know the evidence landscape
+before responding. Available on WhatsApp and web.
+
+Free trial at fredcheck.com — no signup needed.
+
+[Your name]
+
+
+PRICING TO MENTION IN OUTREACH
+--------------------------------
+- Free: 5 checks (no account needed)
+- Pay as you go: credits from $1
+- Team / press room plans: available on request (DM or hello@fredcheck.com)
+
+
+LINKEDIN ADS — IF YOU WANT TO RUN PAID PROMOTION
+-------------------------------------------------
+LinkedIn ads are expensive but highly targeted. Recommended approach:
+
+  Ad type: Sponsored Content (single image or text post)
+
+  Targeting:
+    Job function: Media & Communications, Legal, Research
+    Seniority: Senior, Manager, Director, VP
+    Industries: Newspapers, Online Media, Broadcast, NGO, PR
+
+  Suggested headline:
+    "Fact-check 65+ global sources in 30 seconds"
+
+  Suggested body:
+    "Fred Check cross-references Western, Arabic, French and African media
+     simultaneously. Sourced verdicts on WhatsApp or web. Free to try."
+
+  CTA button: "Try for free" → fredcheck.com
+
+  Budget suggestion: Start with $10–15/day for 2 weeks to test
+  which audience segments convert.
+
+
+CONTENT CALENDAR SUMMARY (first 6 weeks)
+-----------------------------------------
+Week 1: Launch post
+Week 2: The bias angle (Post 2)
+Week 3: Use case story (Post 3) + join 3 journalism LinkedIn groups
+Week 4: How it works (Post 4) + start DM outreach to 10 journalists
+Week 5: The charter (Post 5) + DM outreach to 5 editors / press rooms
+Week 6: Press room post (Post 6) + publish long-form article
+Ongoing: Engage with #DataJournalism #OSINT #Verification daily
+
+
+====================================================
+Generated: 2026-03-28 | fredcheck.com
