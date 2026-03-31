@@ -365,10 +365,16 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 /* ── RESPONSIVE NAV ── */
 @media(max-width:1024px){nav{padding:0 2rem}}
 @media(max-width:768px){
-  .nav-links{display:none}
-  nav{padding:0 1rem;height:72px}
+  .nav-links{display:none;position:absolute;top:72px;left:0;right:0;background:#fff;border-bottom:1px solid var(--border);padding:0.75rem 1.5rem 1rem;flex-direction:column;gap:0;z-index:200}
+  .nav-links.open{display:flex}
+  .nav-links a{padding:0.6rem 0;border-bottom:1px solid #f0f0f0;font-size:0.9rem}
+  .nav-links a:last-child{border-bottom:none}
+  nav{padding:0 1rem;height:72px;position:relative}
   .logo img{width:52px;height:52px}
+  .hamburger{display:flex;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;background:none;border:none;cursor:pointer;padding:4px;border-radius:6px}
+  .hamburger span{display:block;height:2px;background:var(--black);border-radius:2px;transition:all 0.2s}
 }
+@media(min-width:769px){.hamburger{display:none}}
 @media(max-width:480px){
   .btn-ghost{padding:5px 10px;font-size:0.75rem}
   .btn-demo{padding:6px 12px;font-size:0.75rem}
@@ -404,18 +410,18 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .search-textarea::placeholder{color:#bbb}
 .search-footer{
   display:flex;justify-content:space-between;align-items:center;
-  padding:0.55rem 1rem 0.75rem 1.4rem;
+  padding:0.55rem 1rem 0.75rem 1.4rem;gap:0.5rem;
 }
-.search-footer-left{display:flex;align-items:center;gap:0.6rem}
-.search-hint{font-size:0.72rem;color:#ccc;font-weight:500}
+.search-footer-left{display:flex;align-items:center;gap:0.6rem;min-width:0;overflow:hidden}
 .attach-btn{
   flex-shrink:0;background:none;border:none;cursor:pointer;
   padding:3px;color:#d0d0d0;display:inline-flex;align-items:center;
   transition:color 0.15s;
 }
 .attach-btn:hover{color:#888}
+.search-hint{font-size:0.72rem;color:#ccc;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .search-btn{
-  display:inline-flex;align-items:center;gap:7px;
+  display:inline-flex;align-items:center;gap:7px;flex-shrink:0;
   padding:8px 18px;border-radius:10px;
   background:var(--black);color:#fff;
   font-family:'Inter',sans-serif;font-size:0.83rem;font-weight:700;
@@ -838,17 +844,22 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
     <img src="/static/fred-logo.png" alt="Fred">
     <span class="logo-text">FRED<span style="color:var(--gold)">.</span></span>
   </a>
-  <div class="nav-links">
-    <a href="#features">Features</a>
-    <a href="#newsrooms">For Newsrooms</a>
-    <a href="#api">API</a>
-    <a href="#pricing">Pricing</a>
-    <a href="#contact">Contact</a>
+  <div class="nav-links" id="navLinks">
+    <a href="#features" onclick="closeMenu()">Features</a>
+    <a href="#newsrooms" onclick="closeMenu()">For Newsrooms</a>
+    <a href="#api" onclick="closeMenu()">API</a>
+    <a href="#pricing" onclick="closeMenu()">Pricing</a>
+    <a href="#contact" onclick="closeMenu()">Contact</a>
   </div>
-  <div class="nav-right" id="navAuth">
-    <!-- populated by initAuth() -->
-    <button class="btn-ghost" onclick="openModal('login')">Sign in</button>
-    <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
+  <div style="display:flex;align-items:center;gap:0.5rem">
+    <div class="nav-right" id="navAuth">
+      <!-- populated by initAuth() -->
+      <button class="btn-ghost" onclick="openModal('login')">Sign in</button>
+      <button class="btn-demo" onclick="openModal('signup')">Get started →</button>
+    </div>
+    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
 
@@ -2156,6 +2167,18 @@ async function loadHistory(){
     list.innerHTML = '<div style="font-size:0.82rem;color:#ccc;text-align:center;padding:0.75rem">Could not load history.</div>';
   }
 }
+
+// ── MOBILE NAV ─────────────────────────────────────────────
+function toggleMenu(){
+  document.getElementById('navLinks').classList.toggle('open');
+}
+function closeMenu(){
+  document.getElementById('navLinks').classList.remove('open');
+}
+document.addEventListener('click', function(e){
+  const nav = document.querySelector('nav');
+  if(!nav.contains(e.target)) closeMenu();
+});
 
 // ── INIT ───────────────────────────────────────────────────
 initAuth();
