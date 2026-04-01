@@ -4683,10 +4683,10 @@ def _send_daily_summary(date_str=None):
         log.error("Daily summary email failed: %s", e)
 
 # Add daily summary to scheduler now that _send_daily_summary is defined
-# misfire_grace_time=None means missed fires (e.g. on restart) are skipped — fires once at 07:00 UTC only
-_scheduler.add_job(_send_daily_summary, "cron", hour=7, minute=0, id="daily_summary",
+# misfire_grace_time=None means missed fires (e.g. on restart) are skipped — fires once at 01:00 UTC only
+_scheduler.add_job(_send_daily_summary, "cron", hour=1, minute=0, id="daily_summary",
                    misfire_grace_time=None)
-log.info("Daily summary scheduled: 07:00 UTC")
+log.info("Daily summary scheduled: 01:00 UTC")
 
 def _run_outreach():
     import subprocess, sys as _sys
@@ -4699,9 +4699,9 @@ def _run_outreach():
     except Exception as e:
         log.error("Outreach batch failed: %s", e)
 
-_scheduler.add_job(_run_outreach, "cron", hour=9, minute=0, id="daily_outreach",
+_scheduler.add_job(_run_outreach, "cron", hour=1, minute=30, id="daily_outreach",
                    misfire_grace_time=None)
-log.info("Daily outreach scheduled: 09:00 UTC")
+log.info("Daily outreach scheduled: 01:30 UTC")
 
 
 def _notify_new_user(wa_id, profile_name):

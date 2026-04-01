@@ -1,16 +1,21 @@
 #!/usr/bin/env python3
 """
-Fred Check — Daily outreach email sender.
+Fred Check — Daily outreach email + X DM sender.
 Reads outreach/recipients.csv, sends up to DAILY_LIMIT personalised emails via SendGrid,
-marks them sent, then emails Omar a daily report including manual X DMs to send.
+sends X DMs to x_only recipients via Twitter API v2,
+marks them sent, then emails Omar a daily report.
 
 Run via Railway cron or manually:  python3 scripts/outreach_send.py
 """
 
 import csv
+import hashlib
+import hmac
 import json
 import os
 import sys
+import time
+import urllib.parse
 import urllib.request as _ur
 from datetime import date
 from pathlib import Path
@@ -21,7 +26,13 @@ SENDGRID_KEY   = os.environ.get("SENDGRID_API_KEY", "")
 FROM_EMAIL     = "hello@fredcheck.com"
 FROM_NAME      = "Omar · Fred Check"
 REPORT_TO      = "omartanveeraslam@gmail.com"
-DAILY_LIMIT    = 40  # stay well under SendGrid 100/day free tier
+DAILY_LIMIT    = 85  # SendGrid free tier = 100/day; keep 15 buffer for transactional emails
+
+# Twitter/X OAuth1 credentials (set in Railway env)
+TWITTER_CONSUMER_KEY    = os.environ.get("TWITTER_CONSUMER_KEY", "")
+TWITTER_CONSUMER_SECRET = os.environ.get("TWITTER_CONSUMER_SECRET", "")
+TWITTER_ACCESS_TOKEN    = os.environ.get("TWITTER_ACCESS_TOKEN", "")
+TWITTER_ACCESS_SECRET   = os.environ.get("TWITTER_ACCESS_SECRET", "")
 
 # ── Email templates by segment ─────────────────────────────────────────────
 
@@ -143,6 +154,79 @@ X_DM_TEMPLATES = {
 }
 
 
+def _twitter_oauth1_header(method, url, params=None):
+    """Generate OAuth1 Authorization header for Twitter API v2."""
+    import base64, secrets
+    oauth_params = {
+        "oauth_consumer_key":     TWITTER_CONSUMER_KEY,
+        "oauth_nonce":            secrets.token_hex(16),
+        "oauth_signature_method": "HMAC-SHA1",
+        "oauth_timestamp":        str(int(time.time())),
+        "oauth_token":            TWITTER_ACCESS_TOKEN,
+        "oauth_version":          "1.0",
+    }
+    all_params = {**oauth_params, **(params or {})}
+    param_str = "&".join(
+        f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(str(v), safe='')}"
+        for k, v in sorted(all_params.items())
+    )
+    base_str = "&".join([
+        urllib.parse.quote(method.upper(), safe=""),
+        urllib.parse.quote(url, safe=""),
+        urllib.parse.quote(param_str, safe=""),
+    ])
+    signing_key = "&".join([
+        urllib.parse.quote(TWITTER_CONSUMER_SECRET, safe=""),
+        urllib.parse.quote(TWITTER_ACCESS_SECRET, safe=""),
+    ])
+    sig = base64.b64encode(
+        hmac.new(signing_key.encode(), base_str.encode(), hashlib.sha1).digest()
+    ).decode()
+    oauth_params["oauth_signature"] = sig
+    header_value = "OAuth " + ", ".join(
+        f'{urllib.parse.quote(k, safe="")}="{urllib.parse.quote(str(v), safe="")}"'
+        for k, v in sorted(oauth_params.items())
+    )
+    return header_value
+
+
+def _lookup_twitter_id(handle):
+    """Look up Twitter user ID from handle. Returns id string or None."""
+    if not TWITTER_CONSUMER_KEY:
+        return None
+    handle = handle.lstrip("@")
+    url = f"https://api.twitter.com/2/users/by/username/{handle}"
+    auth = _twitter_oauth1_header("GET", url)
+    try:
+        req = _ur.Request(url, headers={"Authorization": auth})
+        with _ur.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+            return data.get("data", {}).get("id")
+    except Exception as e:
+        print(f"  Twitter ID lookup failed for @{handle}: {e}")
+        return None
+
+
+def _send_twitter_dm(recipient_id, text):
+    """Send an X DM via Twitter API v2. Returns (success, error_msg)."""
+    if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
+                TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET]):
+        return False, "Twitter credentials not set"
+    url = f"https://api.twitter.com/2/dm_conversations/with/{recipient_id}/messages"
+    payload = json.dumps({"text": text}).encode()
+    auth = _twitter_oauth1_header("POST", url)
+    try:
+        req = _ur.Request(
+            url, data=payload,
+            headers={"Authorization": auth, "Content-Type": "application/json"},
+            method="POST"
+        )
+        with _ur.urlopen(req, timeout=15) as r:
+            return r.status in (200, 201), ""
+    except Exception as e:
+        return False, str(e)
+
+
 def _send_email(to_email, to_name, subject, body):
     """Send a single email via SendGrid. Returns (success, error_msg)."""
     if not SENDGRID_KEY:
@@ -167,8 +251,9 @@ def _send_email(to_email, to_name, subject, body):
         return False, str(e)
 
 
-def _send_report(today_str, sent_list, skipped_list, x_dm_list):
-    """Email Omar a daily report with results and X DMs to send manually."""
+def _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent=None):
+    """Email Omar a daily report with results and any X DMs that need manual send."""
+    x_dm_sent = x_dm_sent or []
     if not SENDGRID_KEY:
         print("No SENDGRID_API_KEY — skipping report email")
         return
@@ -177,8 +262,9 @@ def _send_report(today_str, sent_list, skipped_list, x_dm_list):
         f"Fred Check — Outreach Report {today_str}",
         f"{'='*50}",
         f"",
-        f"EMAILS SENT TODAY: {len(sent_list)}",
-        f"SKIPPED (X-only or error): {len(skipped_list)}",
+        f"EMAILS SENT: {len(sent_list)}",
+        f"X DMs SENT (auto): {len(x_dm_sent)}",
+        f"ERRORS: {len(skipped_list)}",
         f"",
     ]
 
@@ -188,20 +274,27 @@ def _send_report(today_str, sent_list, skipped_list, x_dm_list):
             lines.append(f"  ✓ {r['name']} · {r['outlet']} · {r['email']}")
         lines.append("")
 
-    if skipped_list:
-        lines.append("── SKIPPED / ERRORS ──")
-        for r in skipped_list:
-            lines.append(f"  ✗ {r['name']} · {r['outlet']} · {r.get('error','x_only')}")
+    if x_dm_sent:
+        lines.append("── X DMs SENT (auto) ──")
+        for r in x_dm_sent:
+            lines.append(f"  ✓ @{r['x_handle']} · {r['name']} · {r['outlet']}")
         lines.append("")
 
-    if x_dm_list:
-        lines.append("── X DMs TO SEND MANUALLY ──")
-        lines.append("Copy-paste each DM and send from your @FredCheck X account:")
+    if skipped_list:
+        lines.append("── ERRORS ──")
+        for r in skipped_list:
+            lines.append(f"  ✗ {r['name']} · {r['outlet']} · {r.get('error','unknown')}")
         lines.append("")
-        for r in x_dm_list:
-            tmpl = X_DM_TEMPLATES.get(r['segment'], X_DM_TEMPLATES['freelance'])
-            dm = tmpl.format(name=r['name'].split()[0])
+
+    if x_dm_manual:
+        lines.append("── X DMs TO SEND MANUALLY ──")
+        lines.append("Copy-paste each DM from your @FredCheck account:")
+        lines.append("")
+        for r in x_dm_manual:
+            dm = r.get("dm_text") or X_DM_TEMPLATES.get(r["segment"], X_DM_TEMPLATES["freelance"]).format(name=r["name"].split()[0])
             lines.append(f"  TO: @{r['x_handle']}")
+            if r.get("error"):
+                lines.append(f"  (auto-send failed: {r['error']})")
             lines.append(f"  → {dm}")
             lines.append("")
 
@@ -213,10 +306,11 @@ def _send_report(today_str, sent_list, skipped_list, x_dm_list):
     ]
 
     body = "\n".join(lines)
+    x_manual_count = len(x_dm_manual)
     payload = json.dumps({
         "personalizations": [{"to": [{"email": REPORT_TO, "name": "Omar"}]}],
         "from": {"email": FROM_EMAIL, "name": "Fred Check"},
-        "subject": f"📬 Outreach report {today_str} — {len(sent_list)} sent, {len(x_dm_list)} X DMs to send",
+        "subject": f"📬 Outreach {today_str} — {len(sent_list)} emails, {len(x_dm_sent)} X auto, {x_manual_count} X manual",
         "content": [{"type": "text/plain", "value": body}]
     }).encode()
     try:
@@ -248,10 +342,14 @@ def run():
     pending_x     = [r for r in rows if r["status"] == "x_only"  and r["x_handle"].strip()]
 
     to_send   = pending_email[:DAILY_LIMIT]
-    x_dm_list = pending_x  # always include all pending X DMs in report
 
-    sent_list    = []
-    skipped_list = []
+    sent_list       = []
+    skipped_list    = []
+    x_dm_sent       = []
+    x_dm_manual     = []  # fallback: include in report if Twitter creds not set
+
+    twitter_enabled = all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
+                            TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET])
 
     for r in to_send:
         segment  = r["segment"].strip()
@@ -268,15 +366,40 @@ def run():
             r["status"]    = "sent"
             r["sent_date"] = today_str
             sent_list.append(r)
-            print(f"  ✓ Sent → {r['name']} <{r['email']}>")
+            print(f"  ✓ Email → {r['name']} <{r['email']}>")
         else:
             r["status"] = "error"
             r["sent_date"] = today_str
             skipped_list.append({**r, "error": err})
-            print(f"  ✗ Failed → {r['name']}: {err}")
+            print(f"  ✗ Email failed → {r['name']}: {err}")
+
+    # ── X DM sending ──────────────────────────────────────────────────────────
+    for r in pending_x:
+        segment = r["segment"].strip()
+        tmpl    = X_DM_TEMPLATES.get(segment, X_DM_TEMPLATES["freelance"])
+        dm_text = tmpl.format(name=r["name"].split()[0])
+        handle  = r["x_handle"].strip()
+
+        if twitter_enabled:
+            uid = _lookup_twitter_id(handle)
+            if uid:
+                ok, err = _send_twitter_dm(uid, dm_text)
+                if ok:
+                    r["status"]    = "sent"
+                    r["sent_date"] = today_str
+                    x_dm_sent.append(r)
+                    print(f"  ✓ X DM  → @{handle}")
+                else:
+                    x_dm_manual.append({**r, "dm_text": dm_text, "error": err})
+                    print(f"  ✗ X DM failed → @{handle}: {err}")
+            else:
+                x_dm_manual.append({**r, "dm_text": dm_text, "error": "user ID lookup failed"})
+                print(f"  ? X DM skipped → @{handle} (ID lookup failed)")
+        else:
+            x_dm_manual.append({**r, "dm_text": dm_text})
 
     # Write updated CSV
-    if to_send:
+    if to_send or (twitter_enabled and pending_x):
         fieldnames = list(rows[0].keys())
         with open(RECIPIENTS_CSV, "w", newline="", encoding="utf-8") as f:
             writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -284,9 +407,10 @@ def run():
             writer.writerows(rows)
 
     # Send daily report to Omar
-    _send_report(today_str, sent_list, skipped_list, x_dm_list)
+    _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent)
 
-    print(f"\nDone. {len(sent_list)} sent, {len(skipped_list)} errors, {len(x_dm_list)} X DMs in report.")
+    print(f"\nDone. {len(sent_list)} emails sent, {len(skipped_list)} errors, "
+          f"{len(x_dm_sent)} X DMs sent, {len(x_dm_manual)} X DMs for manual send.")
 
 
 if __name__ == "__main__":
