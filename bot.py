@@ -6297,7 +6297,7 @@ def api_factcheck():
             return jsonify({"error": "Image processing failed. Please try again."}), 500
     else:
         query = (data.get("claim") or data.get("query") or "").strip()[:2000]
-        if not query:
+        if not query and not data.get("claims"):
             return jsonify({"error": "No claim provided"}), 400
         source_type = "url" if query.startswith("http") else "text"
         # For article URLs, scrape the page text first
