@@ -6389,9 +6389,7 @@ def api_extract_claims():
                 query = page_text
     try:
         neutral = neutralize_claim(query)
-        claims = extract_claims(neutral)
-        if not claims:
-            return jsonify({"claims": [], "no_claim": True, "neutralized": neutral})
+        claims = extract_claims(neutral) or [neutral]
         return jsonify({"claims": claims, "neutralized": neutral})
     except Exception as e:
         log.error("extract-claims error: %s", e)
