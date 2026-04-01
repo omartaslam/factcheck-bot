@@ -4742,12 +4742,10 @@ def _run_research():
     except Exception as e:
         log.error("Research sweep failed: %s", e)
 
-# Research sweep twice daily — 00:00 and 12:00 UTC, just before each outreach run
-_scheduler.add_job(_run_research, "cron", hour=0, minute=0,
-                   id="daily_research_night", misfire_grace_time=None)
+# Research sweep once daily — 12:00 UTC, just before outreach run
 _scheduler.add_job(_run_research, "cron", hour=12, minute=0,
                    id="daily_research_midday", misfire_grace_time=None)
-log.info("Research sweeps scheduled: 00:00 UTC and 12:00 UTC")
+log.info("Research sweep scheduled: 12:00 UTC")
 
 _scheduler.add_job(_run_outreach, "cron", hour=13, minute=0, id="midday_outreach",
                    misfire_grace_time=None)

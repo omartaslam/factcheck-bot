@@ -111,7 +111,8 @@ Rules:
 - If unsure of email, leave it empty — do not guess
 - Do not include anyone already in the provided existing contacts list
 - Aim for seniority: editors and senior correspondents convert better than junior reporters
-- Return between 20 and 40 contacts per call"""
+- Return between 20 and 40 contacts per call
+- Return ONLY a raw JSON array. No markdown, no code fences, no prose. Start your response with [ and end with ]"""
 
 
 def _get_existing_contacts():
@@ -156,9 +157,9 @@ Return a JSON array of contacts as described. Prioritise people who:
 4. Cover beats relevant to Fred's focus: MENA, conflict, human rights, media accountability"""
 
     payload = json.dumps({
-        "model": "claude-sonnet-4-6",
+        "model": "claude-haiku-4-5-20251001",
         "max_tokens": 4000,
-        "temperature": 0.7,
+        "temperature": 0.5,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": user_prompt}]
     }).encode()
