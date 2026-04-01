@@ -2883,6 +2883,10 @@ ANALYSE_JSON_SCHEMA = (
     '"confidence_reason":"1 sentence, max 120 chars. State which named sources confirmed (or why only 1 source was found). Regional and non-Western outlets are fully valid named sources. Document accessibility is irrelevant — 2+ named sources confirming = HIGH regardless of whether full text was scraped."}'
 )
 
+_NEUTRALIZE_REFUSAL = ("i can't", "i cannot", "i'm unable", "i am unable",
+                       "i'm sorry", "i apologize", "the text you", "this text",
+                       "the input", "incomplete", "unclear", "sentence fragment")
+
 def neutralize_claim(raw_text):
     """Strip emotional framing and return the neutral, testable core of a claim."""
     if not ANTHROPIC_KEY:
@@ -2890,19 +2894,20 @@ def neutralize_claim(raw_text):
     prompt = (
         "Strip ALL emotional language, sensationalism, and partisan framing from the text below. "
         "Return ONLY the neutral factual core as plain text — no bullet points, no preamble. "
-        "If there are multiple claims, separate them with a newline.\n\n"
+        "If the text is already neutral, return it unchanged. "
+        "Always return the text — never refuse or explain.\n\n"
         f"TEXT:\n{raw_text[:1200]}"
     )
     try:
         r = requests.post("https://api.anthropic.com/v1/messages",
             headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
             json={"model": "claude-haiku-4-5-20251001", "max_tokens": 400,
-                  "system": FRED_CHARTER,
                   "messages": [{"role": "user", "content": prompt}]},
             timeout=20)
         r.raise_for_status()
         result = r.json()["content"][0]["text"].strip()
-        if result and len(result) > 10:
+        lower = result.lower()
+        if result and len(result) > 10 and not any(p in lower for p in _NEUTRALIZE_REFUSAL):
             log.info(f"Neutralized: {result[:80]}")
             return result
     except Exception as e:
