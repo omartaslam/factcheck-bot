@@ -125,13 +125,16 @@ def _get_existing_contacts():
     return names, emails, handles
 
 
-def _research_batch(target: dict, existing_names: set, existing_emails: set, existing_handles: set) -> list:
-    """Call Claude to research a batch of contacts. Returns list of new contact dicts."""
+def _research_batch(target: dict, existing_names: set, existing_emails: set, existing_handles: set):
+    """Call Claude to research a batch of contacts. Returns (new_contacts, raw_count)."""
     if not ANTHROPIC_KEY:
         print("No ANTHROPIC_API_KEY — skipping research")
-        return []
+        return [], 0
 
-    existing_sample = list(existing_names)[:30]  # keep prompt lean
+    # Pass ALL existing identifiers so Claude doesn't regenerate people already in the list.
+    # Names are most useful; handles/emails as supplementary. Truncate at 200 to keep prompt lean.
+    existing_names_list   = sorted(existing_names)[:200]
+    existing_handles_list = sorted(existing_handles)[:100]
     user_prompt = f"""Find {TARGET_NEW} journalist and editor contacts for Fred Check outreach.
 
 Region/focus: {target['region']}
@@ -142,8 +145,9 @@ Preferred roles: {', '.join(target['roles'])}
 
 Default segment if unsure: {target['segment_hint']}
 
-Existing contacts to EXCLUDE (already in our list — do not repeat these):
-{json.dumps(existing_sample)}
+Existing contacts to EXCLUDE — do NOT return anyone on these lists:
+Names already in our list: {json.dumps(existing_names_list)}
+X handles already in our list: {json.dumps(existing_handles_list)}
 
 Return a JSON array of contacts as described. Prioritise people who:
 1. Have a verified X/Twitter presence (makes them reachable even without email)
@@ -175,21 +179,23 @@ Return a JSON array of contacts as described. Prioritise people who:
             text = data["content"][0]["text"]
     except Exception as e:
         print(f"Claude API error: {e}")
-        return []
+        return [], 0
 
     # Extract JSON array from response
     match = re.search(r'\[.*\]', text, re.DOTALL)
     if not match:
         print("No JSON array found in Claude response")
-        return []
+        return [], 0
 
     try:
         contacts = json.loads(match.group())
     except json.JSONDecodeError as e:
         print(f"JSON parse error: {e}")
-        return []
+        return [], 0
 
     # Deduplicate and validate
+    raw_count = len(contacts)
+    print(f"  Claude returned {raw_count} contacts; deduplicating against {len(existing_names)} existing names…")
     new_contacts = []
     for c in contacts:
         name   = c.get("name", "").strip()
@@ -224,7 +230,7 @@ Return a JSON array of contacts as described. Prioritise people who:
         if handle:
             existing_handles.add(handle)
 
-    return new_contacts
+    return new_contacts, raw_count
 
 
 def _append_to_csv(new_contacts: list):
@@ -254,19 +260,21 @@ def _append_to_csv(new_contacts: list):
         w.writerows(all_rows)
 
 
-def _send_report(today_str: str, new_contacts: list, target: dict):
+def _send_report(today_str: str, new_contacts: list, target: dict, raw_count: int = 0):
     """Email Omar a summary of what was added."""
     if not SENDGRID_KEY:
         return
 
     email_ready = [c for c in new_contacts if c.get("email")]
     x_only      = [c for c in new_contacts if not c.get("email") and c.get("x_handle")]
+    deduped_out = raw_count - len(new_contacts)
 
     lines = [
         f"Fred Check — Weekly Research Report {today_str}",
         f"{'='*50}",
         f"",
         f"Region swept: {target['region']}",
+        f"Claude returned: {raw_count} contacts ({deduped_out} already in list, deduped out)",
         f"New contacts added: {len(new_contacts)}",
         f"  Email-ready: {len(email_ready)}",
         f"  X-only: {len(x_only)}",
@@ -329,14 +337,14 @@ def run():
     existing_names, existing_emails, existing_handles = _get_existing_contacts()
     print(f"Existing contacts: {len(existing_names)} names, {len(existing_emails)} emails")
 
-    new_contacts = _research_batch(target, existing_names, existing_emails, existing_handles)
-    print(f"New contacts found: {len(new_contacts)}")
+    new_contacts, raw_count = _research_batch(target, existing_names, existing_emails, existing_handles)
+    print(f"New contacts found: {len(new_contacts)} (Claude returned {raw_count} total)")
 
     if new_contacts:
         _append_to_csv(new_contacts)
         print(f"Appended to {RECIPIENTS_CSV}")
 
-    _send_report(today_str, new_contacts, target)
+    _send_report(today_str, new_contacts, target, raw_count)
     print(f"Done. {len(new_contacts)} new contacts added.")
 
 
