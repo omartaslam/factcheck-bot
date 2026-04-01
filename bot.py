@@ -4742,16 +4742,16 @@ def _run_research():
     except Exception as e:
         log.error("Research sweep failed: %s", e)
 
-# Research sweep twice daily — 00:00 and 09:00 UTC, just before each outreach run
+# Research sweep twice daily — 00:00 and 12:00 UTC, just before each outreach run
 _scheduler.add_job(_run_research, "cron", hour=0, minute=0,
                    id="daily_research_night", misfire_grace_time=None)
-_scheduler.add_job(_run_research, "cron", hour=9, minute=0,
-                   id="daily_research_morning", misfire_grace_time=None)
-log.info("Research sweeps scheduled: 00:00 UTC and 09:00 UTC")
+_scheduler.add_job(_run_research, "cron", hour=12, minute=0,
+                   id="daily_research_midday", misfire_grace_time=None)
+log.info("Research sweeps scheduled: 00:00 UTC and 12:00 UTC")
 
-_scheduler.add_job(_run_outreach, "cron", hour=10, minute=0, id="morning_outreach",
+_scheduler.add_job(_run_outreach, "cron", hour=13, minute=0, id="midday_outreach",
                    misfire_grace_time=None)
-log.info("Morning outreach scheduled: 10:00 UTC")
+log.info("Midday outreach scheduled: 13:00 UTC")
 
 
 def _notify_new_user(wa_id, profile_name):
