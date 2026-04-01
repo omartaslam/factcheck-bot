@@ -381,8 +381,10 @@ def run():
         handle  = r["x_handle"].strip()
 
         if twitter_enabled:
-            uid = _lookup_twitter_id(handle)
+            # Use pre-populated ID from CSV if available, otherwise try API lookup
+            uid = r.get("x_user_id", "").strip() or _lookup_twitter_id(handle)
             if uid:
+                r["x_user_id"] = uid  # persist if newly looked up
                 ok, err = _send_twitter_dm(uid, dm_text)
                 if ok:
                     r["status"]    = "sent"
@@ -393,8 +395,8 @@ def run():
                     x_dm_manual.append({**r, "dm_text": dm_text, "error": err})
                     print(f"  ✗ X DM failed → @{handle}: {err}")
             else:
-                x_dm_manual.append({**r, "dm_text": dm_text, "error": "user ID lookup failed"})
-                print(f"  ? X DM skipped → @{handle} (ID lookup failed)")
+                x_dm_manual.append({**r, "dm_text": dm_text, "error": "no user ID"})
+                print(f"  ? X DM skipped → @{handle} (no user ID)")
         else:
             x_dm_manual.append({**r, "dm_text": dm_text})
 
