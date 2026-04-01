@@ -7187,6 +7187,23 @@ def admin_update_wa_profile():
     )
     return jsonify({"status": r.status_code, "body": r.json()})
 
+@app.route("/admin/send-dm", methods=["POST"])
+def admin_send_dm():
+    """Send a single Twitter DM using bot's OAuth1 implementation. Admin only."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "unauthorised"}), 403
+    data = request.get_json() or {}
+    recipient_id = str(data.get("recipient_id", ""))
+    text = str(data.get("text", ""))
+    if not recipient_id or not text:
+        return jsonify({"error": "recipient_id and text required"}), 400
+    try:
+        send_twitter_dm(recipient_id, text)
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/admin/outreach-send", methods=["POST"])
 def admin_outreach_send():
     """Trigger daily outreach email batch. Called by Railway cron. Admin only."""

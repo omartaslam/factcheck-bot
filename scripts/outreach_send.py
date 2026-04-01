@@ -208,21 +208,19 @@ def _lookup_twitter_id(handle):
 
 
 def _send_twitter_dm(recipient_id, text):
-    """Send an X DM via Twitter API v2. Returns (success, error_msg)."""
-    if not all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
-                TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET]):
-        return False, "Twitter credentials not set"
-    url = f"https://api.twitter.com/2/dm_conversations/with/{recipient_id}/messages"
-    payload = json.dumps({"text": text}).encode()
-    auth = _twitter_oauth1_header("POST", url)
+    """Send an X DM via bot.py's /admin/send-dm endpoint (uses bot's OAuth1). Returns (success, error_msg)."""
+    admin_token = os.environ.get("ADMIN_TOKEN", "qc-test-fred-2026")
+    # Call bot's internal DM endpoint — avoids duplicating OAuth1 logic
+    payload = json.dumps({"recipient_id": recipient_id, "text": text}).encode()
     try:
         req = _ur.Request(
-            url, data=payload,
-            headers={"Authorization": auth, "Content-Type": "application/json"},
+            "http://localhost:5000/admin/send-dm",
+            data=payload,
+            headers={"X-Admin-Token": admin_token, "Content-Type": "application/json"},
             method="POST"
         )
         with _ur.urlopen(req, timeout=15) as r:
-            return r.status in (200, 201), ""
+            return r.status == 200, ""
     except Exception as e:
         return False, str(e)
 
