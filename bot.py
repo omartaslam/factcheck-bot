@@ -4742,10 +4742,10 @@ def _run_research():
     except Exception as e:
         log.error("Research sweep failed: %s", e)
 
-# Weekly research sweep — Sunday 00:00 UTC, finds ~60 new contacts per week
-_scheduler.add_job(_run_research, "cron", day_of_week="sun", hour=0, minute=0,
+# Daily research sweep — 00:00 UTC, finds new contacts nightly (outreach picks them up at 01:30)
+_scheduler.add_job(_run_research, "cron", hour=0, minute=0,
                    id="weekly_research", misfire_grace_time=None)
-log.info("Weekly research sweep scheduled: Sunday 00:00 UTC")
+log.info("Daily research sweep scheduled: 00:00 UTC")
 
 
 def _notify_new_user(wa_id, profile_name):
