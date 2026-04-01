@@ -406,6 +406,31 @@ def run():
             writer.writeheader()
             writer.writerows(rows)
 
+        # Commit sent-status changes back to git so redeploys don't re-send the same contacts.
+        # Runs silently — failure is non-fatal (worst case: duplicate send on next deploy).
+        try:
+            import subprocess as _sp
+            _sp.run(
+                ["git", "add", str(RECIPIENTS_CSV)],
+                cwd=str(REPO_ROOT), capture_output=True, timeout=15
+            )
+            _sp.run(
+                ["git", "commit", "--no-verify", "-m",
+                 f"chore: update outreach sent statuses {today_str} [skip deploy]"],
+                cwd=str(REPO_ROOT), capture_output=True, timeout=15,
+                env={**os.environ, "GIT_AUTHOR_NAME": "Fred Bot",
+                     "GIT_AUTHOR_EMAIL": "hello@fredcheck.com",
+                     "GIT_COMMITTER_NAME": "Fred Bot",
+                     "GIT_COMMITTER_EMAIL": "hello@fredcheck.com"}
+            )
+            _sp.run(
+                ["git", "push"],
+                cwd=str(REPO_ROOT), capture_output=True, timeout=30
+            )
+            print("CSV committed and pushed to git.")
+        except Exception as _e:
+            print(f"git push of CSV skipped: {_e}")
+
     # Send daily report to Omar
     _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent)
 

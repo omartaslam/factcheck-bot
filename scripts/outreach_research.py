@@ -117,7 +117,7 @@ Rules:
 def _get_existing_contacts():
     """Return sets of existing names and emails to deduplicate against."""
     if not RECIPIENTS_CSV.exists():
-        return set(), set()
+        return set(), set(), set()
     rows = list(csv.DictReader(RECIPIENTS_CSV.open()))
     names  = {r["name"].strip().lower() for r in rows}
     emails = {r["email"].strip().lower() for r in rows if r["email"].strip()}
@@ -316,15 +316,24 @@ def _send_report(today_str: str, new_contacts: list, target: dict, raw_count: in
 
 
 def _next_target_index() -> int:
-    """Read rotation counter from file, increment and save, return current index."""
+    """Read rotation counter from file, increment and save, return current index.
+
+    Falls back to a count-based index derived from the total contacts in the CSV
+    so rotation survives Railway redeploys (ephemeral filesystem loses the file).
+    """
     try:
         data = json.loads(ROTATION_FILE.read_text()) if ROTATION_FILE.exists() else {}
         idx = int(data.get("next_index", 0)) % len(RESEARCH_TARGETS)
         ROTATION_FILE.write_text(json.dumps({"next_index": (idx + 1) % len(RESEARCH_TARGETS)}))
         return idx
     except Exception as e:
-        print(f"Rotation file error: {e} — falling back to date-based index")
-        return date.today().toordinal() % len(RESEARCH_TARGETS)
+        print(f"Rotation file error: {e} — falling back to contact-count-based index")
+        # Use total row count in CSV as a proxy for how many sweeps have run
+        try:
+            rows = list(csv.DictReader(RECIPIENTS_CSV.open())) if RECIPIENTS_CSV.exists() else []
+            return (len(rows) // 20) % len(RESEARCH_TARGETS)
+        except Exception:
+            return date.today().toordinal() % len(RESEARCH_TARGETS)
 
 
 def run():
@@ -343,6 +352,24 @@ def run():
     if new_contacts:
         _append_to_csv(new_contacts)
         print(f"Appended to {RECIPIENTS_CSV}")
+        # Commit new contacts to git so they survive Railway redeploys.
+        try:
+            import subprocess as _sp
+            _sp.run(["git", "add", str(RECIPIENTS_CSV)],
+                    cwd=str(REPO_ROOT), capture_output=True, timeout=15)
+            _sp.run(
+                ["git", "commit", "--no-verify", "-m",
+                 f"chore: add {len(new_contacts)} new outreach contacts {today_str} [skip deploy]"],
+                cwd=str(REPO_ROOT), capture_output=True, timeout=15,
+                env={**os.environ, "GIT_AUTHOR_NAME": "Fred Bot",
+                     "GIT_AUTHOR_EMAIL": "hello@fredcheck.com",
+                     "GIT_COMMITTER_NAME": "Fred Bot",
+                     "GIT_COMMITTER_EMAIL": "hello@fredcheck.com"}
+            )
+            _sp.run(["git", "push"], cwd=str(REPO_ROOT), capture_output=True, timeout=30)
+            print("New contacts committed and pushed to git.")
+        except Exception as _e:
+            print(f"git push of new contacts skipped: {_e}")
 
     _send_report(today_str, new_contacts, target, raw_count)
     print(f"Done. {len(new_contacts)} new contacts added.")
