@@ -182,18 +182,17 @@ Return a JSON array of contacts as described. Prioritise people who:
         print(f"Claude API error: {e}")
         return [], 0
 
-    # Extract JSON array from response — handle markdown code fences and prose preamble
-    # Strip ```json ... ``` or ``` ... ``` wrappers first
-    stripped = re.sub(r'```(?:json)?\s*', '', text).strip()
-    match = re.search(r'\[.*\]', stripped, re.DOTALL)
-    if not match:
+    # Extract JSON array — find first [ and last ] regardless of code fences or prose
+    start = text.find('[')
+    end   = text.rfind(']')
+    if start == -1 or end == -1 or end <= start:
         print(f"No JSON array found in Claude response (first 300 chars): {text[:300]!r}")
         return [], 0
 
     try:
-        contacts = json.loads(match.group())
+        contacts = json.loads(text[start:end + 1])
     except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}")
+        print(f"JSON parse error: {e} (first 300 chars): {text[:300]!r}")
         return [], 0
 
     # Deduplicate and validate
