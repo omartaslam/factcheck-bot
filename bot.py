@@ -7200,6 +7200,97 @@ def admin_outreach_send():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/admin/outreach-audit", methods=["POST"])
+def admin_outreach_audit():
+    """Send Omar a full audit email: every email sent + every DM queued, with full message text."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "unauthorised"}), 403
+    import csv as _csv
+    from pathlib import Path as _Path
+    from scripts.outreach_send import TEMPLATES, X_DM_TEMPLATES, UNSUBSCRIBE_FOOTER, _send_email
+
+    csv_path = _Path(__file__).resolve().parent / "outreach" / "recipients.csv"
+    rows = list(_csv.DictReader(csv_path.open()))
+    sent      = [r for r in rows if r["status"] == "sent"]
+    x_only    = [r for r in rows if r["status"] == "x_only" and r.get("x_handle","").strip()]
+    x_with_id = [r for r in x_only if r.get("x_user_id","").strip()]
+    x_manual  = [r for r in x_only if not r.get("x_user_id","").strip()]
+
+    lines = [
+        "Fred Check — Full Outreach Audit",
+        "=" * 60,
+        "",
+        f"EMAILS SENT:        {len(sent)}",
+        f"X DMs WITH ID:      {len(x_with_id)} (auto-send nightly 01:30 UTC)",
+        f"X DMs NO ID:        {len(x_manual)} (manual send needed)",
+        f"TOTAL PIPELINE:     {len(rows)} contacts",
+        "",
+        "DUPLICATE PROTECTION: CSV status field — 'sent' contacts are never re-contacted.",
+        "AUTO-REFILL: weekly research sweep adds ~60 new contacts every Sunday 00:00 UTC.",
+        "",
+        "=" * 60,
+        f"SECTION 1 — EMAILS SENT ({len(sent)} contacts)",
+        "=" * 60,
+        "",
+    ]
+
+    for r in sent:
+        seg  = r["segment"].strip()
+        tmpl = TEMPLATES.get(seg, TEMPLATES["freelance"])
+        name = r["name"].split()[0]
+        body = tmpl["body"].format(name=name, outlet=r["outlet"], beat=r["beat"], role=r["role"])
+        lines += [
+            f"── {r['name']} · {r['outlet']} · {r['email']} ({r.get('sent_date','')}) ──",
+            f"Subject: {tmpl['subject']}",
+            "",
+            body,
+            "",
+            "-" * 40,
+            "",
+        ]
+
+    lines += [
+        "=" * 60,
+        f"SECTION 2 — X DMs AUTO-QUEUED ({len(x_with_id)} contacts)",
+        "=" * 60,
+        "",
+    ]
+    for r in x_with_id:
+        seg = r["segment"].strip()
+        dm  = X_DM_TEMPLATES.get(seg, X_DM_TEMPLATES["freelance"]).format(name=r["name"].split()[0])
+        lines += [f"── @{r['x_handle']} · {r['name']} · {r['outlet']} ──", f"DM: {dm}", ""]
+
+    lines += [
+        "=" * 60,
+        f"SECTION 3 — X DMs MANUAL ({len(x_manual)} contacts — no ID found)",
+        "=" * 60,
+        "",
+    ]
+    for r in x_manual:
+        seg = r["segment"].strip()
+        dm  = X_DM_TEMPLATES.get(seg, X_DM_TEMPLATES["freelance"]).format(name=r["name"].split()[0])
+        lines += [f"── @{r['x_handle']} · {r['name']} · {r['outlet']} ──", f"DM: {dm}", ""]
+
+    lines += ["", "Fred Check · fredcheck.com"]
+    body_text = "\n".join(lines)
+
+    sg_key = os.getenv("SENDGRID_API_KEY", "")
+    if not sg_key:
+        return jsonify({"error": "no SENDGRID_API_KEY"}), 500
+
+    import json as _json, urllib.request as _ur
+    payload = _json.dumps({
+        "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com", "name": "Omar"}]}],
+        "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+        "subject": f"📋 Full outreach audit — {len(sent)} emails sent, {len(x_with_id)} X DMs queued",
+        "content": [{"type": "text/plain", "value": body_text}]
+    }).encode()
+    req = _ur.Request("https://api.sendgrid.com/v3/mail/send", data=payload,
+        headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"}, method="POST")
+    with _ur.urlopen(req, timeout=15) as resp:
+        return jsonify({"sent": True, "emails": len(sent), "x_queued": len(x_with_id), "http": resp.status})
+
+
 @app.route("/admin/delete-user", methods=["POST"])
 def admin_delete_user():
     """Delete a WA user entirely — for new-user simulation. Admin use only."""
