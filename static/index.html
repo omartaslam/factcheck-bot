@@ -1920,7 +1920,7 @@ function hidePicker(){
 
 async function _runFactcheck(){
   const claim = _selectedClaim || document.getElementById('claimInput').value.trim();
-  if(!claim && !_imageB64) return;
+  if(!claim && !_imageB64 && !_selectedClaims.length) return;
 
   const btn = document.getElementById('checkBtn');
   const loading = document.getElementById('searchLoading');
