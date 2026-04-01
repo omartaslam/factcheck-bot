@@ -3117,7 +3117,7 @@ def claims_confirm_msg(claims, source_type, cost, is_free=False):
            "url": "Post / Article", "document": "Document"}
     HDR = "*━━━━━━━━━━━━━━*"
     plural = "claims" if len(claims) > 1 else "claim"
-    claim_lines = "\n".join(f"  *{i+1}.* _{_clean_claim(c)[:150]}_" for i, c in enumerate(claims))
+    claim_lines = "\n".join(f"  *{i+1}.* _{_clean_claim(c)[:300]}_" for i, c in enumerate(claims))
     if len(claims) == 1:
         reply_prompt = "Reply *Y* to fact check\nReply *N* to cancel"
     elif is_free:
