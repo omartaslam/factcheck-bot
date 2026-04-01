@@ -508,13 +508,13 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .cp-item{
   display:flex;align-items:flex-start;gap:10px;
   padding:9px 12px;border-radius:8px;
-  border:1.5px solid var(--border);cursor:pointer;
+  border:1.5px solid transparent;cursor:pointer;
   transition:border-color 0.15s,background 0.15s;
   font-size:0.85rem;color:#333;line-height:1.5;text-align:left;
-  background:#fff;font-family:inherit;width:100%;
+  background:#f9f9f9;font-family:inherit;width:100%;
 }
-.cp-item:hover{border-color:#bbb;background:#fafafa}
-.cp-item.selected{border-color:var(--black);background:#f8f8f8}
+.cp-item:hover{border-color:#ccc;background:#f4f4f4}
+.cp-item.selected{border-color:var(--black);background:#fff}
 .cp-num{
   flex-shrink:0;min-width:20px;height:20px;border-radius:50%;
   border:1.5px solid #ddd;background:#fff;
