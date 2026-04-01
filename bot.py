@@ -6285,9 +6285,13 @@ def api_factcheck():
                 if page_text:
                     query = page_text
     try:
-        # If the frontend sent a pre-extracted claim (from the picker), skip re-extraction
+        # If the frontend sent pre-extracted claims (from the picker), skip re-extraction
         pre_claims = None
-        if data.get("pre_extracted") and not image_b64:
+        pre_claims_list = data.get("claims")  # multi-claim list from picker
+        if pre_claims_list and isinstance(pre_claims_list, list) and not image_b64:
+            pre_claims = [str(c).strip() for c in pre_claims_list if str(c).strip()]
+            query = pre_claims[0] if len(pre_claims) == 1 else " | ".join(pre_claims[:3])
+        elif data.get("pre_extracted") and not image_b64:
             pre_claims = [query]
         results = _factcheck_pipeline(query, source_type, pre_claims=pre_claims)
         credits_remaining = None

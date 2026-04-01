@@ -933,10 +933,13 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
       <div class="claim-picker" id="claimPicker" style="display:none">
         <div class="cp-header">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#777" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          <span id="cpHeaderText">Multiple claims found — select one to fact-check:</span>
+          <span id="cpHeaderText">Multiple claims found — select claims to fact-check:</span>
         </div>
         <div class="cp-list" id="cpList"></div>
-        <button class="cp-check-btn" id="cpCheckBtn" onclick="checkSelectedClaim()" disabled>Select a claim above →</button>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button class="cp-check-btn" id="cpCheckAllBtn" onclick="checkAllClaims()" style="flex:0 0 auto;background:#f5f5f5;color:#333;border:1px solid #ddd">Check all →</button>
+          <button class="cp-check-btn" id="cpCheckBtn" onclick="checkSelectedClaim()" disabled style="flex:1">Select claims above →</button>
+        </div>
       </div>
 
       <!-- Rich Result Panel -->
@@ -1851,22 +1854,27 @@ async function runCheck(){
   await _runFactcheck();
 }
 
+let _allPickerClaims = [];
+let _selectedClaims = [];
+
 function showPicker(claims){
   const picker = document.getElementById('claimPicker');
   const list = document.getElementById('cpList');
   document.getElementById('cpHeaderText').textContent =
-    claims.length + ' claims found — select one to fact-check:';
+    claims.length + ' claims found — select claims to fact-check:';
   list.innerHTML = '';
   _selectedClaim = null;
+  _selectedClaims = [];
+  _allPickerClaims = claims;
   const checkBtn = document.getElementById('cpCheckBtn');
   checkBtn.disabled = true;
-  checkBtn.textContent = 'Select a claim above →';
+  checkBtn.textContent = 'Select claims above →';
 
   claims.forEach((c, i) => {
     const btn = document.createElement('button');
     btn.className = 'cp-item';
     btn.innerHTML = '<span class="cp-num">'+(i+1)+'</span><span>'+c+'</span>';
-    btn.onclick = () => selectClaim(c, btn);
+    btn.onclick = () => toggleClaim(c, btn);
     list.appendChild(btn);
   });
 
@@ -1874,18 +1882,34 @@ function showPicker(claims){
   picker.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
-function selectClaim(claim, el){
-  document.querySelectorAll('.cp-item').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  _selectedClaim = claim;
+function toggleClaim(claim, el){
+  el.classList.toggle('selected');
+  if(el.classList.contains('selected')){
+    _selectedClaims.push(claim);
+  } else {
+    _selectedClaims = _selectedClaims.filter(c => c !== claim);
+  }
   _preExtracted = true;
   const btn = document.getElementById('cpCheckBtn');
-  btn.disabled = false;
-  btn.textContent = 'Check this claim →';
+  const n = _selectedClaims.length;
+  if(n === 0){
+    btn.disabled = true;
+    btn.textContent = 'Select claims above →';
+  } else {
+    btn.disabled = false;
+    btn.textContent = n === 1 ? 'Check 1 claim (1 credit) →' : `Check ${n} claims (${n} credits) →`;
+  }
 }
 
 async function checkSelectedClaim(){
-  if(!_selectedClaim) return;
+  if(!_selectedClaims.length) return;
+  hidePicker();
+  await _runFactcheck();
+}
+
+async function checkAllClaims(){
+  _selectedClaims = [..._allPickerClaims];
+  _preExtracted = true;
   hidePicker();
   await _runFactcheck();
 }
@@ -1913,7 +1937,14 @@ async function _runFactcheck(){
   const token = localStorage.getItem(TOKEN_KEY);
   if(token) headers['Authorization'] = 'Bearer ' + token;
 
-  const body = _imageB64 ? {image_b64: _imageB64, claim: claim||''} : {claim, pre_extracted: _preExtracted};
+  let body;
+  if(_imageB64){
+    body = {image_b64: _imageB64, claim: claim||''};
+  } else if(_preExtracted && _selectedClaims.length > 1){
+    body = {claims: _selectedClaims, pre_extracted: true};
+  } else {
+    body = {claim, pre_extracted: _preExtracted};
+  }
 
   try {
     const res = await fetch(API + '/api/factcheck', {
