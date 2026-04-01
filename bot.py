@@ -34,6 +34,8 @@ TOPUP_5_LINK        = os.getenv("TOPUP_5_LINK", "")              # Stripe Paymen
 TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Payment Link for $10
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
 SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for subscription (not active)
+STRIPE_PRICE_INDIVIDUAL = os.getenv("STRIPE_PRICE_INDIVIDUAL", "price_1THHUmJlfLddYVRPq9KwOsVt")
+STRIPE_PRICE_NEWSROOM   = os.getenv("STRIPE_PRICE_NEWSROOM",   "price_1THHYpJlfLddYVRPW7gcIAYw")
 BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
 WEBSITE_URL         = os.getenv("WEBSITE_URL", "https://fredcheck.com")
 FRED_WA_NUMBER      = os.getenv("FRED_WA_NUMBER", "447863795638")       # Fred's WhatsApp number (no +)
@@ -6420,6 +6422,38 @@ def api_topup():
     except Exception as e:
         log.error("Stripe checkout error: %s", e)
         return jsonify({"error": "Payment system error"}), 500
+
+@app.route("/api/subscribe", methods=["POST"])
+def api_subscribe():
+    """Create a Stripe subscription checkout session for web users."""
+    uid = _auth_user()
+    if not uid:
+        return jsonify({"error": "Unauthorised"}), 401
+    if not STRIPE_SECRET_KEY:
+        return jsonify({"error": "Payment system not configured"}), 503
+    data = request.get_json() or {}
+    plan = data.get("plan", "individual")
+    price_id = STRIPE_PRICE_NEWSROOM if plan == "newsroom" else STRIPE_PRICE_INDIVIDUAL
+    cid = f"web_{uid}"
+    try:
+        payload = {
+            "mode": "subscription",
+            "line_items[0][price]": price_id,
+            "line_items[0][quantity]": "1",
+            "client_reference_id": cid,
+            "success_url": f"{WEBSITE_URL}/?subscribed=1",
+            "cancel_url": f"{WEBSITE_URL}/#pricing",
+        }
+        r = requests.post("https://api.stripe.com/v1/checkout/sessions",
+            headers={"Authorization": f"Bearer {STRIPE_SECRET_KEY}",
+                     "Content-Type": "application/x-www-form-urlencoded"},
+            data=payload, timeout=15)
+        r.raise_for_status()
+        return jsonify({"url": r.json().get("url", "")})
+    except Exception as e:
+        log.error("Stripe subscribe error: %s", e)
+        return jsonify({"error": "Payment system error"}), 500
+
 
 @app.route("/api/topup-wa", methods=["POST"])
 def api_topup_wa():
