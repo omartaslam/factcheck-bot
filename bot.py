@@ -2986,6 +2986,55 @@ def extract_claims(text):
     return [text]  # fallback on parse/network error only
 
 
+def decompose_compound_claim(claim):
+    """If a claim contains two or more separable assertions that could have different truth values,
+    split into sub-claims. Otherwise return the original claim unchanged.
+    Returns a list: 1 item (atomic) or 2-3 items (compound)."""
+    if not ANTHROPIC_KEY or len(claim) < 40:
+        return [claim]
+    prompt = (
+        "Decide whether this fact-check claim contains two or more SEPARABLE assertions "
+        "that could realistically have DIFFERENT truth values — one part confirmed, another contested or false.\n\n"
+        "SPLIT if: the claim asserts (A) a fact AND (B) an intent, motive, or mechanism — and B could be "
+        "false even if A is true.\n"
+        "SPLIT if: the claim makes two independent factual allegations joined by AND/ALSO/BUT.\n"
+        "DO NOT SPLIT if: the claim is a single assertion (even a complex one).\n"
+        "DO NOT SPLIT if: both parts necessarily stand or fall together.\n"
+        "DO NOT SPLIT direct quotes — return as-is.\n"
+        "MAX 3 sub-claims.\n\n"
+        "EXAMPLES:\n"
+        "INPUT: 'The CIA deliberately withheld intelligence from the FBI before 9/11'\n"
+        "OUTPUT: [\"The CIA withheld intelligence from the FBI before 9/11\", "
+        "\"The CIA's withholding of intelligence from the FBI before 9/11 was deliberate\"]\n\n"
+        "INPUT: 'Iran has 10,000 active centrifuges'\n"
+        "OUTPUT: [\"Iran has 10,000 active centrifuges\"]\n\n"
+        "INPUT: 'The vaccine causes myocarditis AND was never tested for long-term effects'\n"
+        "OUTPUT: [\"The vaccine causes myocarditis\", \"The vaccine was never tested for long-term effects\"]\n\n"
+        "INPUT: 'Netanyahu ordered the strike that killed 100 civilians'\n"
+        "OUTPUT: [\"Netanyahu ordered the strike that killed 100 civilians\"]\n\n"
+        f"INPUT: '{claim[:600]}'\n"
+        "OUTPUT (JSON array only, no preamble):"
+    )
+    try:
+        r = requests.post("https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"},
+            json={"model": "claude-haiku-4-5-20251001", "max_tokens": 300, "temperature": 0,
+                  "messages": [{"role": "user", "content": prompt}]},
+            timeout=15)
+        r.raise_for_status()
+        raw = r.json()["content"][0]["text"].strip()
+        s = raw.find("["); e = raw.rfind("]") + 1
+        if s >= 0 and e > s:
+            parts = json.loads(raw[s:e])
+            parts = [p.strip() for p in parts if isinstance(p, str) and p.strip()]
+            if 2 <= len(parts) <= 3:
+                log.info(f"Decomposed compound claim into {len(parts)} sub-claims: {parts}")
+                return parts
+    except Exception as exc:
+        log.warning(f"Compound decomposition failed: {exc}")
+    return [claim]
+
+
 def assess_content_claims(text, source_type, post_date=None):
     """
     Analyse content and extract verifiable claims BEFORE asking user to confirm.
@@ -6195,6 +6244,14 @@ def _factcheck_pipeline(query, source_type="text", pre_claims=None):
     else:
         neutral = query
         claims = [query]
+    # Decompose compound claims (e.g. "X happened AND it was deliberate") into sub-claims
+    # so each assertion gets its own verdict. Skip for pre_claims (user already selected them).
+    if not pre_claims:
+        expanded = []
+        for c in claims:
+            expanded.extend(decompose_compound_claim(c))
+        claims = expanded
+
     g = google_fc(neutral)
     sc, used_sources = scrape_sites(neutral)
     gfc_sources = [x["source"] for x in g if x.get("source")]
