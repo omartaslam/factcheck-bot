@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import random
 import sys
 import time
 import urllib.parse
@@ -27,6 +28,7 @@ FROM_EMAIL     = "hello@fredcheck.com"
 FROM_NAME      = "Omar · Fred Check"
 REPORT_TO      = "omartanveeraslam@gmail.com"
 DAILY_LIMIT    = 85  # SendGrid free tier = 100/day; keep 15 buffer for transactional emails
+QA_SAMPLE_SIZE = 3   # random emails BCC'd + random DM texts included in report each run
 
 # Twitter/X OAuth1 credentials (set in Railway env)
 TWITTER_CONSUMER_KEY    = os.environ.get("TWITTER_CONSUMER_KEY", "")
@@ -225,12 +227,17 @@ def _send_twitter_dm(recipient_id, text):
         return False, str(e)
 
 
-def _send_email(to_email, to_name, subject, body):
-    """Send a single email via SendGrid. Returns (success, error_msg)."""
+def _send_email(to_email, to_name, subject, body, bcc_email=None):
+    """Send a single email via SendGrid. Returns (success, error_msg).
+    bcc_email: if set, adds a hidden BCC (recipient never sees it — QA sampling).
+    """
     if not SENDGRID_KEY:
         return False, "No SENDGRID_API_KEY"
+    personalization = {"to": [{"email": to_email, "name": to_name}]}
+    if bcc_email:
+        personalization["bcc"] = [{"email": bcc_email}]
     payload = json.dumps({
-        "personalizations": [{"to": [{"email": to_email, "name": to_name}]}],
+        "personalizations": [personalization],
         "from": {"email": FROM_EMAIL, "name": FROM_NAME},
         "reply_to": {"email": FROM_EMAIL, "name": FROM_NAME},
         "subject": subject,
@@ -249,9 +256,15 @@ def _send_email(to_email, to_name, subject, body):
         return False, str(e)
 
 
-def _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent=None):
-    """Email Omar a daily report with results and any X DMs that need manual send."""
+def _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent=None,
+                 email_qa_samples=None, dm_qa_samples=None):
+    """Email Omar a daily report with results and any X DMs that need manual send.
+    email_qa_samples: list of (recipient_row, subject, body) BCC'd for QA.
+    dm_qa_samples: list of (recipient_row, dm_text) included verbatim for QA.
+    """
     x_dm_sent = x_dm_sent or []
+    email_qa_samples = email_qa_samples or []
+    dm_qa_samples = dm_qa_samples or []
     if not SENDGRID_KEY:
         print("No SENDGRID_API_KEY — skipping report email")
         return
@@ -263,6 +276,8 @@ def _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent=None
         f"EMAILS SENT: {len(sent_list)}",
         f"X DMs SENT (auto): {len(x_dm_sent)}",
         f"ERRORS: {len(skipped_list)}",
+        f"QA email copies (BCC'd): {len(email_qa_samples)}",
+        f"QA DM copies (text): {len(dm_qa_samples)}",
         f"",
     ]
 
@@ -294,6 +309,21 @@ def _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent=None
             if r.get("error"):
                 lines.append(f"  (auto-send failed: {r['error']})")
             lines.append(f"  → {dm}")
+            lines.append("")
+
+    if dm_qa_samples:
+        lines.append("── QA: X DM SAMPLES (random, for review) ──")
+        for r, dm_text in dm_qa_samples:
+            lines.append(f"  @{r['x_handle']} · {r['name']} · {r['outlet']}")
+            lines.append(f"  → {dm_text}")
+            lines.append("")
+
+    if email_qa_samples:
+        lines.append("── QA: EMAIL SAMPLES (BCC'd — you received these too) ──")
+        for r, subj, body_text in email_qa_samples:
+            lines.append(f"  TO: {r['name']} <{r['email']}>")
+            lines.append(f"  SUBJECT: {subj}")
+            lines.append(f"  BODY PREVIEW: {body_text[:200].strip()}…")
             lines.append("")
 
     lines += [
@@ -345,11 +375,18 @@ def run():
     skipped_list    = []
     x_dm_sent       = []
     x_dm_manual     = []  # fallback: include in report if Twitter creds not set
+    email_qa_samples = []  # (row, subject, body) for QA report
+    dm_qa_samples    = []  # (row, dm_text) for QA report
 
     twitter_enabled = all([TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET,
                             TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET])
 
-    for r in to_send:
+    # Pick which email indices get a BCC copy for QA (chosen before sending)
+    qa_email_indices = set(random.sample(
+        range(len(to_send)), min(QA_SAMPLE_SIZE, len(to_send))
+    )) if to_send else set()
+
+    for i, r in enumerate(to_send):
         segment  = r["segment"].strip()
         tmpl     = TEMPLATES.get(segment, TEMPLATES["freelance"])
         subject  = tmpl["subject"]
@@ -359,12 +396,17 @@ def run():
             beat=r["beat"],
             role=r["role"],
         )
-        ok, err = _send_email(r["email"].strip(), r["name"].strip(), subject, body)
+        bcc = REPORT_TO if i in qa_email_indices else None
+        ok, err = _send_email(r["email"].strip(), r["name"].strip(), subject, body, bcc_email=bcc)
         if ok:
             r["status"]    = "sent"
             r["sent_date"] = today_str
             sent_list.append(r)
-            print(f"  ✓ Email → {r['name']} <{r['email']}>")
+            if i in qa_email_indices:
+                email_qa_samples.append((r, subject, body))
+                print(f"  ✓ Email (QA BCC) → {r['name']} <{r['email']}>")
+            else:
+                print(f"  ✓ Email → {r['name']} <{r['email']}>")
         else:
             r["status"] = "error"
             r["sent_date"] = today_str
@@ -397,6 +439,16 @@ def run():
                 print(f"  ? X DM skipped → @{handle} (no user ID)")
         else:
             x_dm_manual.append({**r, "dm_text": dm_text})
+
+    # Pick random DM QA samples from successful sends
+    if x_dm_sent:
+        sampled = random.sample(x_dm_sent, min(QA_SAMPLE_SIZE, len(x_dm_sent)))
+        for r in sampled:
+            seg = r["segment"].strip()
+            dm_text = X_DM_TEMPLATES.get(seg, X_DM_TEMPLATES["freelance"]).format(
+                name=r["name"].split()[0]
+            )
+            dm_qa_samples.append((r, dm_text))
 
     # Write updated CSV
     if to_send or (twitter_enabled and pending_x):
@@ -432,7 +484,8 @@ def run():
             print(f"git push of CSV skipped: {_e}")
 
     # Send daily report to Omar
-    _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent)
+    _send_report(today_str, sent_list, skipped_list, x_dm_manual, x_dm_sent,
+                 email_qa_samples=email_qa_samples, dm_qa_samples=dm_qa_samples)
 
     print(f"\nDone. {len(sent_list)} emails sent, {len(skipped_list)} errors, "
           f"{len(x_dm_sent)} X DMs sent, {len(x_dm_manual)} X DMs for manual send.")
