@@ -181,10 +181,12 @@ Return a JSON array of contacts as described. Prioritise people who:
         print(f"Claude API error: {e}")
         return [], 0
 
-    # Extract JSON array from response
-    match = re.search(r'\[.*\]', text, re.DOTALL)
+    # Extract JSON array from response — handle markdown code fences and prose preamble
+    # Strip ```json ... ``` or ``` ... ``` wrappers first
+    stripped = re.sub(r'```(?:json)?\s*', '', text).strip()
+    match = re.search(r'\[.*\]', stripped, re.DOTALL)
     if not match:
-        print("No JSON array found in Claude response")
+        print(f"No JSON array found in Claude response (first 300 chars): {text[:300]!r}")
         return [], 0
 
     try:
