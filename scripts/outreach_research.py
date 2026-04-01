@@ -339,6 +339,50 @@ def _next_target_index() -> int:
             return date.today().toordinal() % len(RESEARCH_TARGETS)
 
 
+def _push_csv_to_github(today_str: str, n_new: int):
+    """Push updated recipients.csv to GitHub via API so it survives Railway redeploys."""
+    import base64
+    github_pat = os.environ.get("GITHUB_PAT", "")
+    if not github_pat:
+        print("No GITHUB_PAT — CSV not pushed to GitHub (will be lost on redeploy)")
+        return
+
+    repo    = "omartaslam/factcheck-bot"
+    path    = "outreach/recipients.csv"
+    api_url = f"https://api.github.com/repos/{repo}/contents/{path}"
+    headers = {
+        "Authorization": f"token {github_pat}",
+        "Accept": "application/vnd.github+json",
+        "Content-Type": "application/json",
+    }
+
+    # Get current file SHA (required for update)
+    try:
+        req = _ur.Request(api_url, headers=headers)
+        with _ur.urlopen(req, timeout=15) as r:
+            file_info = json.loads(r.read())
+        sha = file_info["sha"]
+    except Exception as e:
+        print(f"GitHub get-SHA failed: {e}")
+        return
+
+    # Push updated file
+    content_b64 = base64.b64encode(RECIPIENTS_CSV.read_bytes()).decode()
+    payload = json.dumps({
+        "message": f"chore: add {n_new} new outreach contacts {today_str} [skip deploy]",
+        "content": content_b64,
+        "sha": sha,
+        "committer": {"name": "Fred Bot", "email": "hello@fredcheck.com"},
+    }).encode()
+
+    try:
+        req = _ur.Request(api_url, data=payload, headers=headers, method="PUT")
+        with _ur.urlopen(req, timeout=30) as r:
+            print(f"CSV pushed to GitHub (HTTP {r.status})")
+    except Exception as e:
+        print(f"GitHub push failed: {e}")
+
+
 def run():
     today_str = date.today().isoformat()
 
@@ -355,24 +399,8 @@ def run():
     if new_contacts:
         _append_to_csv(new_contacts)
         print(f"Appended to {RECIPIENTS_CSV}")
-        # Commit new contacts to git so they survive Railway redeploys.
-        try:
-            import subprocess as _sp
-            _sp.run(["git", "add", str(RECIPIENTS_CSV)],
-                    cwd=str(REPO_ROOT), capture_output=True, timeout=15)
-            _sp.run(
-                ["git", "commit", "--no-verify", "-m",
-                 f"chore: add {len(new_contacts)} new outreach contacts {today_str} [skip deploy]"],
-                cwd=str(REPO_ROOT), capture_output=True, timeout=15,
-                env={**os.environ, "GIT_AUTHOR_NAME": "Fred Bot",
-                     "GIT_AUTHOR_EMAIL": "hello@fredcheck.com",
-                     "GIT_COMMITTER_NAME": "Fred Bot",
-                     "GIT_COMMITTER_EMAIL": "hello@fredcheck.com"}
-            )
-            _sp.run(["git", "push"], cwd=str(REPO_ROOT), capture_output=True, timeout=30)
-            print("New contacts committed and pushed to git.")
-        except Exception as _e:
-            print(f"git push of new contacts skipped: {_e}")
+        # Push updated CSV to GitHub via API so it survives Railway redeploys.
+        _push_csv_to_github(today_str, len(new_contacts))
 
     _send_report(today_str, new_contacts, target, raw_count)
     print(f"Done. {len(new_contacts)} new contacts added.")
