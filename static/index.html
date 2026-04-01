@@ -1363,7 +1363,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
           <li class="dimmed">API access</li>
           <li class="dimmed">Audit trail export</li>
         </ul>
-        <a href="#contact" class="plan-cta dark">Get started →</a>
+        <button onclick="startSubscribe('individual')" class="plan-cta dark">Get started →</button>
       </div>
 
       <!-- Newsroom — featured -->
@@ -1385,7 +1385,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
           <li>Full audit trail &amp; PDF export</li>
           <li class="dimmed">API access</li>
         </ul>
-        <a href="#contact" class="plan-cta gold">Book a demo →</a>
+        <button onclick="startSubscribe('newsroom')" class="plan-cta gold">Get started →</button>
       </div>
 
       <!-- Enterprise -->
@@ -1518,10 +1518,15 @@ let _modalMode = 'signup';
 // ── AUTH INIT ──────────────────────────────────────────────
 async function initAuth(){
   const token = localStorage.getItem(TOKEN_KEY);
-  // Handle return from Stripe
+  // Handle return from Stripe (top-up)
   if(new URLSearchParams(window.location.search).get('paid') === '1'){
     window.history.replaceState({}, '', window.location.pathname);
     if(token) setTimeout(()=>{ fetchMe(token); showBanner('Payment received! Credits added to your account.'); }, 800);
+  }
+  // Handle return from Stripe (subscription)
+  if(new URLSearchParams(window.location.search).get('subscribed') === '1'){
+    window.history.replaceState({}, '', window.location.pathname);
+    if(token) setTimeout(()=>{ fetchMe(token); showBanner('Subscription active! Welcome to Fred Check Pro.'); }, 800);
   }
   if(!token) return;
   await fetchMe(token);
@@ -1686,6 +1691,23 @@ function openTopup(){
 
 function closeTopup(){
   document.getElementById('topupModal').classList.remove('visible');
+}
+
+async function startSubscribe(plan){
+  const token = localStorage.getItem(TOKEN_KEY);
+  if(!token){ openModal('signup'); return; }
+  try {
+    const res = await fetch(API + '/api/subscribe', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json', 'Authorization':'Bearer '+token},
+      body: JSON.stringify({plan})
+    });
+    const d = await res.json();
+    if(d.url) window.location.href = d.url;
+    else alert(d.error || 'Payment error — please try again');
+  } catch(e){
+    alert('Network error — please try again');
+  }
 }
 
 async function doTopup(cents){
