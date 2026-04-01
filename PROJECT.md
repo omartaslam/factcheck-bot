@@ -2,7 +2,7 @@
 
 > **Purpose:** This document is the authoritative handoff reference. Any developer or AI assistant joining this project should be able to read this file and continue work without needing additional context. Updated automatically every 30 minutes during active development sessions.
 
-**Last updated:** 2026-03-27 (session 32 — COMPLETE)
+**Last updated:** 2026-04-01 (session 39 — IN PROGRESS)
 
 ---
 
@@ -259,16 +259,16 @@ Type HELP anytime for a full guide.
 | Brave Search | Active | Already in use |
 | Perplexity Sonar | In codebase, inactive | Activate post-beta with `PERPLEXITY_API_KEY` |
 | SendGrid | Free trial until 2026-05-18 | 100 emails/day |
-| FB/IG cookies | Refreshed 2026-03-20, expire ~2026-04-03 | ✅ both done — next rotation due ~2026-04-01 |
+| FB/IG cookies | Refreshed 2026-03-20, expire ~2026-04-03 | ⚠️ ROTATE TODAY/TOMORROW (2026-04-01) |
 
 ---
 
 ## 11. Outstanding Tasks (Priority Order)
 
 ### Urgent
-1. **FB/IG cookies rotation** — expires ~2026-03-30 (~10 days).
+1. **FB/IG cookies rotation** — expires ~2026-04-03. ⚠️ Rotate today or tomorrow.
 
-   **Status:** FB + IG cookies both refreshed 2026-03-20 ✅. Next rotation due ~2026-04-01.
+   **Status:** FB + IG cookies refreshed 2026-03-20. Due now.
 
    **Manual rotation steps (do every ~10 days until automation is live):**
    1. Install "Get cookies.txt LOCALLY" extension (Chrome or Firefox)
@@ -316,6 +316,28 @@ Type HELP anytime for a full guide.
 ---
 
 ## 12. Recently Completed Work
+
+### Session 39 — 2026-04-01 (IN PROGRESS)
+
+**Outreach pipeline overhaul — 4 bugs fixed:**
+- **Dedup wipeout** (`ee556b4`): research sweep was only showing Claude 30 of 78 existing names — Claude regenerated contacts already in positions 31–78, all filtered → 0 added every run. Fixed: now passes all 200 names + 100 handles.
+- **CSV not persisted across redeploys** (`3868b93`): Railway filesystem is ephemeral — new contacts added by sweep and sent-statuses updated by send were lost on every git push. Both scripts now git-commit + push CSV with `[skip deploy]` after each run.
+- **Rotation file on ephemeral filesystem** (`3868b93`): rotation counter reset to 0 (MENA) on every redeploy. Added contact-count-based fallback for deterministic rotation.
+- **`_get_existing_contacts()` returned 2 sets on missing file** (`3868b93`): caller unpacks 3 — would crash on fresh deploy before any contacts. Fixed.
+- **38 x_only contacts marked sent in git** (`e0f824c`): contacts DM'd today were still showing as x_only in git, would be re-DM'd on next deploy. Manually committed correct statuses.
+- **Schedule change** (`a29a54f`): research sweep 09:00→12:00 UTC, send 10:00→13:00 UTC. New schedule: sweep 00:00+12:00, send 01:30+13:00.
+- **`/admin/research-sweep` endpoint added** (`2f3869b`): manual trigger for research sweep.
+- **UptimeRobot keyword check**: not available on free plan — skipped.
+
+**Outreach cron schedule (current):**
+| Time UTC | Job |
+|---|---|
+| 00:00 | Research sweep (finds new contacts via Claude Haiku, appends to CSV, commits to git) |
+| 01:30 | Send emails + X DMs to pending contacts, commits statuses to git |
+| 12:00 | Research sweep |
+| 13:00 | Send emails + X DMs |
+
+---
 
 ### Session 31 — 2026-03-27 (IN PROGRESS)
 
