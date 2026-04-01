@@ -5872,9 +5872,12 @@ def _daily_free_used(u):
     return u.get("free_checks_used") or 0
 
 def _is_trial_expired(u):
-    """Return True if the user's FREE_TRIAL_DAYS trial has ended."""
-    import time as _t
-    return (_t.time() - (u.get("created_at") or 0)) > (FREE_TRIAL_DAYS * 86400)
+    """Return True if the user's FREE_TRIAL_DAYS trial has ended (calendar-day counting)."""
+    import datetime as _dt_trial
+    created = u.get("created_at") or 0
+    created_date = _dt_trial.date.fromtimestamp(created)
+    days_in = (_dt_trial.date.today() - created_date).days
+    return days_in >= FREE_TRIAL_DAYS
 
 def _pbilling_type(platform, uid):
     """Returns 'subscriber' | 'free' | 'paid' | 'daily_capped' | 'trial_expired'."""
@@ -6168,7 +6171,9 @@ def api_me():
     trial_expired = bt == "trial_expired"
     import datetime as _dt_me
     created = row["created_at"] or int(t.time())
-    days_in = int((t.time() - created) / 86400)
+    import datetime as _dt_me2
+    created_date = _dt_me2.date.fromtimestamp(created)
+    days_in = (_dt_me2.date.today() - created_date).days
     trial_days_remaining = max(0, FREE_TRIAL_DAYS - days_in) if not trial_expired else 0
     free_today_used = _daily_free_used(row)
     return jsonify({
