@@ -1940,7 +1940,7 @@ async function _runFactcheck(){
   let body;
   if(_imageB64){
     body = {image_b64: _imageB64, claim: claim||''};
-  } else if(_preExtracted && _selectedClaims.length > 1){
+  } else if(_preExtracted && _selectedClaims.length >= 1){
     body = {claims: _selectedClaims, pre_extracted: true};
   } else {
     body = {claim, pre_extracted: _preExtracted};
