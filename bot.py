@@ -2851,7 +2851,7 @@ ANALYSE_JSON_SCHEMA = (
     '"media_bias":"1 sentence on EDITORIAL FRAMING BIAS only — e.g. state media downplaying casualties, partisan outlet selectively citing statistics. Do NOT use this field to note absence of coverage from any outlet or region. Empty string if no actual editorial bias detected.",'
     '"sources":["Name — URL","Name — URL","Name — URL","Name — URL"],'
     '"confidence":"HIGH|MEDIUM|LOW",'
-    '"confidence_reason":"1 sentence, max 120 chars. NOTE: confidence reflects corroboration by independent sources — NOT whether the underlying document is publicly accessible. Confidential reports, sealed findings, and leaked documents reported by 2+ independent named outlets = HIGH confidence."}'
+    '"confidence_reason":"1 sentence, max 120 chars. State which named sources confirmed (or why only 1 source was found). Regional and non-Western outlets are fully valid named sources. Document accessibility is irrelevant — 2+ named sources confirming = HIGH regardless of whether full text was scraped."}'
 )
 
 def neutralize_claim(raw_text):
@@ -3570,11 +3570,17 @@ def claude_analyse(claim, google, scraped, st, post_date=None, osint=None, sourc
         "yet — that is publication lag, not a signal of inaccuracy.\n\n"
         "══ CONFIDENCE ══\n"
         "HIGH: 2+ independent named sources confirm without contradiction.\n"
-        "MEDIUM: 1 named source, or ambiguity across sources.\n"
-        "LOW: no named sources, or direct contradiction.\n"
+        "Named sources include: news outlets (any region or language), UN agencies, NGOs, "
+        "academic institutions, official statements, court records, humanitarian organisations. "
+        "Al Jazeera + TRT World + UNICEF = 3 independent named sources = HIGH. "
+        "Regional and non-Western outlets are fully valid named sources — do not require "
+        "Western outlet confirmation to reach HIGH.\n"
+        "MEDIUM: 1 named source, or multiple sources with genuine ambiguity.\n"
+        "LOW: no named sources, or sources directly contradict each other.\n"
         "Never downgrade because Western outlets haven't covered it.\n"
-        "Never downgrade because a document is confidential — confidence = corroboration, not "
-        "document accessibility.\n\n"
+        "Never downgrade because a document is confidential or full text wasn't scraped — "
+        "confidence = corroboration by named sources, not document accessibility.\n"
+        "If you have 2+ named sources and no contradiction → it is HIGH. Do not hedge to MEDIUM.\n\n"
         "══ WORKED EXAMPLES ══\n\n"
         "EXAMPLE 1 — Misconduct / cover-up (Type B)\n"
         "Claim: 'US government had advance knowledge of 9/11 and deliberately allowed it'\n"
