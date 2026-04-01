@@ -155,23 +155,23 @@ X_DM_TEMPLATES = {
 
 
 def _twitter_oauth1_header(method, url, params=None):
-    """Generate OAuth1 Authorization header for Twitter API v2."""
-    import base64, secrets
+    """Generate OAuth1 Authorization header for Twitter API v2 (HMAC-SHA256)."""
+    import base64, secrets as _secrets
     oauth_params = {
         "oauth_consumer_key":     TWITTER_CONSUMER_KEY,
-        "oauth_nonce":            secrets.token_hex(16),
-        "oauth_signature_method": "HMAC-SHA1",
+        "oauth_nonce":            _secrets.token_hex(16),
+        "oauth_signature_method": "HMAC-SHA256",
         "oauth_timestamp":        str(int(time.time())),
         "oauth_token":            TWITTER_ACCESS_TOKEN,
         "oauth_version":          "1.0",
     }
     all_params = {**oauth_params, **(params or {})}
     param_str = "&".join(
-        f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(str(v), safe='')}"
+        f"{urllib.parse.quote(str(k), safe='')}={urllib.parse.quote(str(v), safe='')}"
         for k, v in sorted(all_params.items())
     )
     base_str = "&".join([
-        urllib.parse.quote(method.upper(), safe=""),
+        method.upper(),
         urllib.parse.quote(url, safe=""),
         urllib.parse.quote(param_str, safe=""),
     ])
@@ -180,7 +180,7 @@ def _twitter_oauth1_header(method, url, params=None):
         urllib.parse.quote(TWITTER_ACCESS_SECRET, safe=""),
     ])
     sig = base64.b64encode(
-        hmac.new(signing_key.encode(), base_str.encode(), hashlib.sha1).digest()
+        hmac.new(signing_key.encode(), base_str.encode(), hashlib.sha256).digest()
     ).decode()
     oauth_params["oauth_signature"] = sig
     header_value = "OAuth " + ", ".join(
