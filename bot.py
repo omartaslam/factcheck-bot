@@ -4688,6 +4688,21 @@ _scheduler.add_job(_send_daily_summary, "cron", hour=7, minute=0, id="daily_summ
                    misfire_grace_time=None)
 log.info("Daily summary scheduled: 07:00 UTC")
 
+def _run_outreach():
+    import subprocess, sys as _sys
+    script = os.path.join(os.path.dirname(__file__), "scripts", "outreach_send.py")
+    try:
+        r = subprocess.run([_sys.executable, script], capture_output=True, text=True, timeout=120)
+        log.info("Outreach batch complete: %s", r.stdout[-300:])
+        if r.returncode != 0:
+            log.warning("Outreach stderr: %s", r.stderr[-200:])
+    except Exception as e:
+        log.error("Outreach batch failed: %s", e)
+
+_scheduler.add_job(_run_outreach, "cron", hour=9, minute=0, id="daily_outreach",
+                   misfire_grace_time=None)
+log.info("Daily outreach scheduled: 09:00 UTC")
+
 
 def _notify_new_user(wa_id, profile_name):
     """Email hello@fredcheck.com when a new WhatsApp user is detected."""
@@ -7155,6 +7170,19 @@ def admin_update_wa_profile():
         json=payload, timeout=10
     )
     return jsonify({"status": r.status_code, "body": r.json()})
+
+@app.route("/admin/outreach-send", methods=["POST"])
+def admin_outreach_send():
+    """Trigger daily outreach email batch. Called by Railway cron. Admin only."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "unauthorised"}), 403
+    import subprocess, sys
+    script = os.path.join(os.path.dirname(__file__), "scripts", "outreach_send.py")
+    try:
+        result = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=120)
+        return jsonify({"stdout": result.stdout[-2000:], "stderr": result.stderr[-500:], "returncode": result.returncode})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/admin/delete-user", methods=["POST"])
 def admin_delete_user():
