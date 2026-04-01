@@ -106,8 +106,8 @@ Return ONLY a JSON array. Each object must have these exact fields:
 }
 
 Rules:
-- Only include people you are confident exist and work at that outlet
-- Only include emails you are confident are correct (outlet-pattern or publicly listed)
+- Only include people you believe exist and work (or have recently worked) at that outlet
+- Only include emails you believe are correct (outlet-pattern or publicly listed)
 - If unsure of email, leave it empty — do not guess
 - Do not include anyone already in the provided existing contacts list
 - Aim for seniority: editors and senior correspondents convert better than junior reporters
@@ -156,9 +156,9 @@ Return a JSON array of contacts as described. Prioritise people who:
 4. Cover beats relevant to Fred's focus: MENA, conflict, human rights, media accountability"""
 
     payload = json.dumps({
-        "model": "claude-haiku-4-5-20251001",
+        "model": "claude-sonnet-4-6",
         "max_tokens": 4000,
-        "temperature": 0.3,
+        "temperature": 0.7,
         "system": SYSTEM_PROMPT,
         "messages": [{"role": "user", "content": user_prompt}]
     }).encode()
