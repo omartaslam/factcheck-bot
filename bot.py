@@ -103,7 +103,7 @@ SRC_ZETEO            = os.getenv("SRC_ZETEO",             "true").lower() == "tr
 SRC_YENISAFAK        = os.getenv("SRC_YENISAFAK",         "true").lower() == "true"
 SRC_972MAG           = os.getenv("SRC_972MAG",            "true").lower() == "true"
 SRC_MONDOWEISS       = os.getenv("SRC_MONDOWEISS",        "true").lower() == "true"
-SRC_EINTIFADA        = os.getenv("SRC_EINTIFADA",         "true").lower() == "true"
+SRC_EINTIFADA        = os.getenv("SRC_EINTIFADA",         "false").lower() == "true"
 SRC_INTERCEPT        = os.getenv("SRC_INTERCEPT",         "true").lower() == "true"
 SRC_HAARETZ          = os.getenv("SRC_HAARETZ",           "true").lower() == "true"
 SRC_DDN              = os.getenv("SRC_DDN",               "true").lower() == "true"
