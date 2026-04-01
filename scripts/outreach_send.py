@@ -29,6 +29,7 @@ FROM_NAME      = "Omar · Fred Check"
 REPORT_TO      = "omartanveeraslam@gmail.com"
 DAILY_LIMIT    = 85  # SendGrid free tier = 100/day; keep 15 buffer for transactional emails
 QA_SAMPLE_SIZE = 3   # random emails BCC'd + random DM texts included in report each run
+QA_OWNER_TWITTER_HANDLE = "CheckFred18731"  # QA DM copies sent here
 
 # Twitter/X OAuth1 credentials (set in Railway env)
 TWITTER_CONSUMER_KEY    = os.environ.get("TWITTER_CONSUMER_KEY", "")
@@ -440,15 +441,23 @@ def run():
         else:
             x_dm_manual.append({**r, "dm_text": dm_text})
 
-    # Pick random DM QA samples from successful sends
+    # Pick random DM QA samples from successful sends and DM them to the owner
     if x_dm_sent:
         sampled = random.sample(x_dm_sent, min(QA_SAMPLE_SIZE, len(x_dm_sent)))
+        owner_id = _lookup_twitter_id(QA_OWNER_TWITTER_HANDLE) if twitter_enabled else None
         for r in sampled:
             seg = r["segment"].strip()
             dm_text = X_DM_TEMPLATES.get(seg, X_DM_TEMPLATES["freelance"]).format(
                 name=r["name"].split()[0]
             )
             dm_qa_samples.append((r, dm_text))
+            if owner_id:
+                qa_msg = f"QA copy — sent to @{r['x_handle']} ({r['name']}, {r['outlet']}):\n\n{dm_text}"
+                ok, err = _send_twitter_dm(owner_id, qa_msg)
+                if ok:
+                    print(f"  ✓ QA DM → @{QA_OWNER_TWITTER_HANDLE} (sample: @{r['x_handle']})")
+                else:
+                    print(f"  ✗ QA DM failed → @{QA_OWNER_TWITTER_HANDLE}: {err}")
 
     # Write updated CSV
     if to_send or (twitter_enabled and pending_x):
