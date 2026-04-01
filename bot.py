@@ -4747,9 +4747,9 @@ _scheduler.add_job(_run_research, "cron", hour=12, minute=0,
                    id="daily_research_midday", misfire_grace_time=None)
 log.info("Research sweep scheduled: 12:00 UTC")
 
-_scheduler.add_job(_run_outreach, "cron", hour=13, minute=0, id="midday_outreach",
+_scheduler.add_job(_run_outreach, "cron", hour=14, minute=0, id="midday_outreach",
                    misfire_grace_time=None)
-log.info("Midday outreach scheduled: 13:00 UTC")
+log.info("Midday outreach scheduled: 14:00 UTC")
 
 
 def _notify_new_user(wa_id, profile_name):
