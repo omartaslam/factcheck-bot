@@ -2770,13 +2770,16 @@ def scrape_sites(query, post_date=None):
             except Exception:
                 pass
 
-    # Real-time web search — main + regional + social in parallel
+    # Real-time web search — main + regional + spanish in parallel
+    # NOTE: social pass (tavily_search_social) disabled 2026-04-01 to reduce Tavily spend (~1 credit/check).
+    # Social results (Twitter/Reddit) were already banned from changing ratings by the synth prompt, so
+    # verdict quality is unaffected. Re-enable if we later want social circulation data surfaced to users.
     with ThreadPoolExecutor(max_workers=8) as _rtex:
         _is_mena     = _is_mena_topic(query_flat)
         _is_latam    = _is_latam_topic(query_flat)
         _ft_main     = _rtex.submit(tavily_search, query_flat, 12, post_date) if TAVILY_API_KEY else None
         _ft_regional = _rtex.submit(tavily_search_regional, query_flat, post_date) if TAVILY_API_KEY else None
-        _ft_social   = _rtex.submit(tavily_search_social, query_flat, post_date) if TAVILY_API_KEY else None
+        _ft_social   = None  # disabled — see note above
         _ft_spanish  = _rtex.submit(tavily_search_spanish, query_flat, post_date) if TAVILY_API_KEY else None
         _ft_brave    = _rtex.submit(brave_search, query_flat) if BRAVE_API_KEY else None
         _ft_brave_ar = _rtex.submit(brave_search_arabic, query_flat) if (BRAVE_API_KEY and _is_mena) else None
