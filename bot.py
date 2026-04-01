@@ -7274,6 +7274,20 @@ def admin_send_dm():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/admin/research-sweep", methods=["POST"])
+def admin_research_sweep():
+    """Trigger research sweep to find new contacts. Admin only."""
+    if request.headers.get("X-Admin-Token", "") != _QC_ADMIN_TOKEN:
+        return jsonify({"error": "unauthorised"}), 403
+    import subprocess, sys
+    script = os.path.join(os.path.dirname(__file__), "scripts", "outreach_research.py")
+    try:
+        result = subprocess.run([sys.executable, script], capture_output=True, text=True, timeout=300)
+        return jsonify({"stdout": result.stdout[-2000:], "stderr": result.stderr[-500:], "returncode": result.returncode})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route("/admin/outreach-send", methods=["POST"])
 def admin_outreach_send():
     """Trigger daily outreach email batch. Called by Railway cron. Admin only."""
