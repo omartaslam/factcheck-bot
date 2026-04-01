@@ -532,6 +532,13 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
 .cp-check-btn:hover{opacity:0.82}
 .cp-check-btn:disabled{opacity:0.35;cursor:not-allowed}
 
+/* ── MULTI-RESULT PANEL ── */
+.mrc{border:1.5px solid var(--border);border-radius:10px;padding:14px 14px 10px;margin-bottom:10px;animation:fadeIn 0.25s ease}
+.mrc-claim{font-size:0.8rem;color:#555;margin-bottom:8px;line-height:1.4}
+.mrc-verdict-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.mrc-score{font-size:0.75rem;color:#777}
+.mrc-analysis{font-size:0.82rem;color:#333;line-height:1.5;border-top:1px solid #f0f0f0;padding-top:8px}
+
 /* ── RESULT PANEL ── */
 .result-panel{display:none;border-top:1px solid #f0f0f0;animation:fadeIn 0.28s ease}
 .result-panel.visible{display:block}
@@ -940,6 +947,15 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
           <button class="cp-check-btn" id="cpCheckBtn" onclick="checkSelectedClaim()" disabled style="flex:1">Select claims above →</button>
           <button class="cp-check-btn" id="cpCheckAllBtn" onclick="checkAllClaims()" style="flex:0 0 auto;background:#f5f5f5;color:#333;border:1px solid #ddd">Check all →</button>
         </div>
+      </div>
+
+      <!-- Multi-Result Panel (shown when >1 claim checked) -->
+      <div class="multi-result-panel" id="multiResultPanel" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+          <span style="font-size:0.8rem;color:#777" id="mrpHeader"></span>
+          <button class="rp-newcheck-btn" onclick="newCheck()">New check</button>
+        </div>
+        <div id="mrpCards"></div>
       </div>
 
       <!-- Rich Result Panel -->
@@ -1963,7 +1979,8 @@ async function _runFactcheck(){
     }
     if(data.error){ showError(data.error); btn.disabled = false; return; }
 
-    renderResult(data, claim);
+    if(data.results && data.results.length > 1) renderMultiResults(data);
+    else renderResult(data, claim);
 
     if(_authUser){
       if(data.credits_remaining != null){
@@ -2002,6 +2019,39 @@ async function _runFactcheck(){
   } finally {
     btn.disabled = false;
   }
+}
+
+function renderMultiResults(data){
+  const scoreMap = {'TRUE':10,'MOSTLY_TRUE':8,'HALF_TRUE':5,'NEEDS_CONTEXT':5,'MISLEADING':3,'MOSTLY_FALSE':3,'FALSE':0};
+  const mrp = document.getElementById('multiResultPanel');
+  const cards = document.getElementById('mrpCards');
+  document.getElementById('mrpHeader').textContent = data.results.length + ' claims checked';
+  cards.innerHTML = '';
+  document.getElementById('resultPanel').classList.remove('visible');
+  data.results.forEach((result, i) => {
+    const a = result.analysis || {};
+    const rating = (a.rating || 'UNVERIFIABLE').toUpperCase().replace(/\s+/g,'_');
+    const ratingDisplay = rating.replace(/_/g,' ');
+    const conf = (a.confidence || '').toUpperCase();
+    const score = scoreMap[rating];
+    const fillColor = score>=8?'#22c55e':score>=5?'#eab308':score>=3?'#f97316':'#ef4444';
+    const claim = result.claim || '';
+
+    const card = document.createElement('div');
+    card.className = 'mrc';
+    card.innerHTML = `
+      <div class="mrc-claim">${i+1}. \u201c${claim.length>200?claim.slice(0,200)+'\u2026':claim}\u201d</div>
+      <div class="mrc-verdict-row">
+        <span class="verdict-chip ${rating}" style="font-size:0.72rem;padding:3px 8px">${ratingDisplay}</span>
+        ${conf ? `<span class="confidence-tag" style="font-size:0.7rem">${conf}</span>` : ''}
+        ${score!=null ? `<span class="mrc-score">${score}/10</span>` : ''}
+      </div>
+      ${a.verdict ? `<div class="mrc-analysis">${a.verdict.slice(0,300)}${a.verdict.length>300?'\u2026':''}</div>` : ''}
+    `;
+    cards.appendChild(card);
+  });
+  mrp.style.display = 'block';
+  mrp.scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 function renderResult(data, submittedClaim){
@@ -2139,6 +2189,7 @@ function renderResult(data, submittedClaim){
 
 function newCheck(){
   document.getElementById('resultPanel').classList.remove('visible');
+  document.getElementById('multiResultPanel').style.display = 'none';
   hidePicker();
   _selectedClaim = null; _preExtracted = false;
   document.getElementById('claimInput').value = '';
