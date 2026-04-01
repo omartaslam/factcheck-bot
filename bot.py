@@ -3717,7 +3717,7 @@ def fmt_report(claim, a, st, cost, used_sources=None, ad=None, post_date=None, o
     display_claim = _trunc(_clean_claim(claim), 220)
     lines = [f"*Fred Check*{hdr_beta}  |  {src_word.get(st,'Text')}","",f"*CLAIM*",f"_{display_claim}_","",f"*{badge}*","",meter_visual(rating),""]
     if rating not in ("TRUE", "FALSE") and a.get("rating_reason"):
-        lines += [f"_Why {rating.title()}? {a['rating_reason']}_", ""]
+        lines += [f"_Why {rating.title()}? {_trunc(a['rating_reason'], 300)}_", ""]
     lines += ["*ANALYSIS*",_trunc(a.get("verdict",""), 500),""]
     if a.get("key_facts"): lines += ["*KEY FACTS*"] + [f"{i}. {_trunc(f,180)}" for i,f in enumerate(a["key_facts"][:3],1)] + [""]
     # Perspectives — single summary sentence across all regions
