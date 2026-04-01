@@ -243,26 +243,49 @@ _alert_sent = {}   # provider -> timestamp of last alert (throttle to 1/hour)
 _alert_lock = threading.Lock()
 
 def send_admin_alert(provider, message):
-    """Send a WhatsApp alert to ADMIN_NUMBER — throttled to once per hour per provider."""
-    if not ADMIN_NUMBER or not WHATSAPP_TOKEN:
-        return
+    """Send a WhatsApp + email alert — throttled to once per hour per provider."""
     now = t.time()
     with _alert_lock:
         last = _alert_sent.get(provider, 0)
         if now - last < 3600:
             return
         _alert_sent[provider] = now
-    try:
-        requests.post(
-            WHATSAPP_URL,
-            json={"messaging_product": "whatsapp", "to": ADMIN_NUMBER,
-                  "type": "text", "text": {"body": f"⚠️ *Fred Check Alert*\n\n{message}"}},
-            headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"},
-            timeout=10
-        )
-        log.warning(f"Admin alert sent ({provider}): {message[:100]}")
-    except Exception as e:
-        log.error(f"Admin alert failed: {e}")
+
+    # WhatsApp alert
+    if ADMIN_NUMBER and WHATSAPP_TOKEN:
+        try:
+            requests.post(
+                WHATSAPP_URL,
+                json={"messaging_product": "whatsapp", "to": ADMIN_NUMBER,
+                      "type": "text", "text": {"body": f"⚠️ *Fred Check Alert*\n\n{message}"}},
+                headers={"Authorization": f"Bearer {WHATSAPP_TOKEN}", "Content-Type": "application/json"},
+                timeout=10
+            )
+        except Exception as e:
+            log.error(f"Admin WA alert failed: {e}")
+
+    # Email alert via SendGrid
+    sg_key = os.environ.get("SENDGRID_API_KEY")
+    if sg_key:
+        try:
+            import urllib.request as _ur2, json as _json2
+            payload = _json2.dumps({
+                "personalizations": [{"to": [{"email": "omartanveeraslam@gmail.com"}]}],
+                "from": {"email": "hello@fredcheck.com", "name": "Fred Check"},
+                "subject": f"⚠️ Fred Check Alert — {provider}",
+                "content": [{"type": "text/plain", "value": message}]
+            }).encode()
+            req = _ur2.Request(
+                "https://api.sendgrid.com/v3/mail/send",
+                data=payload,
+                headers={"Authorization": f"Bearer {sg_key}", "Content-Type": "application/json"},
+                method="POST"
+            )
+            _ur2.urlopen(req, timeout=10)
+        except Exception as e:
+            log.error(f"Admin email alert failed: {e}")
+
+    log.warning(f"Admin alert sent ({provider}): {message[:100]}")
 
 def _is_credit_error(status_code, body_text):
     """Return True if the API response indicates an out-of-credit / quota error."""
