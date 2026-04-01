@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Fred Check — Weekly outreach research sweep.
+Fred Check — Outreach research sweep (runs twice daily).
 Uses Claude to find new journalist/editor contacts, deduplicates against
-existing recipients.csv, and appends new contacts ready for the nightly send.
+existing recipients.csv, and appends new contacts ready for the next send.
 
 Targets (in priority order):
   1. Middle East / MENA newsrooms and journalists
@@ -25,13 +25,14 @@ from pathlib import Path
 
 REPO_ROOT       = Path(__file__).resolve().parent.parent
 RECIPIENTS_CSV  = REPO_ROOT / "outreach" / "recipients.csv"
+ROTATION_FILE   = REPO_ROOT / "outreach" / "research_rotation.json"
 ANTHROPIC_KEY   = os.environ.get("ANTHROPIC_API_KEY", "")
 SENDGRID_KEY    = os.environ.get("SENDGRID_API_KEY", "")
 REPORT_TO       = "omartanveeraslam@gmail.com"
 FROM_EMAIL      = "hello@fredcheck.com"
 TARGET_NEW      = 60  # contacts to find per run
 
-# Priority target batches — rotated weekly so each region gets coverage
+# Priority target batches — rotated per-run so each region gets coverage
 RESEARCH_TARGETS = [
     # Week 1: MENA broadcast + digital
     {
@@ -306,12 +307,23 @@ def _send_report(today_str: str, new_contacts: list, target: dict):
         print(f"Failed to send report: {e}")
 
 
+def _next_target_index() -> int:
+    """Read rotation counter from file, increment and save, return current index."""
+    try:
+        data = json.loads(ROTATION_FILE.read_text()) if ROTATION_FILE.exists() else {}
+        idx = int(data.get("next_index", 0)) % len(RESEARCH_TARGETS)
+        ROTATION_FILE.write_text(json.dumps({"next_index": (idx + 1) % len(RESEARCH_TARGETS)}))
+        return idx
+    except Exception as e:
+        print(f"Rotation file error: {e} — falling back to date-based index")
+        return date.today().toordinal() % len(RESEARCH_TARGETS)
+
+
 def run():
     today_str = date.today().isoformat()
 
-    # Pick target batch based on week number (rotates through 5 targets)
-    week_num = date.today().isocalendar()[1]
-    target = RESEARCH_TARGETS[week_num % len(RESEARCH_TARGETS)]
+    # Pick target batch by rotating through all regions on every run
+    target = RESEARCH_TARGETS[_next_target_index()]
     print(f"Research sweep: {target['region']}")
 
     existing_names, existing_emails, existing_handles = _get_existing_contacts()
