@@ -422,7 +422,7 @@ footer{background:#050505;border-top:1px solid #111;padding:3.5rem 4rem 2.5rem}
   transition:color 0.15s;
 }
 .attach-btn:hover{color:#888}
-.search-hint{font-size:0.72rem;color:#ccc;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.search-hint{font-size:0.72rem;color:#ccc;font-weight:500;white-space:normal;line-height:1.35}
 .search-btn{
   display:inline-flex;align-items:center;gap:7px;flex-shrink:0;
   padding:8px 18px;border-radius:10px;
@@ -1945,7 +1945,7 @@ async function _runFactcheck(){
 
   } catch(err){
     clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-    showError('Could not reach Fred. Please try again.');
+    showError('Could not reach Fred. Please try again.', true);
   } finally {
     btn.disabled = false;
   }
@@ -2115,11 +2115,16 @@ function copyResult(){
   });
 }
 
-function showError(msg){
+function showError(msg, isHard){
   document.getElementById('searchLoading').classList.remove('visible');
   const chip = document.getElementById('verdictChip');
-  chip.className = 'verdict-chip UNVERIFIABLE';
-  chip.textContent = 'ERROR';
+  if(isHard){
+    chip.className = 'verdict-chip UNVERIFIABLE';
+    chip.textContent = 'UNAVAILABLE';
+  } else {
+    chip.className = '';
+    chip.textContent = '';
+  }
   document.getElementById('confidenceTag').textContent = '';
   document.getElementById('rpClaimText').textContent = '';
   document.getElementById('rpTruthBar').style.display = 'none';
