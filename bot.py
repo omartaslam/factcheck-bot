@@ -4703,6 +4703,22 @@ _scheduler.add_job(_run_outreach, "cron", hour=1, minute=30, id="daily_outreach"
                    misfire_grace_time=None)
 log.info("Daily outreach scheduled: 01:30 UTC")
 
+def _run_research():
+    import subprocess, sys as _sys
+    script = os.path.join(os.path.dirname(__file__), "scripts", "outreach_research.py")
+    try:
+        r = subprocess.run([_sys.executable, script], capture_output=True, text=True, timeout=300)
+        log.info("Research sweep complete: %s", r.stdout[-300:])
+        if r.returncode != 0:
+            log.warning("Research stderr: %s", r.stderr[-200:])
+    except Exception as e:
+        log.error("Research sweep failed: %s", e)
+
+# Weekly research sweep — Sunday 00:00 UTC, finds ~60 new contacts per week
+_scheduler.add_job(_run_research, "cron", day_of_week="sun", hour=0, minute=0,
+                   id="weekly_research", misfire_grace_time=None)
+log.info("Weekly research sweep scheduled: Sunday 00:00 UTC")
+
 
 def _notify_new_user(wa_id, profile_name):
     """Email hello@fredcheck.com when a new WhatsApp user is detected."""
