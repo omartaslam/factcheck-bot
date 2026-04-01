@@ -34,7 +34,7 @@ TOPUP_5_LINK        = os.getenv("TOPUP_5_LINK", "")              # Stripe Paymen
 TOPUP_10_LINK       = os.getenv("TOPUP_10_LINK", "")             # Stripe Payment Link for $10
 TOPUP_25_LINK       = os.getenv("TOPUP_25_LINK", "")             # Stripe Payment Link for $25
 SUB_LINK            = os.getenv("SUB_LINK", "")                  # Stripe Payment Link for subscription (not active)
-STRIPE_PRICE_INDIVIDUAL = os.getenv("STRIPE_PRICE_INDIVIDUAL", "price_1THHUmJlfLddYVRPq9KwOsVt")
+STRIPE_PRICE_INDIVIDUAL = os.getenv("STRIPE_PRICE_INDIVIDUAL", "price_1THHUmJlfLddYVRPq9KwO6Vt")
 STRIPE_PRICE_NEWSROOM   = os.getenv("STRIPE_PRICE_NEWSROOM",   "price_1THHYpJlfLddYVRPW7gcIAYw")
 BETA_MODE           = os.getenv("BETA_MODE", "true").lower() == "true"  # Show BETA label in reports
 WEBSITE_URL         = os.getenv("WEBSITE_URL", "https://fredcheck.com")
