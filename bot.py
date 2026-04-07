@@ -4826,40 +4826,6 @@ _scheduler.add_job(_send_daily_summary, "cron", hour=1, minute=0, id="daily_summ
                    misfire_grace_time=None)
 log.info("Daily summary scheduled: 01:00 UTC")
 
-def _run_outreach():
-    import subprocess, sys as _sys
-    script = os.path.join(os.path.dirname(__file__), "scripts", "outreach_send.py")
-    try:
-        r = subprocess.run([_sys.executable, script], capture_output=True, text=True, timeout=120)
-        log.info("Outreach batch complete: %s", r.stdout[-300:])
-        if r.returncode != 0:
-            log.warning("Outreach stderr: %s", r.stderr[-200:])
-    except Exception as e:
-        log.error("Outreach batch failed: %s", e)
-
-_scheduler.add_job(_run_outreach, "cron", hour=1, minute=30, id="daily_outreach",
-                   misfire_grace_time=None)
-log.info("Daily outreach scheduled: 01:30 UTC")
-
-def _run_research():
-    import subprocess, sys as _sys
-    script = os.path.join(os.path.dirname(__file__), "scripts", "outreach_research.py")
-    try:
-        r = subprocess.run([_sys.executable, script], capture_output=True, text=True, timeout=300)
-        log.info("Research sweep complete: %s", r.stdout[-300:])
-        if r.returncode != 0:
-            log.warning("Research stderr: %s", r.stderr[-200:])
-    except Exception as e:
-        log.error("Research sweep failed: %s", e)
-
-# Research sweep once daily — 12:00 UTC, just before outreach run
-_scheduler.add_job(_run_research, "cron", hour=12, minute=0,
-                   id="daily_research_midday", misfire_grace_time=None)
-log.info("Research sweep scheduled: 12:00 UTC")
-
-_scheduler.add_job(_run_outreach, "cron", hour=14, minute=0, id="midday_outreach",
-                   misfire_grace_time=None)
-log.info("Midday outreach scheduled: 14:00 UTC")
 
 
 def _notify_new_user(wa_id, profile_name):
