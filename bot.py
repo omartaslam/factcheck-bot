@@ -7038,6 +7038,10 @@ def privacy_policy():
 def charter():
     return send_from_directory("static", "charter.html")
 
+@app.route("/media-literacy", methods=["GET"])
+def media_literacy():
+    return send_from_directory("static", "media-literacy.html")
+
 @app.route("/fred.vcf", methods=["GET"])
 def contact_card():
     return send_from_directory("static", "Fred.vcf",

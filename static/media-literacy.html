@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Media Literacy — 42 Techniques · Fred Check</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
+
+  :root {
+    --gold: #c9a84c;
+    --gold-light: #e8c96a;
+    --gold-dim: #8a6f2e;
+    --navy: #0b1220;
+    --parchment: #fdf8ee;
+    --parchment-dark: #f5edda;
+    --ink: #1c1a14;
+    --ink-mid: #3d3928;
+    --ink-light: #6b6347;
+    --rule: #c9a84c44;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--navy);
+    background-image:
+      radial-gradient(ellipse at 20% 20%, #1a2540 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, #0f1a30 0%, transparent 60%);
+    min-height: 100vh;
+    font-family: 'EB Garamond', Georgia, 'Times New Roman', serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 88px 20px 80px;
+  }
+
+  /* ── Site nav ── */
+  #site-nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 48px;
+    background: rgba(11, 18, 32, 0.96);
+    border-bottom: 1px solid var(--gold-dim);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 200;
+  }
+  .site-nav-left { display: flex; align-items: center; }
+  .site-nav-logo { font-family: 'EB Garamond', serif; font-size: 18px; color: var(--gold); text-decoration: none; letter-spacing: 0.03em; }
+  .site-nav-sep { color: var(--gold-dim); margin: 0 8px; font-size: 13px; }
+  .site-nav-current { font-family: 'EB Garamond', serif; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-light); }
+  .site-nav-links { display: flex; gap: 28px; list-style: none; }
+  .site-nav-links a { font-family: 'EB Garamond', serif; font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--ink-light); text-decoration: none; transition: color 0.2s; }
+  .site-nav-links a:hover { color: var(--gold); }
+
+  /* ── Zoom toolbar ── */
+  #toolbar {
+    position: fixed;
+    top: 64px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(11, 18, 32, 0.92);
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 8px 14px;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  #toolbar button {
+    background: none;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  #toolbar button:hover { background: var(--gold-dim); color: var(--parchment); }
+  #zoom-label { color: var(--gold); font-family: 'EB Garamond', serif; font-size: 14px; min-width: 38px; text-align: center; }
+  #toolbar .sep { width: 1px; height: 20px; background: var(--gold-dim); margin: 0 2px; }
+
+  /* ── Document wrapper ── */
+  #doc-wrapper {
+    transform-origin: top center;
+    transition: transform 0.2s ease;
+    width: 860px;
+    max-width: 100%;
+  }
+
+  /* ── Outer frame ── */
+  .outer-frame {
+    background: var(--parchment);
+    border: 3px solid var(--gold);
+    box-shadow:
+      0 0 0 1px var(--gold-dim),
+      0 0 0 8px var(--navy),
+      0 0 0 9px var(--gold-dim),
+      0 30px 80px rgba(0,0,0,0.7),
+      inset 0 0 60px rgba(201,168,76,0.05);
+    padding: 54px 62px 48px;
+    position: relative;
+  }
+
+  .outer-frame::before, .outer-frame::after {
+    content: '✦'; position: absolute; color: var(--gold); font-size: 18px; opacity: 0.7;
+  }
+  .outer-frame::before { top: 14px; left: 18px; }
+  .outer-frame::after  { top: 14px; right: 18px; }
+  .corner-bl, .corner-br { position: absolute; color: var(--gold); font-size: 18px; opacity: 0.7; }
+  .corner-bl { bottom: 14px; left: 18px; }
+  .corner-br { bottom: 14px; right: 18px; }
+
+  /* ── Masthead ── */
+  .masthead {
+    text-align: center;
+    margin-bottom: 28px;
+    padding-bottom: 22px;
+    border-bottom: 1px solid var(--gold-dim);
+    position: relative;
+  }
+  .masthead::after {
+    content: ''; display: block; width: 60%; height: 1px;
+    background: var(--rule); margin: 6px auto 0;
+  }
+  .pre-title { font-family: 'EB Garamond', serif; font-size: 10.5px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--gold-dim); margin-bottom: 10px; }
+  h1 { font-family: 'Playfair Display', Georgia, serif; font-size: 32px; font-weight: 700; color: var(--ink); letter-spacing: 0.06em; line-height: 1.15; margin-bottom: 4px; }
+  h1 em { font-style: italic; color: var(--gold-dim); }
+  .subtitle { font-family: 'EB Garamond', serif; font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--gold-dim); margin-top: 8px; }
+  .preamble { font-family: 'Playfair Display', serif; font-style: italic; font-size: 14.5px; color: var(--ink-mid); text-align: center; margin: 18px 0 0; line-height: 1.6; }
+
+  /* ── Section headers ── */
+  .section-header { display: flex; align-items: center; gap: 12px; margin: 26px 0 14px; }
+  .section-header .rule-line { flex: 1; height: 1px; background: linear-gradient(to right, transparent, var(--gold-dim)); }
+  .section-header .rule-line.rev { background: linear-gradient(to left, transparent, var(--gold-dim)); }
+  .section-header h2 { font-family: 'EB Garamond', serif; font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); white-space: nowrap; font-weight: 500; }
+
+  /* ── Context note ── */
+  .context-note {
+    background: linear-gradient(135deg, #f9f3e3, #fdf8ee);
+    border-left: 3px solid var(--gold);
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    border-radius: 0 4px 4px 0;
+  }
+  .context-note p {
+    font-family: 'EB Garamond', serif;
+    font-size: 13.5px;
+    color: var(--ink-mid);
+    line-height: 1.6;
+    font-style: italic;
+  }
+  .context-note a { color: var(--gold-dim); text-decoration: none; border-bottom: 1px dotted var(--gold-dim); }
+  .context-note a:hover { color: var(--gold); }
+
+  /* ── Stats row ── */
+  .stats-row {
+    display: flex;
+    gap: 0;
+    border: 1px solid var(--gold-dim);
+    margin-bottom: 24px;
+  }
+  .stat-cell {
+    flex: 1;
+    text-align: center;
+    padding: 14px 12px;
+    border-right: 1px solid var(--gold-dim);
+  }
+  .stat-cell:last-child { border-right: none; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 26px; font-weight: 700; color: var(--gold); line-height: 1; }
+  .stat-label { font-family: 'EB Garamond', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-light); margin-top: 4px; }
+
+  /* ── Category block ── */
+  .category-block { margin-bottom: 8px; }
+
+  /* ── Techniques grid — two columns ── */
+  .techniques-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 24px;
+    margin-top: 6px;
+  }
+
+  .technique {
+    display: grid;
+    grid-template-columns: 20px 1fr;
+    gap: 0 10px;
+    align-items: start;
+  }
+
+  .t-bullet {
+    font-family: 'Playfair Display', serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1.4;
+    text-align: right;
+  }
+
+  .t-body {}
+  .t-name {
+    font-family: 'EB Garamond', serif;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--ink);
+    margin-bottom: 2px;
+  }
+  .t-desc {
+    font-family: 'EB Garamond', serif;
+    font-size: 12.5px;
+    color: var(--ink-mid);
+    line-height: 1.48;
+  }
+
+  /* ── Doc footer ── */
+  .doc-footer {
+    margin-top: 28px;
+    padding-top: 18px;
+    border-top: 1px solid var(--gold-dim);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+  .footer-seal { font-family: 'Playfair Display', serif; font-size: 22px; color: var(--gold); opacity: 0.5; letter-spacing: 0.1em; }
+  .footer-meta { text-align: right; font-family: 'EB Garamond', serif; font-size: 11px; color: var(--ink-light); letter-spacing: 0.1em; line-height: 1.7; }
+  .footer-meta strong { color: var(--gold-dim); font-weight: 500; }
+
+  /* ── Print ── */
+  @media print {
+    body { background: white; padding: 0; }
+    #toolbar, #site-nav { display: none; }
+    #doc-wrapper { width: 100%; transform: none !important; }
+    .outer-frame { border: 2px solid #c9a84c; box-shadow: none; padding: 36px 48px; margin: 0; }
+    h1 { font-size: 26px; }
+    .t-desc { font-size: 12px; }
+    @page { margin: 1.2cm; size: A4; }
+  }
+
+  @media (max-width: 600px) {
+    .site-nav-links, .site-nav-sep, .site-nav-current { display: none; }
+    .techniques-grid { grid-template-columns: 1fr; }
+    .stats-row { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+
+<nav id="site-nav">
+  <div class="site-nav-left">
+    <a href="/" class="site-nav-logo">Fred Check</a>
+    <span class="site-nav-sep">/</span>
+    <span class="site-nav-current">Media Literacy</span>
+  </div>
+  <ul class="site-nav-links">
+    <li><a href="/">Home</a></li>
+    <li><a href="/charter">Charter</a></li>
+    <li><a href="https://x.com/CheckFred21051" target="_blank">#MediaLiteracy</a></li>
+  </ul>
+</nav>
+
+<div id="toolbar">
+  <button onclick="zoom(-0.1)" title="Zoom out">−</button>
+  <span id="zoom-label">100%</span>
+  <button onclick="zoom(+0.1)" title="Zoom in">+</button>
+  <button onclick="resetZoom()" title="Reset zoom" style="font-size:11px;width:auto;padding:0 8px;">Reset</button>
+  <div class="sep"></div>
+  <button onclick="window.print()" title="Save / Print as PDF" style="width:auto;padding:0 12px;font-size:12px;">⎙ Save PDF</button>
+</div>
+
+<div id="doc-wrapper">
+<div class="outer-frame">
+  <span class="corner-bl">✦</span>
+  <span class="corner-br">✦</span>
+
+  <div class="masthead">
+    <div class="pre-title">Media Literacy · Field Guide · 2026</div>
+    <h1>42 Techniques That <em>Shape</em> What We Read</h1>
+    <div class="subtitle">A Companion Resource to Fred's Charter</div>
+    <p class="preamble">Understanding how news is framed is one of the most useful skills you can develop.<br>
+    This is not a reason for cynicism — it is a reason for curiosity.</p>
+  </div>
+
+  <div class="context-note">
+    <p>This resource expands the principles of <a href="/charter">Fred's Charter</a> into a practical field guide. These 42 techniques describe how framing, selection, and structure shape information — sometimes deliberately, sometimes as a product of institutional habit. Recognising them is the first step to reading past them.</p>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-cell"><div class="stat-num">42</div><div class="stat-label">Techniques</div></div>
+    <div class="stat-cell"><div class="stat-num">7</div><div class="stat-label">Categories</div></div>
+    <div class="stat-cell"><div class="stat-num">11</div><div class="stat-label">Charter Principles</div></div>
+    <div class="stat-cell"><div class="stat-num">1</div><div class="stat-label">Standard</div></div>
+  </div>
+
+  <!-- 01 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>I &nbsp;·&nbsp; Language &amp; Framing</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">01</div><div class="t-body"><div class="t-name">Loaded Language</div><div class="t-desc">"Regime" not "government." "Terrorist" not "militant." The word chosen carries a verdict before any evidence is presented.</div></div></div>
+    <div class="technique"><div class="t-bullet">02</div><div class="t-body"><div class="t-name">Euphemism</div><div class="t-desc">"Collateral damage" for civilian deaths. "Enhanced interrogation" for torture. Neutral language softens reality.</div></div></div>
+    <div class="technique"><div class="t-bullet">03</div><div class="t-body"><div class="t-name">Weasel Words</div><div class="t-desc">"Some say," "sources claim" — with no sources named, no accountability taken, and no way to evaluate the claim.</div></div></div>
+    <div class="technique"><div class="t-bullet">04</div><div class="t-body"><div class="t-name">Passive Voice to Erase Agency</div><div class="t-desc">"Mistakes were made." "People were killed." The passive construction removes the actor from the sentence entirely.</div></div></div>
+    <div class="technique"><div class="t-bullet">05</div><div class="t-body"><div class="t-name">Scare Quotes</div><div class="t-desc">Placing a word in quotation marks to cast doubt without argument. A "ceasefire." The "victims." The "evidence."</div></div></div>
+    <div class="technique"><div class="t-bullet">06</div><div class="t-body"><div class="t-name">Colloquial Nitpicking</div><div class="t-desc">Applying strict technical definitions to ordinary speech to manufacture inaccuracy. If the core assertion is directionally correct, imprecision is not a material error.</div></div></div>
+  </div>
+
+  <!-- 02 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>II &nbsp;·&nbsp; Selection &amp; Omission</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">07</div><div class="t-body"><div class="t-name">Selective Omission</div><div class="t-desc">Telling part of the truth while leaving out the part that changes its meaning entirely. The omission is invisible — it leaves no trace.</div></div></div>
+    <div class="technique"><div class="t-bullet">08</div><div class="t-body"><div class="t-name">Burying the Lead</div><div class="t-desc">Placing the most significant fact at the end of an article, after most readers have stopped reading.</div></div></div>
+    <div class="technique"><div class="t-bullet">09</div><div class="t-body"><div class="t-name">Cherry-Picking Data</div><div class="t-desc">Choosing only the statistics, time periods, or studies that support a predetermined conclusion while ignoring those that contradict it.</div></div></div>
+    <div class="technique"><div class="t-bullet">10</div><div class="t-body"><div class="t-name">Missing Context</div><div class="t-desc">Reporting an event without the historical or political background that explains why it happened and what it means.</div></div></div>
+    <div class="technique"><div class="t-bullet">11</div><div class="t-body"><div class="t-name">Coverage Gaps</div><div class="t-desc">Systematically ignoring events affecting certain populations. Absence of coverage is an editorial choice, not evidence of absence.</div></div></div>
+    <div class="technique"><div class="t-bullet">12</div><div class="t-body"><div class="t-name">Source Gatekeeping</div><div class="t-desc">Quoting only official voices while excluding affected communities, dissidents, and opposing experts from the record.</div></div></div>
+  </div>
+
+  <!-- 03 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>III &nbsp;·&nbsp; Source Credibility</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">13</div><div class="t-body"><div class="t-name">Appeal to Authority Without Scrutiny</div><div class="t-desc">Treating government or institutional statements as facts requiring no corroboration. Institutional sources are sources like any other.</div></div></div>
+    <div class="technique"><div class="t-bullet">14</div><div class="t-body"><div class="t-name">Asymmetric Scepticism</div><div class="t-desc">Demanding rigorous proof from one side while accepting the other's claims at face value. The standard of evidence shifts depending on who is speaking.</div></div></div>
+    <div class="technique"><div class="t-bullet">15</div><div class="t-body"><div class="t-name">Delegitimising by Association</div><div class="t-desc">Dismissing a claim because of who made it, rather than evaluating the evidence itself.</div></div></div>
+    <div class="technique"><div class="t-bullet">16</div><div class="t-body"><div class="t-name">Geographic Source Hierarchy</div><div class="t-desc">Treating Western outlet coverage as confirmation and non-Western sources as needing Western validation. African, Asian, and Middle Eastern sources are primary sources.</div></div></div>
+    <div class="technique"><div class="t-bullet">17</div><div class="t-body"><div class="t-name">Anonymous Sourcing Without Accountability</div><div class="t-desc">"Officials familiar with the matter." No name, no institution, no way to assess motive or reliability.</div></div></div>
+    <div class="technique"><div class="t-bullet">18</div><div class="t-body"><div class="t-name">Expert Laundering</div><div class="t-desc">Presenting think tanks, lobby-funded researchers, or conflicted academics as independent experts without disclosing affiliations or funding.</div></div></div>
+  </div>
+
+  <!-- 04 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>IV &nbsp;·&nbsp; Narrative &amp; Agenda-Setting</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">19</div><div class="t-body"><div class="t-name">False Balance</div><div class="t-desc">Presenting fringe positions as equivalent to scientific consensus. Equal airtime does not mean equal evidence.</div></div></div>
+    <div class="technique"><div class="t-bullet">20</div><div class="t-body"><div class="t-name">False Dichotomy</div><div class="t-desc">Reducing complex issues to two options and erasing every alternative. "You're either with us or against us" is the extreme form.</div></div></div>
+    <div class="technique"><div class="t-bullet">21</div><div class="t-body"><div class="t-name">Protagonist / Antagonist Framing</div><div class="t-desc">Casting allied states as inherently defensive and designated adversaries as inherently aggressive, regardless of the specific evidence for any specific act.</div></div></div>
+    <div class="technique"><div class="t-bullet">22</div><div class="t-body"><div class="t-name">Agenda-Setting Through Repetition</div><div class="t-desc">Hammering certain stories relentlessly while ignoring others of equal importance. What gets covered most is perceived as most significant.</div></div></div>
+    <div class="technique"><div class="t-bullet">23</div><div class="t-body"><div class="t-name">Manufacturing Consensus</div><div class="t-desc">"Everyone agrees," "no serious person doubts" — language that creates the impression of agreement when genuine disagreement exists.</div></div></div>
+    <div class="technique"><div class="t-bullet">24</div><div class="t-body"><div class="t-name">Importing Unrelated Background</div><div class="t-desc">Weakening a specific factual claim by surrounding it with context designed to discredit the person making it rather than the claim itself.</div></div></div>
+  </div>
+
+  <!-- 05 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>V &nbsp;·&nbsp; Suppression &amp; Dismissal</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">25</div><div class="t-body"><div class="t-name">Label-Based Pre-Dismissal</div><div class="t-desc">Calling something a "conspiracy theory" or "disinformation" as a substitute for examining its evidence. The label replaces the argument.</div></div></div>
+    <div class="technique"><div class="t-bullet">26</div><div class="t-body"><div class="t-name">Institutional Silence as Corroboration</div><div class="t-desc">Treating absence of official denial, or absence of media coverage, as evidence that an allegation is false. Silence proves nothing either way.</div></div></div>
+    <div class="technique"><div class="t-bullet">27</div><div class="t-body"><div class="t-name">Cover-Up Dismissal</div><div class="t-desc">Treating suppression of inconvenient information as implausible by default. Elite suppression of inconvenient truths is historically well-documented.</div></div></div>
+    <div class="technique"><div class="t-bullet">28</div><div class="t-body"><div class="t-name">Ridicule as Rebuttal</div><div class="t-desc">Mocking a claim or its proponents instead of addressing the substance. If something sounds absurd, the instinct is to laugh rather than examine.</div></div></div>
+    <div class="technique"><div class="t-bullet">29</div><div class="t-body"><div class="t-name">Chilling Language</div><div class="t-desc">Describing truthful speech as "dangerous" or "destabilising" to discourage publication, sharing, or further investigation.</div></div></div>
+  </div>
+
+  <!-- 06 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>VI &nbsp;·&nbsp; Statistical &amp; Visual Distortion</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">30</div><div class="t-body"><div class="t-name">Misleading Headlines</div><div class="t-desc">A headline claiming something the article itself does not support. Most readers never reach the correction buried within.</div></div></div>
+    <div class="technique"><div class="t-bullet">31</div><div class="t-body"><div class="t-name">Manipulated Charts</div><div class="t-desc">Truncated axes, selective time periods, or misleading scales that make small changes look dramatic or large changes look trivial.</div></div></div>
+    <div class="technique"><div class="t-bullet">32</div><div class="t-body"><div class="t-name">Absolute vs Relative Risk Confusion</div><div class="t-desc">"Doubles your risk" sounds alarming. "Increases risk from 1-in-a-million to 2-in-a-million" does not. Both statements can describe the same finding.</div></div></div>
+    <div class="technique"><div class="t-bullet">33</div><div class="t-body"><div class="t-name">Correlation Presented as Causation</div><div class="t-desc">Two things happening together reported as one causing the other. A relationship between variables is not an explanation of them.</div></div></div>
+    <div class="technique"><div class="t-bullet">34</div><div class="t-body"><div class="t-name">Selective Casualty Accounting</div><div class="t-desc">Applying rigorous scrutiny to one side's casualty figures while accepting the other side's uncritically. The standard of verification shifts by actor.</div></div></div>
+    <div class="technique"><div class="t-bullet">35</div><div class="t-body"><div class="t-name">Decontextualised Images or Footage</div><div class="t-desc">Using real photographs or video from a different time, place, or conflict to illustrate a current event. The images are genuine; the context is not.</div></div></div>
+  </div>
+
+  <!-- 07 -->
+  <div class="section-header">
+    <div class="rule-line rev"></div>
+    <h2>VII &nbsp;·&nbsp; Structural &amp; Institutional Bias</h2>
+    <div class="rule-line"></div>
+  </div>
+  <div class="techniques-grid">
+    <div class="technique"><div class="t-bullet">36</div><div class="t-body"><div class="t-name">Editorial Dependence on Advertisers</div><div class="t-desc">Avoiding stories that might displease major commercial partners or government funders. The editorial decision is never recorded; the story simply does not run.</div></div></div>
+    <div class="technique"><div class="t-bullet">37</div><div class="t-body"><div class="t-name">Revolving-Door Commentary</div><div class="t-desc">Presenting former officials, military officers, or lobbyists as independent analysts without disclosing their prior roles or ongoing interests.</div></div></div>
+    <div class="technique"><div class="t-bullet">38</div><div class="t-body"><div class="t-name">Access Journalism</div><div class="t-desc">Softening coverage of powerful figures to preserve privileged access. The trade is honesty for proximity, and it is rarely made explicit.</div></div></div>
+    <div class="technique"><div class="t-bullet">39</div><div class="t-body"><div class="t-name">Both-Sidesing Structural Inequality</div><div class="t-desc">Treating the powerful and the powerless as equivalent parties in a dispute in order to appear neutral. Balance and equivalence are not the same thing.</div></div></div>
+    <div class="technique"><div class="t-bullet">40</div><div class="t-body"><div class="t-name">Algorithmic Amplification of Bias</div><div class="t-desc">AI and algorithmic systems trained on skewed media corpora inherit and amplify existing biases at scale, creating feedback loops that are harder to see than individual editorial decisions.</div></div></div>
+    <div class="technique"><div class="t-bullet">41</div><div class="t-body"><div class="t-name">Self-Censorship Under Political Pressure</div><div class="t-desc">Newsrooms quietly dropping stories not because they are untrue but because they are inconvenient to the powerful. The decision leaves no public trace.</div></div></div>
+    <div class="technique"><div class="t-bullet">42</div><div class="t-body"><div class="t-name">Default Cultural Assumptions</div><div class="t-desc">Training data and editorial culture embed certain geographic and cultural perspectives as the neutral default — shaping which stories are told, how, and for whom.</div></div></div>
+  </div>
+
+  <div class="doc-footer">
+    <div class="footer-seal">✦ F ✦</div>
+    <div class="footer-meta">
+      <strong>Fred Check</strong> — Independent Fact-Checking System<br>
+      Media Literacy Field Guide &nbsp;·&nbsp; 2026<br>
+      <em>Consistent standards. Global sources. No exceptions.</em>
+    </div>
+  </div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid #c9a84c44;display:flex;justify-content:center;gap:40px;flex-wrap:wrap;">
+    <div style="text-align:center;">
+      <div style="font-family:'EB Garamond',serif;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#6b6347;margin-bottom:3px;">Fact-check on WhatsApp</div>
+      <a href="https://wa.me/message/RHUL3AC2SKLVL1" style="font-family:'EB Garamond',serif;font-size:12px;color:#8a6f2e;text-decoration:none;">wa.me/message/RHUL3AC2SKLVL1</a>
+    </div>
+    <div style="text-align:center;">
+      <div style="font-family:'EB Garamond',serif;font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:#6b6347;margin-bottom:3px;">Fact-check on Web</div>
+      <a href="https://fredcheck.com" style="font-family:'EB Garamond',serif;font-size:12px;color:#8a6f2e;text-decoration:none;">fredcheck.com</a>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+  let scale = 1.0;
+  function zoom(delta) {
+    scale = Math.min(2.0, Math.max(0.4, scale + delta));
+    applyZoom();
+  }
+  function resetZoom() { scale = 1.0; applyZoom(); }
+  function applyZoom() {
+    document.getElementById('doc-wrapper').style.transform = `scale(${scale})`;
+    document.getElementById('zoom-label').textContent = Math.round(scale * 100) + '%';
+  }
+  window.addEventListener('load', function() {
+    const vw = window.innerWidth;
+    if (vw < 960) {
+      scale = Math.max(0.5, (vw - 80) / 860);
+      applyZoom();
+    }
+  });
+</script>
+</body>
+</html>
