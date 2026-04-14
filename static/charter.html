@@ -4,66 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fred's Charter — Constitutional Principles</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap">
-<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
 <style>
-  /* ── SITE NAV (matches main site) ── */
-  *{box-sizing:border-box;margin:0;padding:0}
-  .site-nav{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:0 4rem;height:88px;
-    border-bottom:1px solid #ebebeb;
-    position:sticky;top:0;background:#fff;
-    backdrop-filter:blur(8px);z-index:300;
-    font-family:'Inter',sans-serif;
-    width:100%;align-self:stretch;
-  }
-  .site-nav .logo{display:flex;align-items:center;gap:13px;text-decoration:none}
-  .site-nav .logo img{width:72px;height:72px;border-radius:50%;object-fit:cover}
-  .site-nav .logo-text{font-size:1.15rem;font-weight:900;letter-spacing:4px;color:#0a0a0a}
-  .site-nav .nav-links{display:flex;gap:2rem}
-  .site-nav .nav-links a{color:#555;font-size:0.855rem;text-decoration:none;font-weight:500;transition:color 0.15s}
-  .site-nav .nav-links a:hover{color:#0a0a0a}
-  .site-nav .nav-right{display:flex;gap:0.6rem;align-items:center}
-  .site-nav .btn-ghost{padding:7px 16px;border:1px solid #ebebeb;border-radius:8px;color:#444;font-size:0.82rem;font-weight:600;cursor:pointer;background:#fff;font-family:inherit;text-decoration:none;transition:border-color 0.15s}
-  .site-nav .btn-ghost:hover{border-color:#bbb}
-  .site-nav .btn-cta{padding:8px 18px;border-radius:8px;background:#D4AF37;color:#0a0a0a;font-size:0.82rem;font-weight:800;cursor:pointer;border:none;font-family:inherit;text-decoration:none;letter-spacing:0.2px;transition:opacity 0.15s}
-  .site-nav .btn-cta:hover{opacity:0.88}
-  .site-nav .hamburger{display:none;flex-direction:column;justify-content:center;align-items:center;gap:5px;width:36px;height:36px;background:none;border:none;cursor:pointer;padding:4px;border-radius:6px}
-  .site-nav .hamburger span{display:block;width:20px;height:2px;background:#111;border-radius:2px}
-  @media(max-width:768px){
-    .site-nav{padding:0 1rem;height:64px;position:relative}
-    .site-nav .logo img{width:48px;height:48px}
-    .site-nav .nav-links{display:none;position:absolute;top:64px;left:0;right:0;background:#fff;border-bottom:1px solid #ebebeb;padding:0.75rem 1.5rem 1rem;flex-direction:column;gap:0;z-index:200}
-    .site-nav .nav-links.open{display:flex}
-    .site-nav .nav-links a{padding:0.6rem 0;border-bottom:1px solid #f0f0f0;font-size:0.9rem}
-    .site-nav .nav-links a:last-child{border-bottom:none}
-    .site-nav .btn-ghost{display:none}
-    .site-nav .btn-cta{display:none}
-    .site-nav .hamburger{display:flex}
-  }
-  @media(min-width:769px){.site-nav .hamburger{display:none}}
-  @media print{.site-nav{display:none}}
-
-  /* ── ZOOM PILL (floating bottom-right) ── */
-  #zoom-pill{
-    position:fixed;bottom:24px;right:24px;
-    display:flex;align-items:center;gap:6px;
-    background:rgba(11,18,32,0.92);border:1px solid #8a6f2e;
-    border-radius:8px;padding:7px 12px;z-index:200;
-    backdrop-filter:blur(8px);
-    font-family:'Inter',sans-serif;
-  }
-  #zoom-pill button{
-    background:none;border:1px solid #8a6f2e;color:#c9a84c;
-    width:26px;height:26px;border-radius:4px;font-size:15px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;transition:all 0.15s;
-  }
-  #zoom-pill button:hover{background:#8a6f2e;color:#fdf8ee}
-  #zoom-label{color:#c9a84c;font-size:13px;min-width:36px;text-align:center}
-  #zoom-pill .zsep{width:1px;height:18px;background:#8a6f2e;margin:0 2px}
-  @media print{#zoom-pill{display:none}}
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap');
 
   :root {
     --gold: #c9a84c;
@@ -93,6 +35,48 @@
     padding: 40px 20px 80px;
   }
 
+  /* ── Zoom toolbar ── */
+  #toolbar {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(11, 18, 32, 0.92);
+    border: 1px solid var(--gold-dim);
+    border-radius: 8px;
+    padding: 8px 14px;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  #toolbar button {
+    background: none;
+    border: 1px solid var(--gold-dim);
+    color: var(--gold);
+    width: 28px; height: 28px;
+    border-radius: 4px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+  #toolbar button:hover { background: var(--gold-dim); color: var(--parchment); }
+  #zoom-label {
+    color: var(--gold);
+    font-family: 'EB Garamond', serif;
+    font-size: 14px;
+    min-width: 38px;
+    text-align: center;
+  }
+  #toolbar .sep { width: 1px; height: 20px; background: var(--gold-dim); margin: 0 2px; }
+  #print-btn {
+    width: auto !important;
+    padding: 0 10px;
+    font-size: 13px !important;
+    letter-spacing: 0.04em;
+  }
 
   /* ── Document wrapper ── */
   #doc-wrapper {
@@ -339,41 +323,13 @@
     font-weight: 500;
   }
 
-  /* ── PDF context links (visible in print/PDF) ── */
-  .pdf-links {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid var(--rule);
-    display: flex;
-    justify-content: center;
-    gap: 28px;
-    flex-wrap: wrap;
-  }
-  .pdf-links a {
-    font-family: 'EB Garamond', serif;
-    font-size: 12px;
-    color: var(--gold-dim);
-    text-decoration: none;
-    letter-spacing: 0.08em;
-  }
-  .pdf-links a:hover { color: var(--gold); }
-  .pdf-links .pdf-link-label {
-    font-size: 10px;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--ink-light);
-    display: block;
-    margin-bottom: 2px;
-  }
-  .pdf-links .pdf-link-item { text-align: center; }
-
   /* ── Print styles ── */
   @media print {
     body {
       background: white;
       padding: 0;
     }
-    #zoom-pill { display: none; }
+    #toolbar { display: none; }
     #doc-wrapper {
       width: 100%;
       transform: none !important;
@@ -396,37 +352,14 @@
 </head>
 <body>
 
-<!-- Site nav — matches main fredcheck.com header -->
-<nav class="site-nav">
-  <a href="https://fredcheck.com" class="logo">
-    <img src="/static/fred-logo.png" alt="Fred">
-    <span class="logo-text">FRED<span style="color:#D4AF37">.</span></span>
-  </a>
-  <div class="nav-links" id="navLinks">
-    <a href="https://fredcheck.com/#features" onclick="closeMenu()">Features</a>
-    <a href="https://fredcheck.com/#newsrooms" onclick="closeMenu()">For Newsrooms</a>
-    <a href="https://fredcheck.com/#api" onclick="closeMenu()">API</a>
-    <a href="https://fredcheck.com/#pricing" onclick="closeMenu()">Pricing</a>
-    <a href="https://fredcheck.com/#contact" onclick="closeMenu()">Contact</a>
-    <a href="https://fredcheck.com" onclick="closeMenu()" style="color:#0a0a0a;font-weight:700">Get started →</a>
-  </div>
-  <div class="nav-right">
-    <a class="btn-ghost" href="https://fredcheck.com">Sign in</a>
-    <a class="btn-cta" href="https://fredcheck.com">Get started →</a>
-    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
-      <span></span><span></span><span></span>
-    </button>
-  </div>
-</nav>
-
-<!-- Zoom + PDF pill (floating bottom-right) -->
-<div id="zoom-pill">
+<!-- Zoom toolbar -->
+<div id="toolbar">
   <button onclick="zoom(-0.1)" title="Zoom out">−</button>
   <span id="zoom-label">100%</span>
   <button onclick="zoom(+0.1)" title="Zoom in">+</button>
-  <button onclick="resetZoom()" title="Reset" style="font-size:10px;width:auto;padding:0 7px;">Reset</button>
-  <div class="zsep"></div>
-  <button onclick="window.print()" title="Save as PDF" style="width:auto;padding:0 10px;font-size:11px;">⎙ PDF</button>
+  <button onclick="resetZoom()" title="Reset zoom" style="font-size:11px;width:auto;padding:0 8px;">Reset</button>
+  <div class="sep"></div>
+  <button class="print-btn" onclick="window.print()" title="Save / Print as PDF" style="width:auto;padding:0 12px;font-size:12px;">⎙ Save PDF</button>
 </div>
 
 <div id="doc-wrapper">
@@ -694,30 +627,10 @@
     </div>
   </div>
 
-  <!-- PDF context links — visible in downloaded PDF copies -->
-  <div class="pdf-links">
-    <div class="pdf-link-item">
-      <span class="pdf-link-label">Fact-check on WhatsApp</span>
-      <a href="https://wa.me/message/RHUL3AC2SKLVL1">wa.me/message/RHUL3AC2SKLVL1</a>
-    </div>
-    <div class="pdf-link-item">
-      <span class="pdf-link-label">Fact-check on Web</span>
-      <a href="https://fredcheck.com">fredcheck.com</a>
-    </div>
-  </div>
-
 </div><!-- /outer-frame -->
 </div><!-- /doc-wrapper -->
 
 <script>
-  // Mobile nav
-  function toggleMenu(){ document.getElementById('navLinks').classList.toggle('open'); }
-  function closeMenu(){ document.getElementById('navLinks').classList.remove('open'); }
-  document.addEventListener('click', function(e){
-    const nav = document.querySelector('.site-nav');
-    if(nav && !nav.contains(e.target)) closeMenu();
-  });
-
   let scale = 1.0;
   function zoom(delta) {
     scale = Math.min(2.0, Math.max(0.4, scale + delta));
