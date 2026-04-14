@@ -29,12 +29,19 @@
   .site-nav .btn-ghost:hover{border-color:#bbb}
   .site-nav .btn-cta{padding:8px 18px;border-radius:8px;background:#D4AF37;color:#0a0a0a;font-size:0.82rem;font-weight:800;cursor:pointer;border:none;font-family:inherit;text-decoration:none;letter-spacing:0.2px;transition:opacity 0.15s}
   .site-nav .btn-cta:hover{opacity:0.88}
+  .site-nav .hamburger{display:none;flex-direction:column;justify-content:center;align-items:center;gap:5px;width:36px;height:36px;background:none;border:none;cursor:pointer;padding:4px;border-radius:6px}
+  .site-nav .hamburger span{display:block;width:20px;height:2px;background:#111;border-radius:2px}
   @media(max-width:768px){
-    .site-nav{padding:0 1rem;height:64px}
+    .site-nav{padding:0 1rem;height:64px;position:relative}
     .site-nav .logo img{width:48px;height:48px}
-    .site-nav .nav-links{display:none}
+    .site-nav .nav-links{display:none;position:absolute;top:64px;left:0;right:0;background:#fff;border-bottom:1px solid #ebebeb;padding:0.75rem 1.5rem 1rem;flex-direction:column;gap:0;z-index:200}
+    .site-nav .nav-links.open{display:flex}
+    .site-nav .nav-links a{padding:0.6rem 0;border-bottom:1px solid #f0f0f0;font-size:0.9rem}
+    .site-nav .nav-links a:last-child{border-bottom:none}
     .site-nav .btn-ghost{display:none}
+    .site-nav .hamburger{display:flex}
   }
+  @media(min-width:769px){.site-nav .hamburger{display:none}}
   @media print{.site-nav{display:none}}
 
   /* ── ZOOM PILL (floating bottom-right) ── */
@@ -393,16 +400,20 @@
     <img src="/static/fred-logo.png" alt="Fred">
     <span class="logo-text">FRED<span style="color:#D4AF37">.</span></span>
   </a>
-  <div class="nav-links">
-    <a href="https://fredcheck.com/#features">Features</a>
-    <a href="https://fredcheck.com/#newsrooms">For Newsrooms</a>
-    <a href="https://fredcheck.com/#api">API</a>
-    <a href="https://fredcheck.com/#pricing">Pricing</a>
-    <a href="https://fredcheck.com/#contact">Contact</a>
+  <div class="nav-links" id="navLinks">
+    <a href="https://fredcheck.com/#features" onclick="closeMenu()">Features</a>
+    <a href="https://fredcheck.com/#newsrooms" onclick="closeMenu()">For Newsrooms</a>
+    <a href="https://fredcheck.com/#api" onclick="closeMenu()">API</a>
+    <a href="https://fredcheck.com/#pricing" onclick="closeMenu()">Pricing</a>
+    <a href="https://fredcheck.com/#contact" onclick="closeMenu()">Contact</a>
+    <a href="https://fredcheck.com" onclick="closeMenu()" style="color:#0a0a0a;font-weight:700">Get started →</a>
   </div>
   <div class="nav-right">
     <a class="btn-ghost" href="https://fredcheck.com">Sign in</a>
     <a class="btn-cta" href="https://fredcheck.com">Get started →</a>
+    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </nav>
 
@@ -697,6 +708,14 @@
 </div><!-- /doc-wrapper -->
 
 <script>
+  // Mobile nav
+  function toggleMenu(){ document.getElementById('navLinks').classList.toggle('open'); }
+  function closeMenu(){ document.getElementById('navLinks').classList.remove('open'); }
+  document.addEventListener('click', function(e){
+    const nav = document.querySelector('.site-nav');
+    if(nav && !nav.contains(e.target)) closeMenu();
+  });
+
   let scale = 1.0;
   function zoom(delta) {
     scale = Math.min(2.0, Math.max(0.4, scale + delta));
