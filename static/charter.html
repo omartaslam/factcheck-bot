@@ -32,31 +32,78 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 40px 20px 80px;
+    padding: 92px 20px 80px; /* top pad accounts for sticky nav */
   }
 
-  /* ── Zoom toolbar ── */
-  #toolbar {
+  /* ── Sticky nav header ── */
+  #site-nav {
     position: fixed;
-    top: 20px;
-    right: 24px;
+    top: 0; left: 0; right: 0;
+    height: 52px;
     display: flex;
     align-items: center;
-    gap: 8px;
-    background: rgba(11, 18, 32, 0.92);
+    justify-content: space-between;
+    padding: 0 20px;
+    background: rgba(11, 18, 32, 0.97);
+    border-bottom: 1px solid var(--gold-dim);
+    backdrop-filter: blur(10px);
+    z-index: 200;
+    gap: 12px;
+  }
+
+  .nav-brand {
+    font-family: 'Playfair Display', serif;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--gold);
+    text-decoration: none;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .nav-brand:hover { color: var(--gold-light); }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 13px;
+    border-radius: 6px;
+    font-family: 'EB Garamond', serif;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
     border: 1px solid var(--gold-dim);
-    border-radius: 8px;
-    padding: 8px 14px;
-    z-index: 100;
-    backdrop-filter: blur(8px);
+    color: var(--gold);
+    background: none;
+  }
+  .nav-btn:hover { background: var(--gold-dim); color: var(--parchment); }
+  .nav-btn.wa { border-color: #25d366; color: #25d366; }
+  .nav-btn.wa:hover { background: #25d366; color: #fff; }
+
+  /* zoom controls — right side of nav */
+  #toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
   }
   #toolbar button {
     background: none;
     border: 1px solid var(--gold-dim);
     color: var(--gold);
-    width: 28px; height: 28px;
+    width: 26px; height: 26px;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 15px;
     cursor: pointer;
     transition: all 0.15s;
     display: flex; align-items: center; justify-content: center;
@@ -66,17 +113,11 @@
   #zoom-label {
     color: var(--gold);
     font-family: 'EB Garamond', serif;
-    font-size: 14px;
-    min-width: 38px;
+    font-size: 13px;
+    min-width: 36px;
     text-align: center;
   }
-  #toolbar .sep { width: 1px; height: 20px; background: var(--gold-dim); margin: 0 2px; }
-  #print-btn {
-    width: auto !important;
-    padding: 0 10px;
-    font-size: 13px !important;
-    letter-spacing: 0.04em;
-  }
+  #toolbar .sep { width: 1px; height: 18px; background: var(--gold-dim); margin: 0 2px; }
 
   /* ── Document wrapper ── */
   #doc-wrapper {
@@ -323,12 +364,41 @@
     font-weight: 500;
   }
 
+  /* ── PDF context links (visible in print/PDF) ── */
+  .pdf-links {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: center;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+  .pdf-links a {
+    font-family: 'EB Garamond', serif;
+    font-size: 12px;
+    color: var(--gold-dim);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+  }
+  .pdf-links a:hover { color: var(--gold); }
+  .pdf-links .pdf-link-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--ink-light);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .pdf-links .pdf-link-item { text-align: center; }
+
   /* ── Print styles ── */
   @media print {
     body {
       background: white;
       padding: 0;
     }
+    #site-nav { display: none; }
     #toolbar { display: none; }
     #doc-wrapper {
       width: 100%;
@@ -352,15 +422,22 @@
 </head>
 <body>
 
-<!-- Zoom toolbar -->
-<div id="toolbar">
-  <button onclick="zoom(-0.1)" title="Zoom out">−</button>
-  <span id="zoom-label">100%</span>
-  <button onclick="zoom(+0.1)" title="Zoom in">+</button>
-  <button onclick="resetZoom()" title="Reset zoom" style="font-size:11px;width:auto;padding:0 8px;">Reset</button>
-  <div class="sep"></div>
-  <button class="print-btn" onclick="window.print()" title="Save / Print as PDF" style="width:auto;padding:0 12px;font-size:12px;">⎙ Save PDF</button>
-</div>
+<!-- Sticky nav header -->
+<nav id="site-nav">
+  <a class="nav-brand" href="https://fredcheck.com">✦ Fred Check</a>
+  <div class="nav-links">
+    <a class="nav-btn wa" href="https://wa.me/message/RHUL3AC2SKLVL1" target="_blank">💬 WhatsApp</a>
+    <a class="nav-btn" href="https://fredcheck.com" target="_blank">🌐 Web</a>
+  </div>
+  <div id="toolbar">
+    <button onclick="zoom(-0.1)" title="Zoom out">−</button>
+    <span id="zoom-label">100%</span>
+    <button onclick="zoom(+0.1)" title="Zoom in">+</button>
+    <button onclick="resetZoom()" title="Reset" style="font-size:10px;width:auto;padding:0 7px;">Reset</button>
+    <div class="sep"></div>
+    <button onclick="window.print()" title="Save / Print as PDF" style="width:auto;padding:0 10px;font-size:11px;">⎙ PDF</button>
+  </div>
+</nav>
 
 <div id="doc-wrapper">
 <div class="outer-frame">
@@ -624,6 +701,18 @@
       <strong>Fred Check</strong> — Independent Fact-Checking System<br>
       Constitutional Version 2.0 &nbsp;·&nbsp; Enacted 2026<br>
       <em>Consistent standards. Global sources. No exceptions.</em>
+    </div>
+  </div>
+
+  <!-- PDF context links — visible in downloaded PDF copies -->
+  <div class="pdf-links">
+    <div class="pdf-link-item">
+      <span class="pdf-link-label">Fact-check on WhatsApp</span>
+      <a href="https://wa.me/message/RHUL3AC2SKLVL1">wa.me/message/RHUL3AC2SKLVL1</a>
+    </div>
+    <div class="pdf-link-item">
+      <span class="pdf-link-label">Fact-check on Web</span>
+      <a href="https://fredcheck.com">fredcheck.com</a>
     </div>
   </div>
 
